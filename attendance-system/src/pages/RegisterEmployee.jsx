@@ -1,131 +1,229 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
 
 export default function RegisterEmployee() {
   const webcamRef = useRef(null);
-  const [employees, setEmployees] = useState([]);
-  const [selectedUser, setSelectedUser] = useState("");
 
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    contact: "",
+    position: "",
+  });
 
-  const fetchEmployees = async () => {
-    const { data, error } = await supabase
-      .from("employee_profiles")
-      .select("id, full_name");
+  const [showCamera, setShowCamera] = useState(false);
+  const [imageSrc, setImageSrc] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-    if (error) {
-      console.log("fetchEmployees error:", error);
-      return;
-    }
-
-    setEmployees(data || []);
+  // 🔹 handle input change
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // 🔹 open camera
+  const openCamera = () => setShowCamera(true);
+
+  // 🔹 capture image
+  const captureFace = () => {
+    const image = webcamRef.current.getScreenshot();
+    setImageSrc(image);
+    setShowCamera(false);
+  };
+
+  // 🔥 REGISTER EMPLOYEE + FACE
   const handleRegister = async () => {
-    if (!selectedUser) {
-      alert("Please select employee first");
+    const { name, email, password, contact, position } = form;
+
+    if (!name || !email || !password || !contact || !position) {
+      alert("Please fill all fields");
       return;
     }
-
-    if (!webcamRef.current) {
-      alert("Camera not ready");
-      return;
-    }
-
-    const imageSrc = webcamRef.current.getScreenshot();
 
     if (!imageSrc) {
-      alert("Camera not ready");
+      alert("Please capture face first");
       return;
     }
 
-    const blob = await fetch(imageSrc).then((res) => res.blob());
-
-    console.log("USER:", selectedUser);
-    console.log("BLOB:", blob);
-
-    const formData = new FormData();
-    formData.append("file", blob);
-    formData.append("user_id", selectedUser);
-
-    console.log("🚀 SENDING TO BACKEND...");
-
     try {
+      setLoading(true);
+
+      // 🔥 1. CREATE USER
+const { data: authData, error: authError } =
+  await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+if (authError) {
+  alert(authError.message);
+  return;
+}
+
+// 🚨 CRITICAL CHECK
+if (!authData || !authData.user) {
+  alert("User creation failed. Check email confirmation settings.");
+  return;
+}
+
+const userId = authData.user.id;
+
+// 🔥 2. INSERT PROFILE
+const EMPLOYEE_ROLE_ID = "e4dbb928-7f0e-4da9-9eff-d7700d37b25a";
+
+const { error: profileError } = await supabase
+  .from("employee_profiles")
+  .insert([
+    {
+      id: userId, // ✅ NOW IT EXISTS
+      full_name: name,
+      email,
+      contact_number: contact,
+      position,
+      role_id: EMPLOYEE_ROLE_ID,
+    },
+  ]);
+
+if (profileError) {
+  alert(profileError.message);
+  return;
+}
+
+      // 🔥 3. UPLOAD FACE
+      const blob = await fetch(imageSrc).then((res) => res.blob());
+
+      const formData = new FormData();
+      formData.append("file", blob);
+      formData.append("user_id", userId);
+
       const res = await fetch("http://127.0.0.1:8000/upload-face", {
         method: "POST",
         body: formData,
       });
 
-      console.log("🔥 FETCH DONE");
+      const data = await res.json();
 
-      const text = await res.text();
-      console.log("🔥 RAW RESPONSE:", text);
-
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        alert("Invalid JSON response from backend");
+      if (data.status !== "Uploaded") {
+        alert("Face upload failed");
         return;
       }
 
-      console.log("📦 RESPONSE:", data);
+      // 🔥 4. SAVE FACE URL TO DATABASE
+      await supabase
+        .from("employee_profiles")
+        .update({ face_url: data.url })
+        .eq("id", userId);
 
-      if (data.status === "Uploaded") {
-        alert("✅ Face uploaded successfully!");
-        console.log("FACE URL:", data.url);
-      } else {
-        alert(data.message || "Upload failed");
-      }
+      alert("✅ Employee registered successfully!");
+
+      // 🔄 RESET FORM
+      setForm({
+        name: "",
+        email: "",
+        password: "",
+        contact: "",
+        position: "",
+      });
+      setImageSrc(null);
 
     } catch (err) {
-      console.error("FETCH ERROR:", err);
-      alert("Backend connection failed");
+      console.error(err);
+      alert("Registration failed");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <ManagerLayout>
-      <h2>Register Employee Face</h2>
+      <h2>Register Employee</h2>
 
-      <select
-        value={selectedUser}
-        onChange={(e) => setSelectedUser(e.target.value)}
-        style={styles.select}
-      >
-        <option value="">Select Employee</option>
-        {employees.map((emp) => (
-          <option key={emp.id} value={emp.id}>
-            {emp.full_name}
-          </option>
-        ))}
-      </select>
+      {/* FORM */}
+      <input
+        name="name"
+        placeholder="Full Name"
+        value={form.name}
+        onChange={handleChange}
+        style={styles.input}
+      />
 
-      <br />
-      <br />
+      <input
+        name="email"
+        placeholder="Email"
+        value={form.email}
+        onChange={handleChange}
+        style={styles.input}
+      />
 
-      <Webcam
-        ref={webcamRef}
-        screenshotFormat="image/jpeg"
-        style={styles.camera}
+      <input
+        type="password"
+        name="password"
+        placeholder="Password"
+        value={form.password}
+        onChange={handleChange}
+        style={styles.input}
+      />
+
+      <input
+        name="contact"
+        placeholder="Contact Number"
+        value={form.contact}
+        onChange={handleChange}
+        style={styles.input}
+      />
+
+      <input
+        name="position"
+        placeholder="Position"
+        value={form.position}
+        onChange={handleChange}
+        style={styles.input}
       />
 
       <br />
+
+      {/* CAMERA BUTTON */}
+      <button onClick={openCamera} style={styles.button}>
+        Open Camera
+      </button>
+
+      {/* CAMERA */}
+      {showCamera && (
+        <div style={{ marginTop: "20px" }}>
+          <Webcam
+            ref={webcamRef}
+            screenshotFormat="image/jpeg"
+            style={styles.camera}
+          />
+          <br />
+          <button onClick={captureFace} style={styles.button}>
+            Capture Face
+          </button>
+        </div>
+      )}
+
+      {/* PREVIEW */}
+      {imageSrc && (
+        <div style={{ marginTop: "15px" }}>
+          <p>Captured Face:</p>
+          <img src={imageSrc} alt="preview" width={200} />
+        </div>
+      )}
+
       <br />
 
-      <button onClick={handleRegister} style={styles.button}>
-        Register Face
+      <button onClick={handleRegister} disabled={loading} style={styles.button}>
+        {loading ? "Registering..." : "Register Employee"}
       </button>
     </ManagerLayout>
   );
 }
 
 const styles = {
-  select: {
+  input: {
+    display: "block",
     width: "100%",
     maxWidth: "320px",
     padding: "10px",
@@ -142,5 +240,6 @@ const styles = {
     border: "none",
     borderRadius: "6px",
     cursor: "pointer",
+    marginTop: "10px",
   },
 };

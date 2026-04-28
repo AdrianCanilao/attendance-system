@@ -1,5 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { FaBell } from "react-icons/fa";
+import Sidebar from "../components/Sidebar"; // ✅ IMPORTANT
 
 export default function ManagerLayout({ children }) {
   const navigate = useNavigate();
@@ -12,31 +14,34 @@ export default function ManagerLayout({ children }) {
 
   return (
     <div style={styles.container}>
-      <div style={styles.sidebar}>
-        <h2 style={styles.logo}>Manager</h2>
+      {/* ✅ REUSABLE SIDEBAR */}
+      <Sidebar role="manager" />
 
-        <button onClick={() => navigate("/manager")} style={styles.link}>
-          Dashboard
-        </button>
-
-        <button onClick={() => navigate("/manager/register")} style={styles.link}>
-          Register Employee
-        </button>
-
-        <button onClick={() => navigate("/manager/leave")} style={styles.link}>
-          Manage Leave
-        </button>
-
-        <button onClick={handleLogout} style={styles.logout}>
-          Back
-        </button>
-      </div>
-
+      {/* MAIN */}
       <div style={styles.main}>
-        <div style={styles.header}>
-          <h2>Manager Dashboard</h2>
+        {/* TOPBAR */}
+        <div style={styles.topbar}>
+          <h3 style={{ margin: 0 }}>Manager Dashboard</h3>
+
+          <div style={styles.topRight}>
+            <FaBell size={18} />
+
+            <div style={styles.profile}>
+              <div style={styles.avatar}>M</div>
+              <div>
+                <p style={{ margin: 0, fontWeight: "600" }}>Manager</p>
+                <small style={{ color: "#6b7280" }}>Admin</small>
+              </div>
+            </div>
+
+            {/* 🔥 LOGOUT BUTTON (optional here instead of sidebar) */}
+            <button onClick={handleLogout} style={styles.logout}>
+              Logout
+            </button>
+          </div>
         </div>
 
+        {/* CONTENT */}
         <div style={styles.content}>{children}</div>
       </div>
     </div>
@@ -44,38 +49,63 @@ export default function ManagerLayout({ children }) {
 }
 
 const styles = {
-  container: { display: "flex", height: "100vh" },
-  sidebar: {
-    width: "220px",
-    background: "#1f2937",
-    color: "#fff",
-    padding: "20px",
+  container: {
+    display: "flex",
+    height: "100vh",
+    width: "100%",
+  },
+
+  main: {
+    flex: 1,
+    background: "#f9fafb",
     display: "flex",
     flexDirection: "column",
+  },
+
+  topbar: {
+    height: "70px",
+    background: "#f5f5f5",
+    borderBottom: "2px solid #f97316",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "0 20px",
+  },
+
+  topRight: {
+    display: "flex",
+    alignItems: "center",
+    gap: "20px",
+  },
+
+  profile: {
+    display: "flex",
+    alignItems: "center",
     gap: "10px",
   },
-  logo: { marginBottom: "20px", color: "#f97316" },
-  link: {
-    padding: "10px",
-    background: "transparent",
+
+  avatar: {
+    width: "35px",
+    height: "35px",
+    borderRadius: "50%",
+    background: "#f97316",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: "bold",
     color: "#fff",
-    border: "none",
-    textAlign: "left",
-    cursor: "pointer",
   },
+
   logout: {
-    marginTop: "auto",
-    padding: "10px",
+    padding: "6px 12px",
     background: "#f97316",
     color: "#fff",
     border: "none",
+    borderRadius: "6px",
     cursor: "pointer",
   },
-  main: { flex: 1, background: "#f3f4f6" },
-  header: {
+
+  content: {
     padding: "20px",
-    background: "#fff",
-    borderBottom: "1px solid #ddd",
   },
-  content: { padding: "20px" },
 };

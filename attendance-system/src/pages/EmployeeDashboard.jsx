@@ -73,21 +73,28 @@ export default function EmployeeDashboard() {
 
     const blob = await fetch(imageSrc).then(res => res.blob());
 
-    const formData = new FormData();
-    formData.append("file", blob, "face.jpg");
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
 
-    const res = await fetch("http://127.0.0.1:8000/recognize", {
+    if (!user) {
+      alert("User not found");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", blob);
+    formData.append("user_id", user.id); // 🔥 IMPORTANT
+
+    // ✅ NEW ENDPOINT
+    const res = await fetch("http://127.0.0.1:8000/verify-face", {
       method: "POST",
       body: formData,
     });
 
     const data = await res.json();
 
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-
-    if (data.status === "Match" && data.user === user.id) {
-      console.log("✅ Face recognized");
+    if (data.status === "Match") {
+      console.log("✅ Face verified");
 
       const today = new Date().toISOString().split("T")[0];
 
@@ -98,15 +105,15 @@ export default function EmployeeDashboard() {
         .eq("log_date", today)
         .maybeSingle();
 
+      // ✅ TIME IN
       if (!existing) {
-        console.log("RUNNING INSERT HERE - attendance_logs");
+        await supabase.from("attendance_logs").insert({
+          employee_id: user.id,
+          log_date: today,
+          time_in: new Date().toISOString(),
+        });
 
-await supabase.from("attendance_logs").insert({
-  employee_id: user.id,
-  log_date: today,
-  time_in: new Date().toISOString(),
-});
-
+      // ✅ TIME OUT
       } else if (!existing.time_out) {
         await supabase
           .from("attendance_logs")
@@ -114,11 +121,19 @@ await supabase.from("attendance_logs").insert({
           .eq("id", existing.id);
       }
 
+      alert("✅ Attendance recorded");
       loadData();
+
+    } else if (data.status === "No Match") {
+      alert("❌ Face not recognized");
+
+    } else {
+      alert(data.message || "Verification failed");
     }
 
   } catch (err) {
-    console.error(err);
+    console.error("SCAN ERROR:", err);
+    alert("Error scanning face");
   } finally {
     setLoading(false);
   }

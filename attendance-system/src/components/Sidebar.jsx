@@ -1,24 +1,201 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { FaChartBar, FaClipboardList, FaUsers } from "react-icons/fa";
 
 export default function Sidebar({ role }) {
-  return (
-    <div style={{ width: "200px", background: "#222", color: "#fff", padding: "20px" }}>
-      <h3>{role.toUpperCase()}</h3>
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [openEmployee, setOpenEmployee] = useState(false);
 
+  const isActive = (path) => location.pathname === path;
+
+  return (
+    <div style={styles.sidebar}>
+      {/* LOGO */}
+      <div style={styles.logoContainer}>
+        <div style={styles.logoCircle}>C</div>
+        <h3 style={styles.logoText}>CIBO</h3>
+      </div>
+
+      {/* EMPLOYEE SIDE */}
       {role === "employee" && (
         <>
-          <p><Link to="/employee" style={{ color: "#fff" }}>Dashboard</Link></p>
-          <p><Link to="/leave" style={{ color: "#fff" }}>Leave Request</Link></p>
-          <p><Link to="/my-leave">My Leave</Link></p>
+          <button
+            onClick={() => navigate("/employee")}
+            style={{
+              ...styles.link,
+              ...(isActive("/employee") && styles.activeLink),
+            }}
+          >
+            Dashboard
+          </button>
+
+          <button
+            onClick={() => navigate("/leave")}
+            style={styles.link}
+          >
+            Leave Request
+          </button>
+
+          <button
+            onClick={() => navigate("/my-leave")}
+            style={styles.link}
+          >
+            My Leave
+          </button>
         </>
       )}
 
+      {/* MANAGER SIDE */}
       {role === "manager" && (
         <>
-          <p><Link to="/manager" style={{ color: "#fff" }}>Dashboard</Link></p>
-          <p><Link to="/manager/leave" style={{ color: "#fff" }}>Manage Leave</Link></p>
+          <button
+            onClick={() => navigate("/manager")}
+            style={{
+              ...styles.link,
+              ...(isActive("/manager") && styles.activeLink),
+            }}
+          >
+            <FaChartBar /> Attendance Log
+          </button>
+
+          {/* 🔽 EMPLOYEE DROPDOWN */}
+          <div>
+  <button
+  onClick={() => setOpenEmployee(!openEmployee)}
+  style={styles.link}
+>
+  <FaUsers color="#ffffff" /> Employee {openEmployee ? "▾" : "▸"}
+</button>
+
+  <div
+    style={{
+      ...styles.dropdown,
+      maxHeight: openEmployee ? "200px" : "0px",
+      opacity: openEmployee ? 1 : 0,
+    }}
+  >
+    <button
+      onClick={() => navigate("/manager/register")}
+      style={{
+        ...styles.sublink,
+        ...(isActive("/manager/register") && styles.activeSubLink),
+      }}
+    >
+      Register Employee
+    </button>
+
+    <button
+      onClick={() => navigate("/manager/edit")}
+      style={{
+        ...styles.sublink,
+        ...(isActive("/manager/edit") && styles.activeSubLink),
+      }}
+    >
+      Edit Employee
+    </button>
+  </div>
+</div>
+
+          <button
+            onClick={() => navigate("/manager/leave")}
+            style={{
+              ...styles.link,
+              ...(isActive("/manager/leave") && styles.activeLink),
+            }}
+          >
+            <FaClipboardList /> Manage Leave
+          </button>
         </>
       )}
     </div>
   );
 }
+
+const styles = {
+  sidebar: {
+    width: "240px",
+    background: "#1f2937",
+    color: "#fff",
+    padding: "24px 18px", // 🔥 better spacing
+    display: "flex",
+    flexDirection: "column",
+  },
+
+  logoContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    marginBottom: "28px", // 🔥 more breathing room
+  },
+
+  logoCircle: {
+    width: "42px",
+    height: "42px",
+    borderRadius: "10px",
+    background: "#f97316",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: "bold",
+    fontSize: "18px",
+  },
+
+  logoText: {
+    margin: 0,
+    fontSize: "18px",
+    fontWeight: "600",
+    letterSpacing: "0.5px", // 🔥 more formal look
+  },
+
+  link: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    padding: "12px 14px", // 🔥 improved spacing
+    background: "transparent",
+    color: "#e5e7eb", // 🔥 softer white
+    border: "none",
+    cursor: "pointer",
+    borderRadius: "10px",
+    fontSize: "14px",
+    fontWeight: "500",
+    letterSpacing: "0.3px",
+    transition: "0.2s",
+  },
+
+  activeLink: {
+    background: "#f97316",
+    color: "#fff",
+    fontWeight: "600",
+  },
+
+  dropdown: {
+    display: "flex",
+    flexDirection: "column",
+    marginLeft: "28px", // 🔥 cleaner indentation
+    marginTop: "6px",
+    gap: "4px",
+    overflow: "hidden",
+    transition: "all 0.3s ease",
+  },
+
+  sublink: {
+    padding: "8px 10px",
+    background: "transparent",
+    color: "#9ca3af", // 🔥 subtle gray
+    border: "none",
+    textAlign: "left",
+    cursor: "pointer",
+    fontSize: "13.5px",
+    borderRadius: "8px",
+    fontWeight: "400",
+    transition: "0.2s",
+  },
+
+  activeSubLink: {
+    background: "#f97316",
+    color: "#fff",
+    fontWeight: "500",
+  },
+};
