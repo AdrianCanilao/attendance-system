@@ -7,6 +7,7 @@ import LeaveRequest from "./pages/LeaveRequest";
 import ManagerLeave from "./pages/ManagerLeave";
 import MyLeave from "./pages/MyLeave";
 import RegisterEmployee from "./pages/RegisterEmployee";
+import EditEmployee from "./pages/EditEmployee";
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/manager/edit" element={<EditEmployee />} />
 
         <Route
           path="/manager/leave"

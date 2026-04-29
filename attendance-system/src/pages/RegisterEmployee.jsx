@@ -18,22 +18,18 @@ export default function RegisterEmployee() {
   const [imageSrc, setImageSrc] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // 🔹 handle input change
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // 🔹 open camera
   const openCamera = () => setShowCamera(true);
 
-  // 🔹 capture image
   const captureFace = () => {
     const image = webcamRef.current.getScreenshot();
     setImageSrc(image);
     setShowCamera(false);
   };
 
-  // 🔥 REGISTER EMPLOYEE + FACE
   const handleRegister = async () => {
     const { name, email, password, contact, position } = form;
 
@@ -50,48 +46,40 @@ export default function RegisterEmployee() {
     try {
       setLoading(true);
 
-      // 🔥 1. CREATE USER
-const { data: authData, error: authError } =
-  await supabase.auth.signUp({
-    email,
-    password,
-  });
+      const { data: authData, error: authError } =
+        await supabase.auth.signUp({ email, password });
 
-if (authError) {
-  alert(authError.message);
-  return;
-}
+      if (authError) {
+        alert(authError.message);
+        return;
+      }
 
-// 🚨 CRITICAL CHECK
-if (!authData || !authData.user) {
-  alert("User creation failed. Check email confirmation settings.");
-  return;
-}
+      if (!authData?.user) {
+        alert("User creation failed.");
+        return;
+      }
 
-const userId = authData.user.id;
+      const userId = authData.user.id;
+      const EMPLOYEE_ROLE_ID = "e4dbb928-7f0e-4da9-9eff-d7700d37b25a";
 
-// 🔥 2. INSERT PROFILE
-const EMPLOYEE_ROLE_ID = "e4dbb928-7f0e-4da9-9eff-d7700d37b25a";
+      const { error: profileError } = await supabase
+        .from("employee_profiles")
+        .insert([
+          {
+            id: userId,
+            full_name: name,
+            email,
+            contact_number: contact,
+            position,
+            role_id: EMPLOYEE_ROLE_ID,
+          },
+        ]);
 
-const { error: profileError } = await supabase
-  .from("employee_profiles")
-  .insert([
-    {
-      id: userId, // ✅ NOW IT EXISTS
-      full_name: name,
-      email,
-      contact_number: contact,
-      position,
-      role_id: EMPLOYEE_ROLE_ID,
-    },
-  ]);
+      if (profileError) {
+        alert(profileError.message);
+        return;
+      }
 
-if (profileError) {
-  alert(profileError.message);
-  return;
-}
-
-      // 🔥 3. UPLOAD FACE
       const blob = await fetch(imageSrc).then((res) => res.blob());
 
       const formData = new FormData();
@@ -110,7 +98,6 @@ if (profileError) {
         return;
       }
 
-      // 🔥 4. SAVE FACE URL TO DATABASE
       await supabase
         .from("employee_profiles")
         .update({ face_url: data.url })
@@ -118,7 +105,6 @@ if (profileError) {
 
       alert("✅ Employee registered successfully!");
 
-      // 🔄 RESET FORM
       setForm({
         name: "",
         email: "",
@@ -126,8 +112,8 @@ if (profileError) {
         contact: "",
         position: "",
       });
-      setImageSrc(null);
 
+      setImageSrc(null);
     } catch (err) {
       console.error(err);
       alert("Registration failed");
@@ -138,108 +124,259 @@ if (profileError) {
 
   return (
     <ManagerLayout>
-      <h2>Register Employee</h2>
+      <div style={styles.wrapper}>
+        <h2 style={styles.title}>Register Employee</h2>
 
-      {/* FORM */}
-      <input
-        name="name"
-        placeholder="Full Name"
-        value={form.name}
-        onChange={handleChange}
-        style={styles.input}
-      />
+        <div style={styles.card}>
+          {/* AVATAR + CAMERA */}
+          <div style={styles.topSection}>
+            <div style={styles.avatarWrapper}>
+              <div style={styles.avatarBox}>
+  <div style={styles.avatarInner}>
+    {imageSrc ? (
+      <img src={imageSrc} alt="avatar" style={styles.avatarImg} />
+    ) : (
+      <svg
+        width="80"
+        height="80"
+        viewBox="0 0 24 24"
+        fill="#9ca3af"
+      >
+        <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 
+        2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 
+        1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z"/>
+      </svg>
+    )}
+  </div>
+</div>
+              
 
-      <input
-        name="email"
-        placeholder="Email"
-        value={form.email}
-        onChange={handleChange}
-        style={styles.input}
-      />
+              <button onClick={openCamera} style={styles.cameraBtn}>
+                Open Camera
+              </button>
+            </div>
 
-      <input
-        type="password"
-        name="password"
-        placeholder="Password"
-        value={form.password}
-        onChange={handleChange}
-        style={styles.input}
-      />
+            <div style={styles.cameraWrapper}>
+              {showCamera ? (
+  <>
+    <Webcam
+      ref={webcamRef}
+      screenshotFormat="image/jpeg"
+      style={styles.camera}
+    />
+    <button onClick={captureFace} style={styles.captureBtn}>
+      Capture Face
+    </button>
+  </>
+) : (
+  <div style={{ height: "200px" }} />  // 🔥 keeps layout stable
+)}
+            </div>
+          </div>
 
-      <input
-        name="contact"
-        placeholder="Contact Number"
-        value={form.contact}
-        onChange={handleChange}
-        style={styles.input}
-      />
+          {/* FORM */}
+          <div style={styles.grid}>
+  <div>
+    <label style={styles.label}>Full Name</label>
+    <input
+      name="name"
+      placeholder="Enter full name"
+      value={form.name}
+      onChange={handleChange}
+      style={styles.input}
+    />
+  </div>
 
-      <input
-        name="position"
-        placeholder="Position"
-        value={form.position}
-        onChange={handleChange}
-        style={styles.input}
-      />
+  <div>
+    <label style={styles.label}>Email</label>
+    <input
+      name="email"
+      placeholder="Enter email address"
+      value={form.email}
+      onChange={handleChange}
+      style={styles.input}
+    />
+  </div>
 
-      <br />
+  <div>
+    <label style={styles.label}>Password</label>
+    <input
+      type="password"
+      name="password"
+      placeholder="Enter password"
+      value={form.password}
+      onChange={handleChange}
+      style={styles.input}
+    />
+  </div>
 
-      {/* CAMERA BUTTON */}
-      <button onClick={openCamera} style={styles.button}>
-        Open Camera
-      </button>
+  <div>
+    <label style={styles.label}>Contact Number</label>
+    <input
+      name="contact"
+      placeholder="Enter contact number"
+      value={form.contact}
+      onChange={handleChange}
+      style={styles.input}
+    />
+  </div>
 
-      {/* CAMERA */}
-      {showCamera && (
-        <div style={{ marginTop: "20px" }}>
-          <Webcam
-            ref={webcamRef}
-            screenshotFormat="image/jpeg"
-            style={styles.camera}
-          />
-          <br />
-          <button onClick={captureFace} style={styles.button}>
-            Capture Face
+  <div style={{ gridColumn: "span 2" }}>
+    <label style={styles.label}>Position</label>
+    <input
+      name="position"
+      placeholder="Enter position"
+      value={form.position}
+      onChange={handleChange}
+      style={styles.input}
+    />
+  </div>
+</div>
+
+          <button onClick={handleRegister} disabled={loading} style={styles.primaryBtn}>
+            {loading ? "Registering..." : "Register Employee"}
           </button>
         </div>
-      )}
-
-      {/* PREVIEW */}
-      {imageSrc && (
-        <div style={{ marginTop: "15px" }}>
-          <p>Captured Face:</p>
-          <img src={imageSrc} alt="preview" width={200} />
-        </div>
-      )}
-
-      <br />
-
-      <button onClick={handleRegister} disabled={loading} style={styles.button}>
-        {loading ? "Registering..." : "Register Employee"}
-      </button>
+      </div>
     </ManagerLayout>
   );
 }
 
 const styles = {
-  input: {
-    display: "block",
-    width: "100%",
-    maxWidth: "320px",
-    padding: "10px",
-    marginBottom: "10px",
+  wrapper: { padding: "20px" },
+
+  title: { marginBottom: "15px" },
+
+  card: {
+    background: "#fff",
+    borderRadius: "12px",
+    padding: "30px",
   },
+
+  topSection: {
+    display: "flex",
+    gap: "40px",
+    marginBottom: "30px",
+    alignItems: "flex-start",
+  },
+
+  avatarWrapper: {
+  width: "193px",        // 🔥 SAME SIZE
+  flexShrink: 0,         // 🔥 STOP SHRINKING
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "12px",
+},
+
+  defaultAvatar: {
+  width: "193px",
+  height: "193px",
+  borderRadius: "50%",
+  background: "#e5e7eb",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
+
+  flexShrink: 0,          // 🔥 PREVENT FLEX SHRINK
+},
+
+
+  cameraWrapper: {
+  width: "260px",
+  minHeight: "220px",   // prevents layout jump
+  display: "flex",
+  flexDirection: "column",
+  gap: "10px",
+},
+
   camera: {
-    width: "320px",
+    width: "260px",
     borderRadius: "10px",
   },
-  button: {
+
+  cameraBtn: {
+    background: "#f97316",
+    color: "#fff",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+
+  captureBtn: {
+    background: "#f97316",
+    color: "#fff",
+    padding: "8px 14px",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+
+  grid: {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: "20px",
+},
+
+  input: {
+  width: "100%",
+  padding: "12px",
+  borderRadius: "8px",
+  border: "1px solid #e5e7eb",
+  background: "#ffffff",        // 🔥 WHITE BG
+  fontSize: "14px",
+  color: "#111827",             // text color
+  boxSizing: "border-box",
+},
+
+  primaryBtn: {
+    marginTop: "15px",
     padding: "10px 16px",
     background: "#f97316",
     color: "#fff",
     border: "none",
-    borderRadius: "6px",
+    borderRadius: "8px",
     cursor: "pointer",
-    marginTop: "10px",
   },
+  label: {
+  display: "block",
+  fontSize: "13px",
+  fontWeight: "500",
+  color: "#374151",
+  marginBottom: "6px",
+},
+avatarBox: {
+  width: "193px",
+  height: "193px",
+  minWidth: "193px",
+  minHeight: "193px",
+  flexShrink: 0,
+
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+avatarInner: {
+  width: "100%",
+  height: "100%",
+  borderRadius: "50%",
+  background: "#e5e7eb",
+
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+
+  overflow: "hidden",   // 🔥 THIS IS THE KEY
+},
+
+avatarImg: {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  display: "block",     // 🔥 prevents weird shrink
+},
+
 };
