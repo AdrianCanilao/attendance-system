@@ -22,7 +22,6 @@ export default function EmployeeDashboard() {
 
     if (!user) return;
 
-    // 🔹 PROFILE
     const { data: profile } = await supabase
       .from("employee_profiles")
       .select("full_name")
@@ -33,7 +32,6 @@ export default function EmployeeDashboard() {
 
     const today = new Date().toISOString().split("T")[0];
 
-    // 🔹 ATTENDANCE
     const { data: attendance } = await supabase
       .from("attendance_logs")
       .select("*")
@@ -41,7 +39,6 @@ export default function EmployeeDashboard() {
       .eq("log_date", today)
       .maybeSingle();
 
-    // 🔹 LEAVE
     const { data: leave } = await supabase
       .from("leave_requests")
       .select("*")
@@ -50,54 +47,75 @@ export default function EmployeeDashboard() {
 
     let currentStatus = "Absent";
 
-    if (attendance?.time_in) {
-      currentStatus = "Present";
-    } else if (leave?.length > 0) {
-      currentStatus = "On Leave";
-    }
+    if (attendance?.time_in) currentStatus = "Present";
+    else if (leave?.length > 0) currentStatus = "On Leave";
 
     setStatus(currentStatus);
     setTimeIn(attendance?.time_in || "-");
     setTimeOut(attendance?.time_out || "-");
   };
 
-  // 🔥 FACE SCAN
+  // 🔥 FACE SCAN + SAVE IMAGE
   const handleScan = async () => {
-  if (loading) return;
+    if (loading) return;
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const imageSrc = webcamRef.current.getScreenshot();
-    if (!imageSrc) return;
+      const imageSrc = webcamRef.current.getScreenshot();
+      if (!imageSrc) return;
 
-    const blob = await fetch(imageSrc).then(res => res.blob());
+      const blob = await fetch(imageSrc).then((res) => res.blob());
 
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData?.user;
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
 
-    if (!user) {
-      alert("User not found");
-      return;
-    }
+      if (!user) {
+        alert("User not found");
+        return;
+      }
 
-    const formData = new FormData();
-    formData.append("file", blob);
-    formData.append("user_id", user.id); // 🔥 IMPORTANT
+      // 🔥 VERIFY FACE (BACKEND)
+      const formData = new FormData();
+      formData.append("file", blob);
+      formData.append("user_id", user.id);
 
-    // ✅ NEW ENDPOINT
-    const res = await fetch("http://127.0.0.1:8000/verify-face", {
-      method: "POST",
-      body: formData,
-    });
+      const res = await fetch("http://127.0.0.1:8000/verify-face", {
+        method: "POST",
+        body: formData,
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (data.status === "Match") {
+      if (data.status !== "Match") {
+        alert("❌ Face not recognized");
+        return;
+      }
+
       console.log("✅ Face verified");
 
       const today = new Date().toISOString().split("T")[0];
 
+      // 🔥 UPLOAD IMAGE TO STORAGE
+      const fileName = `attendance/${user.id}_${Date.now()}.jpg`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("faces")
+        .upload(fileName, blob, { upsert: true });
+
+      if (uploadError) {
+        console.error(uploadError);
+        alert("Image upload failed");
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("faces")
+        .getPublicUrl(fileName);
+
+      const faceUrl = urlData.publicUrl;
+
+      // 🔥 CHECK EXISTING ATTENDANCE
       const { data: existing } = await supabase
         .from("attendance_logs")
         .select("*")
@@ -111,39 +129,35 @@ export default function EmployeeDashboard() {
           employee_id: user.id,
           log_date: today,
           time_in: new Date().toISOString(),
+          face_url: faceUrl, // 🔥 SAVE IMAGE
         });
 
       // ✅ TIME OUT
       } else if (!existing.time_out) {
         await supabase
           .from("attendance_logs")
-          .update({ time_out: new Date().toISOString() })
+          .update({
+            time_out: new Date().toISOString(),
+            face_url: faceUrl, // 🔥 UPDATE IMAGE AGAIN
+          })
           .eq("id", existing.id);
       }
 
       alert("✅ Attendance recorded");
       loadData();
 
-    } else if (data.status === "No Match") {
-      alert("❌ Face not recognized");
-
-    } else {
-      alert(data.message || "Verification failed");
+    } catch (err) {
+      console.error("SCAN ERROR:", err);
+      alert("Error scanning face");
+    } finally {
+      setLoading(false);
     }
-
-  } catch (err) {
-    console.error("SCAN ERROR:", err);
-    alert("Error scanning face");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <EmployeeLayout>
       <h2>Welcome, {name}</h2>
 
-      {/* STATUS */}
       <div style={styles.card}>
         <h3>
           Status: <span style={styles.status(status)}>{status}</span>
@@ -152,7 +166,6 @@ export default function EmployeeDashboard() {
         <p>Time Out: {timeOut}</p>
       </div>
 
-      {/* CAMERA */}
       <div style={styles.cameraBox}>
         <Webcam
           ref={webcamRef}
@@ -169,7 +182,6 @@ export default function EmployeeDashboard() {
         </button>
       </div>
 
-      {/* REFRESH */}
       <div style={styles.actions}>
         <button style={styles.btn} onClick={loadData}>
           Refresh
@@ -206,14 +218,12 @@ const styles = {
     background: "#f97316",
     color: "#fff",
     border: "none",
-    borderRadius: "5px",
+    borderRadius: "6px",
     cursor: "pointer",
   },
 
   actions: {
     marginTop: "20px",
-    display: "flex",
-    gap: "10px",
   },
 
   btn: {
@@ -222,7 +232,6 @@ const styles = {
     color: "#fff",
     border: "none",
     borderRadius: "5px",
-    cursor: "pointer",
   },
 
   status: (status) => ({

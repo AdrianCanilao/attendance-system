@@ -108,3 +108,23 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+/* 🔥 scrollbar track */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+/* 🔥 background */
+::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+
+/* 🔥 scroll thumb */
+::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 10px;
+}
+
+/* 🔥 hover effect */
+::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db;
+}

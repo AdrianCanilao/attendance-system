@@ -67,7 +67,6 @@ export default function EditEmployee() {
         .from("employee_profiles")
         .update({
           full_name: form.name,
-          email: form.email,
           contact_number: form.contact,
           position: form.position,
         })
@@ -217,9 +216,13 @@ export default function EditEmployee() {
                 </div>
 
                 <div>
-                  <label style={styles.label}>Email</label>
-                  <input name="email" value={form.email} onChange={handleChange} style={styles.input} />
-                </div>
+  <label style={styles.label}>Email</label>
+  <input
+    value={form.email}
+    disabled
+    style={styles.disabledInput}
+  />
+</div>
 
                 <div>
                   <label style={styles.label}>Contact</label>
@@ -426,4 +429,15 @@ const styles = {
     width: "100%",
     background: "transparent",
   },
+  disabledInput: {
+  width: "100%",
+  padding: "12px",
+  borderRadius: "8px",
+  border: "1.5px solid #e5e7eb",
+
+  background: "#f9fafb",   // 🔥 light gray
+  color: "#6b7280",        // 🔥 muted text
+
+  cursor: "not-allowed",
+},
 };

@@ -14,38 +14,21 @@ export default function ManagerDashboard() {
   useEffect(() => {
     fetchDashboardData();
   }, []);
-const formatTime = (time) => {
-  if (!time || time === "-") return "-";
 
-  const [h, m] = time.split(":");
-  let hour = parseInt(h);
+  const calculateHoursWorked = (timeInISO, timeOutISO) => {
+    if (!timeInISO || !timeOutISO) return "-";
 
-  const ampm = hour >= 12 ? "PM" : "AM";
-  hour = hour % 12 || 12;
+    const start = new Date(timeInISO);
+    const end = new Date(timeOutISO);
 
-  return `${hour}:${m} ${ampm}`;
-};
+    const diff = (end - start) / 1000 / 60;
+    if (diff <= 0) return "-";
 
-const calculateHoursWorked = (timeIn, timeOut) => {
-  if (!timeIn || !timeOut || timeIn === "-" || timeOut === "-") {
-    return "-";
-  }
+    const hours = Math.floor(diff / 60);
+    const minutes = Math.floor(diff % 60);
 
-  const [h1, m1] = timeIn.split(":");
-  const [h2, m2] = timeOut.split(":");
-
-  const start = parseInt(h1) * 60 + parseInt(m1);
-  const end = parseInt(h2) * 60 + parseInt(m2);
-
-  const diff = end - start;
-
-  if (diff <= 0 || isNaN(diff)) return "-";
-
-  const hours = Math.floor(diff / 60);
-  const minutes = diff % 60;
-
-  return `${hours}h ${minutes}m`;
-};
+    return `${hours}h ${minutes}m`;
+  };
 
   const fetchDashboardData = async () => {
     const today = new Date().toISOString().split("T")[0];
@@ -91,39 +74,43 @@ const calculateHoursWorked = (timeIn, timeOut) => {
       }
 
       result.push({
-  name: emp.full_name,
-  position: emp.position || "-",
+        name: emp.full_name,
+        position: emp.position || "-",
 
-  time_in: attendanceToday?.time_in
-    ? new Date(attendanceToday.time_in).toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-        timeZone: "Asia/Manila",
-      })
-    : "-",
+        time_in_raw: attendanceToday?.time_in || null,
+        time_out_raw: attendanceToday?.time_out || null,
 
-  time_out: attendanceToday?.time_out
-    ? new Date(attendanceToday.time_out).toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-        timeZone: "Asia/Manila",
-      })
-    : "-",
+        time_in: attendanceToday?.time_in
+          ? new Date(attendanceToday.time_in).toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+              timeZone: "Asia/Manila",
+            })
+          : "-",
 
-  status,
-});
+        time_out: attendanceToday?.time_out
+          ? new Date(attendanceToday.time_out).toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+              timeZone: "Asia/Manila",
+            })
+          : "-",
+
+        face_url: attendanceToday?.face_url || null,
+
+        status,
+      });
     });
 
     setLogs(result);
-    setFilteredLogs(result); // 🔥 important for search
+    setFilteredLogs(result);
     setTotal(employees?.length || 0);
     setPresent(presentCount);
     setAbsent(absentCount);
   };
 
-  // 🔍 SAFE SEARCH
   const handleSearch = (value) => {
     setSearch(value);
 
@@ -136,12 +123,10 @@ const calculateHoursWorked = (timeIn, timeOut) => {
 
   return (
     <ManagerLayout>
-      {/* HEADER */}
       <div style={styles.header}>
         <h2 style={styles.title}>Attendance Log</h2>
       </div>
 
-      {/* CARDS */}
       <div style={styles.cards}>
         <div style={styles.card}>
           <p style={styles.cardLabel}>Total Employees</p>
@@ -159,50 +144,37 @@ const calculateHoursWorked = (timeIn, timeOut) => {
         </div>
       </div>
 
-      {/* TABLE CARD */}
       <div style={styles.tableCard}>
-        {/* TOP BAR (DATE + SEARCH ONLY) */}
         <div style={styles.tableHeader}>
-  <div>
-    <h3 style={styles.tableTitle}>Daily Attendance Report</h3>
-    <p style={styles.dateText}>
-      {new Date().toLocaleDateString(undefined, {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })}
-    </p>
-  </div>
+          <div>
+            <h3 style={styles.tableTitle}>Daily Attendance Report</h3>
+            <p style={styles.dateText}>
+              {new Date().toLocaleDateString(undefined, {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
+          </div>
 
-  <div style={styles.searchWrapper}>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      style={styles.searchIcon}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M21 21l-4.35-4.35m1.85-5.65a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z"
-      />
-    </svg>
+          <div style={styles.searchWrapper}>
+            <svg style={styles.searchIcon} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} fill="none">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
 
-    <input
-      type="text"
-      placeholder="Search employee..."
-      value={search}
-      onChange={(e) => handleSearch(e.target.value)}
-      style={styles.searchInput}
-    />
-  </div>
-</div>
+            <input
+              type="text"
+              placeholder="Search employee..."
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              style={styles.searchInput}
+            />
+          </div>
+        </div>
 
-        {/* TABLE */}
-        <div style={styles.tableWrapper}>
+        <div style={styles.tableWrapperScrollable}>
           <table style={styles.table}>
             <thead>
               <tr>
@@ -218,13 +190,46 @@ const calculateHoursWorked = (timeIn, timeOut) => {
             <tbody>
               {(filteredLogs || []).map((log, i) => (
                 <tr key={i} style={styles.row}>
+                  {/* 🔥 UPDATED EMPLOYEE CELL */}
                   <td style={styles.td}>{log.name}</td>
+
                   <td style={styles.td}>{log.position}</td>
-                  <td style={styles.td}>{log.time_in}</td>
+                  <td style={styles.timeInCell}>
+  {log.face_url && (
+    <div
+  style={styles.avatarWrapper}
+  onMouseEnter={(e) => {
+  const preview = e.currentTarget.querySelector(".preview");
+  preview.style.opacity = 1;
+  preview.querySelector("img").style.transform = "scale(1)";
+}}
+onMouseLeave={(e) => {
+  const preview = e.currentTarget.querySelector(".preview");
+  preview.style.opacity = 0;
+  preview.querySelector("img").style.transform = "scale(0.95)";
+}}
+>
+      <img
+        src={log.face_url}
+        alt="face"
+        style={styles.timeAvatar}
+      />
+
+      {/* 🔥 HOVER PREVIEW */}
+      <div style={styles.preview} className="preview">
+        <img src={log.face_url} style={styles.previewImg} />
+      </div>
+    </div>
+  )}
+
+  <span>{log.time_in}</span>
+</td>
                   <td style={styles.td}>{log.time_out}</td>
+
                   <td style={styles.td}>
-        {calculateHoursWorked(log.time_in_raw, log.time_out_raw)}
-      </td>
+                    {calculateHoursWorked(log.time_in_raw, log.time_out_raw)}
+                  </td>
+
                   <td style={styles.td}>
                     <span
                       style={{
@@ -257,21 +262,10 @@ const calculateHoursWorked = (timeIn, timeOut) => {
 }
 
 const styles = {
-  header: {
-    marginBottom: "20px",
-  },
+  header: { marginBottom: "20px" },
+  title: { margin: 0, fontWeight: "600", color: "#111827" },
 
-  title: {
-    margin: 0,
-    fontWeight: "600",
-    color: "#111827",
-  },
-
-  cards: {
-    display: "flex",
-    gap: "20px",
-    marginBottom: "25px",
-  },
+  cards: { display: "flex", gap: "20px", marginBottom: "25px" },
 
   card: {
     flex: 1,
@@ -281,10 +275,7 @@ const styles = {
     border: "2px solid #e5e7eb",
   },
 
-  cardLabel: {
-    fontSize: "14px",
-    color: "#374151",
-  },
+  cardLabel: { fontSize: "14px", color: "#374151" },
 
   tableCard: {
     background: "#fff",
@@ -294,59 +285,42 @@ const styles = {
   },
 
   tableHeader: {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "15px",
-  paddingBottom: "10px",
-  borderBottom: "2px solid #e5e7eb", // 🔥 ADD THIS
-},
-
-  dateText: {
-    fontSize: "14px",
-    color: "#374151",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "15px",
+    paddingBottom: "10px",
+    borderBottom: "2px solid #e5e7eb",
   },
 
-  searchWrapper: {
-  position: "relative",
-  display: "flex",
-  alignItems: "center",
-},
+  dateText: { fontSize: "14px", color: "#374151" },
 
-searchIcon: {
-  position: "absolute",
-  left: "10px",
-  width: "16px",
-  height: "16px",
-  color: "#111827", // 🔥 BLACK icon
-},
+  searchWrapper: { position: "relative", display: "flex", alignItems: "center" },
 
-searchInput: {
-  padding: "8px 12px 8px 32px",
-  borderRadius: "8px",
-  border: "1px solid #e5e7eb",
-  outline: "none",
-  background: "#ffffff",
-  color: "#111827", // 🔥 BLACK text
-  fontSize: "14px",
-},
-
-  tableWrapper: {
-    width: "100%",
-    overflowX: "auto",
+  searchIcon: {
+    position: "absolute",
+    left: "10px",
+    width: "16px",
+    height: "16px",
+    color: "#111827",
   },
 
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
+  searchInput: {
+    padding: "8px 12px 8px 32px",
+    borderRadius: "8px",
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    color: "#111827",
   },
+
+  tableWrapper: { width: "100%", overflowX: "auto" },
+
+  table: { width: "100%", borderCollapse: "collapse" },
 
   th: {
     textAlign: "left",
     padding: "12px",
     background: "#f9fafb",
-    fontWeight: "600",
-    color: "#111827",
     borderBottom: "1px solid #e5e7eb",
   },
 
@@ -356,9 +330,20 @@ searchInput: {
     color: "#111827",
   },
 
-  row: {
-    transition: "0.2s",
+  employeeCell: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
   },
+
+  avatar: {
+    width: "36px",
+    height: "36px",
+    borderRadius: "50%",
+    objectFit: "cover",
+  },
+
+  row: { transition: "0.2s" },
 
   badge: {
     padding: "6px 12px",
@@ -366,10 +351,62 @@ searchInput: {
     fontSize: "12px",
     fontWeight: "600",
   },
+
   tableTitle: {
-  margin: 0,
-  fontSize: "18px",
-  fontWeight: "600",
-  color: "#111827",
+    margin: 0,
+    fontSize: "18px",
+    fontWeight: "600",
+    color: "#111827",
+  },
+  timeInCell: {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+},
+
+avatarWrapper: {
+  position: "relative",
+  display: "inline-block",
+},
+
+timeAvatar: {
+  width: "32px",
+  height: "32px",
+  borderRadius: "50%",
+  objectFit: "cover",
+  border: "2px solid #e5e7eb",
+  cursor: "pointer",
+},
+
+/* 🔥 HOVER PREVIEW BOX */
+preview: {
+  position: "absolute",
+  bottom: "45px",        // 🔥 moves it ABOVE
+  left: "50%",
+  transform: "translateX(-50%)", // 🔥 center align
+
+  zIndex: 10,
+
+  opacity: 0,
+  pointerEvents: "none",
+  transition: "0.2s ease",
+
+  background: "#fff",
+  padding: "6px",
+  borderRadius: "10px",
+  boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+},
+previewImg: {
+  width: "120px",
+  height: "120px",
+  objectFit: "cover",
+  borderRadius: "8px",
+  transform: "scale(0.95)",
+  transition: "0.2s",
+},
+tableWrapperScrollable: {
+  width: "100%",
+  maxHeight: "350px",   // 🔥 adjust height as you like
+  overflowY: "auto",    // 🔥 enables vertical scroll
 },
 };

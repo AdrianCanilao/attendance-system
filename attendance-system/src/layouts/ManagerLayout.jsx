@@ -30,7 +30,6 @@ export default function ManagerLayout({ children }) {
               <div style={styles.avatar}>M</div>
               <div>
                 <p style={{ margin: 0, fontWeight: "600" }}>Manager</p>
-                <small style={{ color: "#6b7280" }}>Admin</small>
               </div>
             </div>
 
