@@ -19,7 +19,6 @@ export default function EmployeeDashboard() {
   const loadData = async () => {
     const { data: userData } = await supabase.auth.getUser();
     const user = userData?.user;
-
     if (!user) return;
 
     const { data: profile } = await supabase
@@ -46,7 +45,6 @@ export default function EmployeeDashboard() {
       .eq("status", "Approved");
 
     let currentStatus = "Absent";
-
     if (attendance?.time_in) currentStatus = "Present";
     else if (leave?.length > 0) currentStatus = "On Leave";
 
@@ -55,16 +53,13 @@ export default function EmployeeDashboard() {
     setTimeOut(attendance?.time_out || "-");
   };
 
-  // 🔥 MULTI-FRAME CAPTURE
   const captureFrames = async () => {
     const frames = [];
-
     await new Promise((res) => setTimeout(res, 2000));
 
     for (let i = 0; i < 5; i++) {
       const image = webcamRef.current.getScreenshot();
       const blob = await fetch(image).then((res) => res.blob());
-
       frames.push(blob);
       await new Promise((res) => setTimeout(res, 600));
     }
@@ -72,11 +67,8 @@ export default function EmployeeDashboard() {
     return frames;
   };
 
-  // 🔥 FACE SCAN
-  const handleScan = async () => {
-    console.log("🔥 BUTTON CLICKED");
-
-    alert("Please blink your eyes during scanning");
+  const handleScan = async (actionType) => {
+    console.log("🔥 BUTTON CLICKED:", actionType);
 
     if (loading) return;
 
@@ -87,37 +79,47 @@ export default function EmployeeDashboard() {
 
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
-
       if (!user) {
         alert("User not found");
         return;
       }
 
-      // 🔥 GET FULL NAME FROM DB (FIXED)
-      const { data: profile, error } = await supabase
+      const { data: profile } = await supabase
         .from("employee_profiles")
         .select("full_name")
         .eq("id", user.id)
         .single();
 
-      if (error || !profile) {
-        alert("Failed to get profile");
+      const today = new Date().toISOString().split("T")[0];
+
+      const { data: existing } = await supabase
+        .from("attendance_logs")
+        .select("*")
+        .eq("employee_id", user.id)
+        .eq("log_date", today)
+        .maybeSingle();
+
+      // 🚫 VALIDATION
+      if (actionType === "time_in" && existing?.time_in) {
+        alert("Already timed in today");
         return;
       }
 
-      console.log("👤 PROFILE:", profile);
+      if (actionType === "time_out" && !existing?.time_in) {
+        alert("You must time-in first");
+        return;
+      }
 
+      if (actionType === "time_out" && existing?.time_out) {
+        alert("Already timed out today");
+        return;
+      }
+
+      // 🔥 VERIFY FACE
       const formData = new FormData();
-
-      frames.forEach((blob) => {
-        formData.append("files", blob);
-      });
-
+      frames.forEach((blob) => formData.append("files", blob));
       formData.append("user_id", user.id);
-      formData.append("full_name", profile.full_name); // ✅ FIXED
-
-      console.log("SENDING USER ID:", user.id);
-      console.log("SENDING FULL NAME:", profile.full_name);
+      formData.append("full_name", profile.full_name);
 
       const res = await fetch("http://localhost:8000/verify-face", {
         method: "POST",
@@ -125,19 +127,34 @@ export default function EmployeeDashboard() {
       });
 
       const data = await res.json();
-      console.log("✅ Response:", data);
 
       if (data.status !== "Match") {
-        alert(`❌ Face not recognized (${data.status})`);
+        alert("Face not recognized");
         return;
       }
 
-      console.log("✅ Face verified");
-
-      const today = new Date().toISOString().split("T")[0];
+      // 🔥 FILE STRUCTURE
+      const safeName = profile.full_name
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "_");
 
       const firstBlob = frames[0];
-      const fileName = `attendance/${user.id}_${Date.now()}.jpg`;
+
+      // ✅ FORCE CREATE BOTH FOLDERS ON FIRST TIME-IN
+      if (actionType === "time_in") {
+        await supabase.storage
+          .from("faces")
+          .upload(`attendance/${safeName}/time_in/.init.jpg`, firstBlob, { upsert: true });
+
+        await supabase.storage
+          .from("faces")
+          .upload(`attendance/${safeName}/time_out/.init.jpg`, firstBlob, { upsert: true });
+      }
+
+      const fileName = `attendance/${safeName}/${actionType}/${Date.now()}.jpg`;
+
+      console.log("📁 Uploading to:", fileName);
 
       const { error: uploadError } = await supabase.storage
         .from("faces")
@@ -145,7 +162,7 @@ export default function EmployeeDashboard() {
 
       if (uploadError) {
         console.error(uploadError);
-        alert("Image upload failed");
+        alert("Upload failed");
         return;
       }
 
@@ -155,21 +172,15 @@ export default function EmployeeDashboard() {
 
       const faceUrl = urlData.publicUrl;
 
-      const { data: existing } = await supabase
-        .from("attendance_logs")
-        .select("*")
-        .eq("employee_id", user.id)
-        .eq("log_date", today)
-        .maybeSingle();
-
-      if (!existing) {
+      // 🔥 SAVE DB
+      if (actionType === "time_in") {
         await supabase.from("attendance_logs").insert({
           employee_id: user.id,
           log_date: today,
           time_in: new Date().toISOString(),
           face_url: faceUrl,
         });
-      } else if (!existing.time_out) {
+      } else {
         await supabase
           .from("attendance_logs")
           .update({
@@ -179,12 +190,12 @@ export default function EmployeeDashboard() {
           .eq("id", existing.id);
       }
 
-      alert("✅ Attendance recorded");
+      alert("Attendance recorded");
       loadData();
 
     } catch (err) {
-      console.error("SCAN ERROR:", err);
-      alert("Error scanning face");
+      console.error(err);
+      alert("Scan failed");
     } finally {
       setLoading(false);
     }
@@ -195,17 +206,13 @@ export default function EmployeeDashboard() {
       <h2>Welcome, {name}</h2>
 
       <div style={styles.card}>
-        <h3>
-          Status: <span style={styles.status(status)}>{status}</span>
-        </h3>
+        <h3>Status: <span style={styles.status(status)}>{status}</span></h3>
         <p>Time In: {timeIn}</p>
         <p>Time Out: {timeOut}</p>
       </div>
 
       <div style={styles.cameraBox}>
-        <p style={{ fontWeight: "600", marginBottom: "10px" }}>
-          Please blink your eyes during scanning
-        </p>
+        <p>Please blink your eyes during scanning</p>
 
         <Webcam
           ref={webcamRef}
@@ -213,20 +220,18 @@ export default function EmployeeDashboard() {
           style={styles.camera}
         />
 
-        <button
-          style={styles.scanBtn}
-          onClick={handleScan}
-          disabled={loading}
-        >
-          {loading ? "Scanning..." : "Scan Face"}
-        </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button onClick={() => handleScan("time_in")} disabled={loading}>
+            {loading ? "Processing..." : "Time In"}
+          </button>
+
+          <button onClick={() => handleScan("time_out")} disabled={loading}>
+            {loading ? "Processing..." : "Time Out"}
+          </button>
+        </div>
       </div>
 
-      <div style={styles.actions}>
-        <button style={styles.btn} onClick={loadData}>
-          Refresh
-        </button>
-      </div>
+      <button onClick={loadData}>Refresh</button>
     </EmployeeLayout>
   );
 }
