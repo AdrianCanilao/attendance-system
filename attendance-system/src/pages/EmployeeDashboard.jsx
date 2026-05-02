@@ -141,7 +141,7 @@ export default function EmployeeDashboard() {
 
       const firstBlob = frames[0];
 
-      // ✅ FORCE CREATE BOTH FOLDERS ON FIRST TIME-IN
+      // 🔥 CREATE FOLDERS IF FIRST TIME-IN
       if (actionType === "time_in") {
         await supabase.storage
           .from("faces")
@@ -154,7 +154,7 @@ export default function EmployeeDashboard() {
 
       const fileName = `attendance/${safeName}/${actionType}/${Date.now()}.jpg`;
 
-      console.log("📁 Uploading to:", fileName);
+      console.log("📁 Uploading:", fileName);
 
       const { error: uploadError } = await supabase.storage
         .from("faces")
@@ -165,6 +165,14 @@ export default function EmployeeDashboard() {
         alert("Upload failed");
         return;
       }
+
+      // 🔥 AUTO DELETE INIT FILE
+      const initPath = `attendance/${safeName}/${actionType}/.init.jpg`;
+
+      await supabase.storage
+        .from("faces")
+        .remove([initPath])
+        .catch(() => {});
 
       const { data: urlData } = supabase.storage
         .from("faces")
@@ -235,7 +243,6 @@ export default function EmployeeDashboard() {
     </EmployeeLayout>
   );
 }
-
 const styles = {
   card: {
     background: "#fff",
