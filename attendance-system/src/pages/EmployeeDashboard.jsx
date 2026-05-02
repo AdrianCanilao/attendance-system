@@ -55,38 +55,35 @@ export default function EmployeeDashboard() {
     setTimeOut(attendance?.time_out || "-");
   };
 
-  // 🔥 NEW: MULTI-FRAME CAPTURE
+  // 🔥 MULTI-FRAME CAPTURE
   const captureFrames = async () => {
-  const frames = [];
+    const frames = [];
 
+    await new Promise((res) => setTimeout(res, 2000));
 
-  await new Promise((res) => setTimeout(res, 2000)); // 2 sec prep time
+    for (let i = 0; i < 5; i++) {
+      const image = webcamRef.current.getScreenshot();
+      const blob = await fetch(image).then((res) => res.blob());
 
-  for (let i = 0; i < 5; i++) {
-    const image = webcamRef.current.getScreenshot();
-    const blob = await fetch(image).then((res) => res.blob());
+      frames.push(blob);
+      await new Promise((res) => setTimeout(res, 600));
+    }
 
-    frames.push(blob);
+    return frames;
+  };
 
-    // 🔥 LONGER DELAY BETWEEN FRAMES
-    await new Promise((res) => setTimeout(res, 600));
-  }
-
-  return frames;
-};
-
-  // 🔥 FACE SCAN + SAVE IMAGE
+  // 🔥 FACE SCAN
   const handleScan = async () => {
-    console.log("🔥 BUTTON CLICKED"); // ADD THIS
+    console.log("🔥 BUTTON CLICKED");
 
-    alert("Please blink your eyes during scanning"); // ✅ NEW
+    alert("Please blink your eyes during scanning");
 
     if (loading) return;
 
     try {
       setLoading(true);
 
-      const frames = await captureFrames(); // ✅ FIXED
+      const frames = await captureFrames();
 
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
@@ -96,16 +93,32 @@ export default function EmployeeDashboard() {
         return;
       }
 
-      // 🔥 VERIFY FACE
+      // 🔥 GET FULL NAME FROM DB (FIXED)
+      const { data: profile, error } = await supabase
+        .from("employee_profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single();
+
+      if (error || !profile) {
+        alert("Failed to get profile");
+        return;
+      }
+
+      console.log("👤 PROFILE:", profile);
+
       const formData = new FormData();
 
       frames.forEach((blob) => {
-        formData.append("files", blob); // ✅ CORRECT
+        formData.append("files", blob);
       });
 
       formData.append("user_id", user.id);
+      formData.append("full_name", profile.full_name); // ✅ FIXED
 
       console.log("SENDING USER ID:", user.id);
+      console.log("SENDING FULL NAME:", profile.full_name);
+
       const res = await fetch("http://localhost:8000/verify-face", {
         method: "POST",
         body: formData,
@@ -113,8 +126,9 @@ export default function EmployeeDashboard() {
 
       const data = await res.json();
       console.log("✅ Response:", data);
+
       if (data.status !== "Match") {
-        alert("❌ Face not recognized");
+        alert(`❌ Face not recognized (${data.status})`);
         return;
       }
 
@@ -122,9 +136,7 @@ export default function EmployeeDashboard() {
 
       const today = new Date().toISOString().split("T")[0];
 
-      // 🔥 USE FIRST FRAME FOR STORAGE
       const firstBlob = frames[0];
-
       const fileName = `attendance/${user.id}_${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
@@ -192,8 +204,9 @@ export default function EmployeeDashboard() {
 
       <div style={styles.cameraBox}>
         <p style={{ fontWeight: "600", marginBottom: "10px" }}>
-  Please blink your eyes during scanning
-</p>
+          Please blink your eyes during scanning
+        </p>
+
         <Webcam
           ref={webcamRef}
           screenshotFormat="image/jpeg"

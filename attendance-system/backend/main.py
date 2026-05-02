@@ -29,6 +29,9 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 # 🔥 BLINK SETUP
 face_mesh = mp_face_mesh.FaceMesh()
 
+def normalize_name(name: str):
+    return name.strip().lower().replace(" ", "_")
+
 def eye_aspect_ratio(landmarks, eye_points):
     p1 = np.array(landmarks[eye_points[0]])
     p2 = np.array(landmarks[eye_points[1]])
@@ -50,10 +53,16 @@ def home():
 
 # 🔥 UPLOAD FACE
 @app.post("/upload-face")
-async def upload_face(file: UploadFile = File(...), user_id: str = Form(...)):
+async def upload_face(
+    file: UploadFile = File(...),
+    user_id: str = Form(...),
+    full_name: str = Form(...)
+):
     try:
         contents = await file.read()
-        file_name = f"{user_id}_{int(time.time() * 1000)}.jpg"
+
+        safe_name = normalize_name(full_name)
+        file_name = f"employees/{safe_name}/face_{int(time.time() * 1000)}.jpg"
 
         supabase.storage.from_("faces").upload(
             file_name,
@@ -73,9 +82,13 @@ async def upload_face(file: UploadFile = File(...), user_id: str = Form(...)):
         return {"status": "Error", "message": str(e)}
 
 
-# 🔥 VERIFY FACE (STRONG BLINK)
+# 🔥 VERIFY FACE
 @app.post("/verify-face")
-async def verify_face(files: List[UploadFile] = File(...), user_id: str = Form(...)):
+async def verify_face(
+    files: List[UploadFile] = File(...),
+    user_id: str = Form(...),
+    full_name: str = Form(...)
+):
     print("🔥 VERIFY STARTED", flush=True)
 
     try:
@@ -97,7 +110,7 @@ async def verify_face(files: List[UploadFile] = File(...), user_id: str = Form(.
         print("📸 Frames:", len(frames), flush=True)
 
         # =========================
-        # 🔥 STRONG BLINK DETECTION
+        # 🔥 BLINK DETECTION
         # =========================
         ear_values = []
 
@@ -110,18 +123,14 @@ async def verify_face(files: List[UploadFile] = File(...), user_id: str = Form(.
                 h, w, _ = img.shape
 
                 points = [(int(l.x * w), int(l.y * h)) for l in landmarks]
-
                 left_eye = [33, 160, 158, 133, 153, 144]
 
                 ear = eye_aspect_ratio(points, left_eye)
                 ear_values.append(ear)
 
-                print("👁️ EAR:", ear, flush=True)
-
         if len(ear_values) < 3:
             return {"status": "Fake", "message": "Face not detected properly"}
 
-        # 🔥 REQUIRE OPEN → CLOSED → OPEN
         closed = any(e < 0.18 for e in ear_values)
         open_eye = any(e > 0.22 for e in ear_values)
 
@@ -136,14 +145,9 @@ async def verify_face(files: List[UploadFile] = File(...), user_id: str = Form(.
         valid_frames = []
 
         for img in frames:
-            faces = DeepFace.extract_faces(
-                img_path=img,
-                enforce_detection=False
-            )
+            faces = DeepFace.extract_faces(img_path=img, enforce_detection=False)
             if faces:
                 valid_frames.append(img)
-
-        print("👤 Valid frames:", len(valid_frames), flush=True)
 
         if len(valid_frames) < 2:
             return {"status": "No Face"}
@@ -151,26 +155,30 @@ async def verify_face(files: List[UploadFile] = File(...), user_id: str = Form(.
         # =========================
         # LOAD STORED FACES
         # =========================
-        files_list = supabase.storage.from_("faces").list()
-        user_files = [f for f in files_list if f["name"].startswith(user_id)]
-        print("👤 USER ID:", user_id, flush=True)
-        print("📁 FILES USED:", [f["name"] for f in user_files], flush=True)
+        safe_name = normalize_name(full_name)
+        folder_path = f"employees/{safe_name}"
 
-        print("📁 Stored:", len(user_files), flush=True)
+        files_list = supabase.storage.from_("faces").list(folder_path) or []
 
-        if not user_files:
+        print("📁 USER FOLDER:", folder_path, flush=True)
+        print("📁 FILES:", [f["name"] for f in files_list], flush=True)
+
+        if not files_list:
             return {"status": "Error", "message": "No registered faces"}
 
-        best_distance = 1.0
         distances = []
+        best_distance = 1.0
 
         # =========================
         # MATCH
         # =========================
-        for f in user_files:
-            url = f"{SUPABASE_URL}/storage/v1/object/public/faces/{f['name']}"
-            response = requests.get(url)
+        for f in files_list:
+            # 🔥 FIXED PATH (IMPORTANT)
+            file_path = f"{folder_path}/{f['name']}"
 
+            url = f"{SUPABASE_URL}/storage/v1/object/public/faces/{file_path}"
+
+            response = requests.get(url)
             if response.status_code != 200:
                 continue
 
@@ -200,23 +208,23 @@ async def verify_face(files: List[UploadFile] = File(...), user_id: str = Form(.
                 if distance < best_distance:
                     best_distance = distance
 
-        variation = (max(distances) - min(distances)) if len(distances) > 1 else 0
+        if not distances:
+            return {"status": "No Match"}
+
+        variation = max(distances) - min(distances)
 
         print("🔥 BEST DISTANCE:", best_distance, flush=True)
         print("📊 VARIATION:", variation, flush=True)
 
         # =========================
-        # FINAL DECISION
+        # FINAL DECISION (BALANCED)
         # =========================
-        # =========================
-# FINAL DECISION (STRICT + MULTI-FRAME)
-# =========================
-        valid_matches = [d for d in distances if d < 0.45]
+        valid_matches = [d for d in distances if d < 0.55]
 
         print("✅ VALID MATCHES:", valid_matches, flush=True)
 
-        if len(valid_matches) >= 2:
-             return {"status": "Match"}
+        if len(valid_matches) >= 1:
+            return {"status": "Match"}
         else:
             return {"status": "No Match"}
 

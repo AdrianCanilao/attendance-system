@@ -21,11 +21,12 @@ export default function RegisterEmployee() {
   const [step, setStep] = useState(0);
 
   const steps = ["Look straight", "Turn LEFT", "Turn RIGHT"];
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-   const openCamera = () => {
+  const openCamera = () => {
     setCapturedImages([]);
     setStep(0);
     setShowCamera(true);
@@ -34,23 +35,23 @@ export default function RegisterEmployee() {
   const captureFrames = async () => {
     const frames = [];
 
-  for (let i = 0; i < 5; i++) {
-    const image = webcamRef.current.getScreenshot();
-    const blob = await fetch(image).then(r => r.blob());
+    for (let i = 0; i < 5; i++) {
+      const image = webcamRef.current.getScreenshot();
+      const blob = await fetch(image).then(r => r.blob());
 
-    frames.push(blob);
-    await new Promise(res => setTimeout(res, 300));
-  }
+      frames.push(blob);
+      await new Promise(res => setTimeout(res, 300));
+    }
 
-  return frames;
-};
-const captureFace = () => {
+    return frames;
+  };
+
+  const captureFace = () => {
     const image = webcamRef.current.getScreenshot();
 
     const newImages = [...capturedImages, image];
     setCapturedImages(newImages);
 
-    // first image = avatar preview
     if (step === 0) {
       setImageSrc(image);
     }
@@ -62,7 +63,7 @@ const captureFace = () => {
     }
   };
 
-const handleRegister = async () => {
+  const handleRegister = async () => {
     const { name, email, password, contact, position } = form;
 
     if (!name || !email || !password || !contact || !position) {
@@ -100,13 +101,14 @@ const handleRegister = async () => {
         },
       ]);
 
-      // 🔥 UPLOAD MULTIPLE IMAGES
+      // 🔥 UPLOAD MULTIPLE IMAGES (FIXED)
       for (let i = 0; i < capturedImages.length; i++) {
         const blob = await fetch(capturedImages[i]).then((r) => r.blob());
 
         const formData = new FormData();
         formData.append("file", blob);
         formData.append("user_id", userId);
+        formData.append("full_name", name); // ✅ FIXED HERE
 
         const res = await fetch("http://127.0.0.1:8000/upload-face", {
           method: "POST",
@@ -120,7 +122,6 @@ const handleRegister = async () => {
           return;
         }
 
-        // save ONLY first image as avatar
         if (i === 0) {
           await supabase
             .from("employee_profiles")
@@ -129,7 +130,7 @@ const handleRegister = async () => {
         }
       }
 
-      alert("✅ Employee registered with liveness!");
+      alert("✅ Employee registered!");
 
       setForm({
         name: "",
@@ -156,35 +157,28 @@ const handleRegister = async () => {
         <h2 style={styles.title}>Register Employee</h2>
 
         <div style={styles.card}>
-          {/* AVATAR + CAMERA */}
           <div style={styles.topSection}>
             <div style={styles.avatarWrapper}>
               <div style={styles.avatarBox}>
-  <div style={styles.avatarInner}>
-    {imageSrc ? (
-      <img src={imageSrc} alt="avatar" style={styles.avatarImg} />
-    ) : (
-      <svg
-        width="80"
-        height="80"
-        viewBox="0 0 24 24"
-        fill="#9ca3af"
-      >
-        <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 
-        2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 
-        1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z"/>
-      </svg>
-    )}
-  </div>
-</div>
-              
+                <div style={styles.avatarInner}>
+                  {imageSrc ? (
+                    <img src={imageSrc} alt="avatar" style={styles.avatarImg} />
+                  ) : (
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="#9ca3af">
+                      <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 
+                      2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 
+                      1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z"/>
+                    </svg>
+                  )}
+                </div>
+              </div>
 
               <button onClick={openCamera} style={styles.cameraBtn}>
                 Open Camera
               </button>
             </div>
 
-             <div style={styles.cameraWrapper}>
+            <div style={styles.cameraWrapper}>
               {showCamera ? (
                 <>
                   <p style={{ fontWeight: "600" }}>
@@ -212,64 +206,64 @@ const handleRegister = async () => {
               )}
             </div>
           </div>
-          {/* FORM */}
+
           <div style={styles.grid}>
-  <div>
-    <label style={styles.label}>Full Name</label>
-    <input
-      name="name"
-      placeholder="Enter full name"
-      value={form.name}
-      onChange={handleChange}
-      style={styles.input}
-    />
-  </div>
+            <div>
+              <label style={styles.label}>Full Name</label>
+              <input
+                name="name"
+                placeholder="Enter full name"
+                value={form.name}
+                onChange={handleChange}
+                style={styles.input}
+              />
+            </div>
 
-  <div>
-    <label style={styles.label}>Email</label>
-    <input
-      name="email"
-      placeholder="Enter email address"
-      value={form.email}
-      onChange={handleChange}
-      style={styles.input}
-    />
-  </div>
+            <div>
+              <label style={styles.label}>Email</label>
+              <input
+                name="email"
+                placeholder="Enter email address"
+                value={form.email}
+                onChange={handleChange}
+                style={styles.input}
+              />
+            </div>
 
-  <div>
-    <label style={styles.label}>Password</label>
-    <input
-      type="password"
-      name="password"
-      placeholder="Enter password"
-      value={form.password}
-      onChange={handleChange}
-      style={styles.input}
-    />
-  </div>
+            <div>
+              <label style={styles.label}>Password</label>
+              <input
+                type="password"
+                name="password"
+                placeholder="Enter password"
+                value={form.password}
+                onChange={handleChange}
+                style={styles.input}
+              />
+            </div>
 
-  <div>
-    <label style={styles.label}>Contact Number</label>
-    <input
-      name="contact"
-      placeholder="Enter contact number"
-      value={form.contact}
-      onChange={handleChange}
-      style={styles.input}
-    />
-  </div>
+            <div>
+              <label style={styles.label}>Contact Number</label>
+              <input
+                name="contact"
+                placeholder="Enter contact number"
+                value={form.contact}
+                onChange={handleChange}
+                style={styles.input}
+              />
+            </div>
 
-  <div style={{ gridColumn: "span 2" }}>
-    <label style={styles.label}>Position</label>
-    <input
-      name="position"
-      placeholder="Enter position"
-      value={form.position}
-      onChange={handleChange}
-      style={styles.input}
-    />
-  </div>
-</div>
+            <div style={{ gridColumn: "span 2" }}>
+              <label style={styles.label}>Position</label>
+              <input
+                name="position"
+                placeholder="Enter position"
+                value={form.position}
+                onChange={handleChange}
+                style={styles.input}
+              />
+            </div>
+          </div>
 
           <button onClick={handleRegister} disabled={loading} style={styles.primaryBtn}>
             {loading ? "Registering..." : "Register Employee"}
@@ -279,7 +273,6 @@ const handleRegister = async () => {
     </ManagerLayout>
   );
 }
-
 const styles = {
   wrapper: { padding: "20px" },
 
