@@ -17,20 +17,52 @@ export default function RegisterEmployee() {
   const [showCamera, setShowCamera] = useState(false);
   const [imageSrc, setImageSrc] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [capturedImages, setCapturedImages] = useState([]);
+  const [step, setStep] = useState(0);
 
+  const steps = ["Look straight", "Turn LEFT", "Turn RIGHT"];
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const openCamera = () => setShowCamera(true);
-
-  const captureFace = () => {
-    const image = webcamRef.current.getScreenshot();
-    setImageSrc(image);
-    setShowCamera(false);
+   const openCamera = () => {
+    setCapturedImages([]);
+    setStep(0);
+    setShowCamera(true);
   };
 
-  const handleRegister = async () => {
+  const captureFrames = async () => {
+    const frames = [];
+
+  for (let i = 0; i < 5; i++) {
+    const image = webcamRef.current.getScreenshot();
+    const blob = await fetch(image).then(r => r.blob());
+
+    frames.push(blob);
+    await new Promise(res => setTimeout(res, 300));
+  }
+
+  return frames;
+};
+const captureFace = () => {
+    const image = webcamRef.current.getScreenshot();
+
+    const newImages = [...capturedImages, image];
+    setCapturedImages(newImages);
+
+    // first image = avatar preview
+    if (step === 0) {
+      setImageSrc(image);
+    }
+
+    if (step < steps.length - 1) {
+      setStep(step + 1);
+    } else {
+      setShowCamera(false);
+    }
+  };
+
+const handleRegister = async () => {
     const { name, email, password, contact, position } = form;
 
     if (!name || !email || !password || !contact || !position) {
@@ -38,8 +70,8 @@ export default function RegisterEmployee() {
       return;
     }
 
-    if (!imageSrc) {
-      alert("Please capture face first");
+    if (capturedImages.length < 3) {
+      alert("Complete all face steps");
       return;
     }
 
@@ -54,56 +86,50 @@ export default function RegisterEmployee() {
         return;
       }
 
-      if (!authData?.user) {
-        alert("User creation failed.");
-        return;
-      }
-
       const userId = authData.user.id;
       const EMPLOYEE_ROLE_ID = "e4dbb928-7f0e-4da9-9eff-d7700d37b25a";
 
-      const { error: profileError } = await supabase
-        .from("employee_profiles")
-        .insert([
-          {
-            id: userId,
-            full_name: name,
-            email,
-            contact_number: contact,
-            position,
-            role_id: EMPLOYEE_ROLE_ID,
-          },
-        ]);
+      await supabase.from("employee_profiles").insert([
+        {
+          id: userId,
+          full_name: name,
+          email,
+          contact_number: contact,
+          position,
+          role_id: EMPLOYEE_ROLE_ID,
+        },
+      ]);
 
-      if (profileError) {
-        alert(profileError.message);
-        return;
+      // 🔥 UPLOAD MULTIPLE IMAGES
+      for (let i = 0; i < capturedImages.length; i++) {
+        const blob = await fetch(capturedImages[i]).then((r) => r.blob());
+
+        const formData = new FormData();
+        formData.append("file", blob);
+        formData.append("user_id", userId);
+
+        const res = await fetch("http://127.0.0.1:8000/upload-face", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+
+        if (data.status !== "Uploaded") {
+          alert("Face upload failed");
+          return;
+        }
+
+        // save ONLY first image as avatar
+        if (i === 0) {
+          await supabase
+            .from("employee_profiles")
+            .update({ face_url: data.url })
+            .eq("id", userId);
+        }
       }
 
-      const blob = await fetch(imageSrc).then((res) => res.blob());
-
-      const formData = new FormData();
-      formData.append("file", blob);
-      formData.append("user_id", userId);
-
-      const res = await fetch("http://127.0.0.1:8000/upload-face", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (data.status !== "Uploaded") {
-        alert("Face upload failed");
-        return;
-      }
-
-      await supabase
-        .from("employee_profiles")
-        .update({ face_url: data.url })
-        .eq("id", userId);
-
-      alert("✅ Employee registered successfully!");
+      alert("✅ Employee registered with liveness!");
 
       setForm({
         name: "",
@@ -113,7 +139,9 @@ export default function RegisterEmployee() {
         position: "",
       });
 
+      setCapturedImages([]);
       setImageSrc(null);
+
     } catch (err) {
       console.error(err);
       alert("Registration failed");
@@ -156,24 +184,34 @@ export default function RegisterEmployee() {
               </button>
             </div>
 
-            <div style={styles.cameraWrapper}>
+             <div style={styles.cameraWrapper}>
               {showCamera ? (
-  <>
-    <Webcam
-      ref={webcamRef}
-      screenshotFormat="image/jpeg"
-      style={styles.camera}
-    />
-    <button onClick={captureFace} style={styles.captureBtn}>
-      Capture Face
-    </button>
-  </>
-) : (
-  <div style={{ height: "200px" }} />  // 🔥 keeps layout stable
-)}
+                <>
+                  <p style={{ fontWeight: "600" }}>
+                    Step {step + 1}/3: {steps[step]}
+                  </p>
+
+                  <Webcam
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    screenshotQuality={1}
+                    videoConstraints={{
+                      width: 640,
+                      height: 480,
+                      facingMode: "user",
+                    }}
+                    style={styles.camera}
+                  />
+
+                  <button onClick={captureFace} style={styles.captureBtn}>
+                    Capture
+                  </button>
+                </>
+              ) : (
+                <div style={{ height: "200px" }} />
+              )}
             </div>
           </div>
-
           {/* FORM */}
           <div style={styles.grid}>
   <div>

@@ -55,17 +55,38 @@ export default function EmployeeDashboard() {
     setTimeOut(attendance?.time_out || "-");
   };
 
+  // 🔥 NEW: MULTI-FRAME CAPTURE
+  const captureFrames = async () => {
+  const frames = [];
+
+
+  await new Promise((res) => setTimeout(res, 2000)); // 2 sec prep time
+
+  for (let i = 0; i < 5; i++) {
+    const image = webcamRef.current.getScreenshot();
+    const blob = await fetch(image).then((res) => res.blob());
+
+    frames.push(blob);
+
+    // 🔥 LONGER DELAY BETWEEN FRAMES
+    await new Promise((res) => setTimeout(res, 600));
+  }
+
+  return frames;
+};
+
   // 🔥 FACE SCAN + SAVE IMAGE
   const handleScan = async () => {
+    console.log("🔥 BUTTON CLICKED"); // ADD THIS
+
+    alert("Please blink your eyes during scanning"); // ✅ NEW
+
     if (loading) return;
 
     try {
       setLoading(true);
 
-      const imageSrc = webcamRef.current.getScreenshot();
-      if (!imageSrc) return;
-
-      const blob = await fetch(imageSrc).then((res) => res.blob());
+      const frames = await captureFrames(); // ✅ FIXED
 
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
@@ -75,18 +96,23 @@ export default function EmployeeDashboard() {
         return;
       }
 
-      // 🔥 VERIFY FACE (BACKEND)
+      // 🔥 VERIFY FACE
       const formData = new FormData();
-      formData.append("file", blob);
+
+      frames.forEach((blob) => {
+        formData.append("files", blob); // ✅ CORRECT
+      });
+
       formData.append("user_id", user.id);
 
-      const res = await fetch("http://127.0.0.1:8000/verify-face", {
+      console.log("🚀 Sending request...");
+      const res = await fetch("http://localhost:8000/verify-face", {
         method: "POST",
         body: formData,
       });
 
       const data = await res.json();
-
+      console.log("✅ Response:", data);
       if (data.status !== "Match") {
         alert("❌ Face not recognized");
         return;
@@ -96,12 +122,14 @@ export default function EmployeeDashboard() {
 
       const today = new Date().toISOString().split("T")[0];
 
-      // 🔥 UPLOAD IMAGE TO STORAGE
+      // 🔥 USE FIRST FRAME FOR STORAGE
+      const firstBlob = frames[0];
+
       const fileName = `attendance/${user.id}_${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from("faces")
-        .upload(fileName, blob, { upsert: true });
+        .upload(fileName, firstBlob, { upsert: true });
 
       if (uploadError) {
         console.error(uploadError);
@@ -115,7 +143,6 @@ export default function EmployeeDashboard() {
 
       const faceUrl = urlData.publicUrl;
 
-      // 🔥 CHECK EXISTING ATTENDANCE
       const { data: existing } = await supabase
         .from("attendance_logs")
         .select("*")
@@ -123,22 +150,19 @@ export default function EmployeeDashboard() {
         .eq("log_date", today)
         .maybeSingle();
 
-      // ✅ TIME IN
       if (!existing) {
         await supabase.from("attendance_logs").insert({
           employee_id: user.id,
           log_date: today,
           time_in: new Date().toISOString(),
-          face_url: faceUrl, // 🔥 SAVE IMAGE
+          face_url: faceUrl,
         });
-
-      // ✅ TIME OUT
       } else if (!existing.time_out) {
         await supabase
           .from("attendance_logs")
           .update({
             time_out: new Date().toISOString(),
-            face_url: faceUrl, // 🔥 UPDATE IMAGE AGAIN
+            face_url: faceUrl,
           })
           .eq("id", existing.id);
       }
@@ -167,6 +191,9 @@ export default function EmployeeDashboard() {
       </div>
 
       <div style={styles.cameraBox}>
+        <p style={{ fontWeight: "600", marginBottom: "10px" }}>
+  Please blink your eyes during scanning
+</p>
         <Webcam
           ref={webcamRef}
           screenshotFormat="image/jpeg"
