@@ -153,6 +153,8 @@ async def verify_face(files: List[UploadFile] = File(...), user_id: str = Form(.
         # =========================
         files_list = supabase.storage.from_("faces").list()
         user_files = [f for f in files_list if f["name"].startswith(user_id)]
+        print("👤 USER ID:", user_id, flush=True)
+        print("📁 FILES USED:", [f["name"] for f in user_files], flush=True)
 
         print("📁 Stored:", len(user_files), flush=True)
 
@@ -206,8 +208,15 @@ async def verify_face(files: List[UploadFile] = File(...), user_id: str = Form(.
         # =========================
         # FINAL DECISION
         # =========================
-        if best_distance < 0.8:
-            return {"status": "Match"}
+        # =========================
+# FINAL DECISION (STRICT + MULTI-FRAME)
+# =========================
+        valid_matches = [d for d in distances if d < 0.45]
+
+        print("✅ VALID MATCHES:", valid_matches, flush=True)
+
+        if len(valid_matches) >= 2:
+             return {"status": "Match"}
         else:
             return {"status": "No Match"}
 

@@ -105,7 +105,7 @@ export default function EmployeeDashboard() {
 
       formData.append("user_id", user.id);
 
-      console.log("🚀 Sending request...");
+      console.log("SENDING USER ID:", user.id);
       const res = await fetch("http://localhost:8000/verify-face", {
         method: "POST",
         body: formData,
