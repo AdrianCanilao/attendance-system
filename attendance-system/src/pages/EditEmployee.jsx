@@ -9,9 +9,11 @@ export default function EditEmployee() {
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({});
   const [loading, setLoading] = useState(false);
-
+  const [hasFace, setHasFace] = useState(true);
   const [showCamera, setShowCamera] = useState(false);
   const [imageSrc, setImageSrc] = useState(null);
+  const [step, setStep] = useState(0);
+  const [capturedImages, setCapturedImages] = useState([]);
   const webcamRef = useRef(null);
 
   useEffect(() => {
@@ -35,23 +37,98 @@ export default function EditEmployee() {
       contact: emp.contact_number,
       position: emp.position,
     });
-    setImageSrc(emp.face_url || null);
+setImageSrc(emp.face_url || null);
+    setHasFace(!!emp.face_url);
+    setCapturedImages([]);
+    setStep(0);
   };
 
   const closeModal = () => {
     setSelected(null);
     setImageSrc(null);
     setShowCamera(false);
+    setCapturedImages([]);
+    setStep(0);
   };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const captureFace = () => {
+  // ✅ UPDATED CAPTURE (NO ALERTS + FIXED AVATAR)
+  const captureFace = async () => {
     const image = webcamRef.current.getScreenshot();
-    setImageSrc(image);
-    setShowCamera(false);
+    const blob = await fetch(image).then((r) => r.blob());
+
+    const updated = [...capturedImages, blob];
+    setCapturedImages(updated);
+
+    // ✅ ONLY SET AVATAR ON FRONT FACE
+    if (step === 0) {
+      setImageSrc(image);
+    }
+
+    if (step < 2) {
+      setStep(step + 1);
+    } else {
+      setShowCamera(false);
+      setStep(0);
+    }
+  };
+
+  const deleteFaces = async () => {
+  const safeName = form.name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+  const folder = `employees/${safeName}`;
+
+  const { data: files } = await supabase
+    .storage
+    .from("faces")
+    .list(folder);
+
+  if (!files || files.length === 0) return;
+
+  const paths = files.map(f => `${folder}/${f.name}`);
+
+  await supabase.storage
+    .from("faces")
+    .remove(paths);
+
+  // 🔥 update UI state
+  setHasFace(false);
+  setImageSrc(null);
+};
+
+  const uploadFaces = async () => {
+    console.log("Images:", capturedImages);
+    if (capturedImages.length !== 3) return;
+
+    const safeName = form.name
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "_");
+
+    const labels = ["front", "left", "right"];
+
+    for (let i = 0; i < 3; i++) {
+      const filePath = `employees/${safeName}/${labels[i]}.jpg`;
+
+      await supabase.storage
+        .from("faces")
+        .upload(filePath, capturedImages[i], { contentType: "image/jpeg", upsert: true });
+    }
+    const publicUrl = supabase
+  .storage
+  .from("faces")
+  .getPublicUrl(`employees/${safeName}/front.jpg`).data.publicUrl + `?t=${Date.now()}`;
+
+  await supabase
+  .from("employee_profiles")
+  .update({ face_url: publicUrl })
+  .eq("id", selected.id);
   };
 
   const handleUpdate = async () => {
@@ -72,33 +149,9 @@ export default function EditEmployee() {
         })
         .eq("id", selected.id);
 
-          // 🔥 update face if changed
-    if (imageSrc && imageSrc.startsWith("data:image")) {
-      const blob = await fetch(imageSrc).then((r) => r.blob());
-
-      const fileName = `employees/${selected.id}.jpg`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("faces")
-        .upload(fileName, blob, { upsert: true });
-
-      if (uploadError) {
-        console.error(uploadError);
-        alert("Failed to upload image");
-        return;
+      if (capturedImages.length === 3) {
+        await uploadFaces();
       }
-
-      const { data } = supabase.storage
-        .from("faces")
-        .getPublicUrl(fileName);
-
-      const publicUrl = data.publicUrl;
-
-      await supabase
-        .from("employee_profiles")
-        .update({ face_url: publicUrl })
-        .eq("id", selected.id);
-    }
 
       alert("✅ Updated!");
       closeModal();
@@ -128,7 +181,6 @@ export default function EditEmployee() {
       <div style={styles.wrapper}>
         <h2>Edit Employee</h2>
 
-        {/* SEARCH */}
         <div style={styles.searchWrapper}>
           <span style={styles.searchIcon}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2">
@@ -144,22 +196,9 @@ export default function EditEmployee() {
           />
         </div>
 
-        {/* LIST */}
         <div style={styles.list}>
           {filtered.map((emp) => (
-            <div
-              key={emp.id}
-              style={styles.card}
-              onClick={() => openModal(emp)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.border = "1px solid #f97316";
-                e.currentTarget.style.background = "#fff7ed";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.border = "1px solid #e5e7eb";
-                e.currentTarget.style.background = "#fff";
-              }}
-            >
+            <div key={emp.id} style={styles.card} onClick={() => openModal(emp)}>
               <div style={styles.avatar}>
                 {emp.face_url ? (
                   <img src={emp.face_url} style={styles.avatarImg} />
@@ -178,7 +217,6 @@ export default function EditEmployee() {
           ))}
         </div>
 
-        {/* MODAL */}
         {selected && (
           <div style={styles.modalOverlay}>
             <div style={styles.modal}>
@@ -186,22 +224,67 @@ export default function EditEmployee() {
 
               <div style={styles.topSection}>
                 <div style={styles.avatarBox}>
-                  <div style={styles.avatarInner}>
-                    {imageSrc ? (
-                      <img src={imageSrc} style={styles.avatarImg} />
-                    ) : (
-                      <span>👤</span>
-                    )}
-                  </div>
-
-                  <button onClick={() => setShowCamera(true)} style={styles.primary}>
-                    Update Face
-                  </button>
+                   <p style={{ marginBottom: "8px", fontWeight: "500", visibility: "hidden" }}>
+    Step
+  </p>
+  <div style={styles.avatarInner}>
+                  {imageSrc ? (
+                    <img src={imageSrc} alt="avatar" style={styles.avatarImg} />
+                  ) : (
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="#9ca3af">
+                      <path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 
+                      2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 
+                      1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z"/>
+                    </svg>
+                  )}
                 </div>
 
+  {hasFace ? (
+    <button
+      onClick={deleteFaces}
+      style={{ ...styles.primary, marginTop: "10px" }}
+    >
+      Delete Registered Photo
+    </button>
+  ) : (
+    <button
+      onClick={() => {
+        setShowCamera(true);
+        setCapturedImages([]);
+        setStep(0);
+      }}
+      style={{ ...styles.primary, marginTop: "10px" }}
+    >
+      Update Face
+    </button>
+  )}
+</div>
+
                 {showCamera && (
-                  <div style={{ width: "220px" }}>
-                    <Webcam ref={webcamRef} screenshotFormat="image/jpeg" style={{ width: "100%" }} />
+                  <div style={{ width: "220px", textAlign: "center", marginTop: "0px" }}>
+                    
+                    {/* ✅ STEP TEXT (LIKE REGISTER) */}
+                    <p style={{ marginBottom: "8px", fontWeight: "500" }}>
+                      Step {step + 1}/3: {
+                        step === 0
+                          ? "Look straight"
+                          : step === 1
+                          ? "Look LEFT"
+                          : "Look RIGHT"
+                      }
+                    </p>
+
+                    <Webcam
+  ref={webcamRef}
+  screenshotFormat="image/jpeg"
+  style={{
+    width: "220px",
+    height: "220px",
+    borderRadius: "12px",
+    objectFit: "cover",
+  }}
+/>
+
                     <button onClick={captureFace} style={styles.primary}>
                       Capture
                     </button>
@@ -216,13 +299,9 @@ export default function EditEmployee() {
                 </div>
 
                 <div>
-  <label style={styles.label}>Email</label>
-  <input
-    value={form.email}
-    disabled
-    style={styles.disabledInput}
-  />
-</div>
+                  <label style={styles.label}>Email</label>
+                  <input value={form.email} disabled style={styles.disabledInput} />
+                </div>
 
                 <div>
                   <label style={styles.label}>Contact</label>
@@ -255,7 +334,6 @@ export default function EditEmployee() {
     </ManagerLayout>
   );
 }
-
 const styles = {
   wrapper: { padding: 20 },
 
@@ -281,21 +359,17 @@ const styles = {
   },
 
   avatar: {
-    width: "42px",
-    height: "42px",
-    borderRadius: "50%",
-    background: "#e5e7eb",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-
-  avatarImg: {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
-  },
+  width: "50px",
+  height: "50px",
+  borderRadius: "50%",
+  overflow: "hidden",
+},
+avatarImg: {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  borderRadius: "50%",
+},
 
   avatarText: {
     fontWeight: "600",
@@ -329,27 +403,29 @@ const styles = {
   },
 
   topSection: {
-    display: "flex",
-    gap: "20px",
-    marginBottom: "20px",
-  },
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "flex-start", // 🔥 IMPORTANT (align top)
+  gap: "40px",
+},
 
   avatarBox: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-  },
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center", // 🔥 CENTER CONTENT
+},
 
   avatarInner: {
-    width: "100px",
-    height: "100px",
-    borderRadius: "50%",
-    overflow: "hidden",
-    background: "#eee",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  width: "220px",
+  height: "220px",
+  borderRadius: "50%",
+  backgroundColor: "#e5e7eb",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
+  margin: "0 auto",
+},
 
   grid: {
     display: "grid",

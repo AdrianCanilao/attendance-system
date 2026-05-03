@@ -181,21 +181,25 @@ export default function RegisterEmployee() {
             <div style={styles.cameraWrapper}>
               {showCamera ? (
                 <>
-                  <p style={{ fontWeight: "600" }}>
+                  <p style={styles.stepText}>
                     Step {step + 1}/3: {steps[step]}
                   </p>
 
                   <Webcam
-                    ref={webcamRef}
-                    screenshotFormat="image/jpeg"
-                    screenshotQuality={1}
-                    videoConstraints={{
-                      width: 640,
-                      height: 480,
-                      facingMode: "user",
-                    }}
-                    style={styles.camera}
-                  />
+  ref={webcamRef}
+  screenshotFormat="image/jpeg"
+  videoConstraints={{
+    width: 300,
+    height: 300,
+    facingMode: "user",
+  }}
+  style={{
+    width: "260px",
+    height: "182px",
+    borderRadius: "12px",
+    objectFit: "cover",
+  }}
+/>
 
                   <button onClick={captureFace} style={styles.captureBtn}>
                     Capture
@@ -404,10 +408,15 @@ avatarInner: {
 },
 
 avatarImg: {
-  width: "100%",
-  height: "100%",
+  width: "300px",
+  height: "300px",
+  borderRadius: "50%",
   objectFit: "cover",
-  display: "block",     // 🔥 prevents weird shrink
 },
-
+stepText: {
+  marginTop: "-25px",
+  marginBottom: "0px",
+  fontWeight: "500",
+  textAlign: "center",
+},
 };
