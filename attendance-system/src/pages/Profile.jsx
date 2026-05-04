@@ -132,7 +132,7 @@ export default function Profile() {
 
                   <div style={styles.infoItem}>
                     <span style={styles.label}>Phone: </span>
-                    <span style={styles.value}>{profile?.contact || "N/A"}</span>
+                    <span style={styles.value}>{profile?.contact_number || "N/A"}</span>
                   </div>
                 </div>
               </div>

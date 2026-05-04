@@ -1,3 +1,5 @@
+// formatted version of your file from :contentReference[oaicite:0]{index=0}
+
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
@@ -159,7 +161,13 @@ export default function ManagerDashboard() {
           </div>
 
           <div style={styles.searchWrapper}>
-            <svg style={styles.searchIcon} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} fill="none">
+            <svg
+              style={styles.searchIcon}
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+              fill="none"
+            >
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
@@ -190,44 +198,54 @@ export default function ManagerDashboard() {
             <tbody>
               {(filteredLogs || []).map((log, i) => (
                 <tr key={i} style={styles.row}>
-                  {/* 🔥 UPDATED EMPLOYEE CELL */}
                   <td style={styles.td}>{log.name}</td>
 
                   <td style={styles.td}>{log.position}</td>
+
                   <td style={styles.timeInCell}>
-  {log.face_url && (
-    <div
-  style={styles.avatarWrapper}
-  onMouseEnter={(e) => {
-  const preview = e.currentTarget.querySelector(".preview");
-  preview.style.opacity = 1;
-  preview.querySelector("img").style.transform = "scale(1)";
-}}
-onMouseLeave={(e) => {
-  const preview = e.currentTarget.querySelector(".preview");
-  preview.style.opacity = 0;
-  preview.querySelector("img").style.transform = "scale(0.95)";
-}}
->
-      <img
-        src={log.face_url}
-        alt="face"
-        style={styles.timeAvatar}
-      />
+                    {log.face_url && (
+                      <div
+                        style={styles.avatarWrapper}
+                        onMouseEnter={(e) => {
+                          const preview =
+                            e.currentTarget.querySelector(".preview");
+                          preview.style.opacity = 1;
+                          preview.querySelector("img").style.transform =
+                            "scale(1)";
+                        }}
+                        onMouseLeave={(e) => {
+                          const preview =
+                            e.currentTarget.querySelector(".preview");
+                          preview.style.opacity = 0;
+                          preview.querySelector("img").style.transform =
+                            "scale(0.95)";
+                        }}
+                      >
+                        <img
+                          src={log.face_url}
+                          alt="face"
+                          style={styles.timeAvatar}
+                        />
 
-      {/* 🔥 HOVER PREVIEW */}
-      <div style={styles.preview} className="preview">
-        <img src={log.face_url} style={styles.previewImg} />
-      </div>
-    </div>
-  )}
+                        <div style={styles.preview} className="preview">
+                          <img
+                            src={log.face_url}
+                            style={styles.previewImg}
+                          />
+                        </div>
+                      </div>
+                    )}
 
-  <span>{log.time_in}</span>
-</td>
+                    <span>{log.time_in}</span>
+                  </td>
+
                   <td style={styles.td}>{log.time_out}</td>
 
                   <td style={styles.td}>
-                    {calculateHoursWorked(log.time_in_raw, log.time_out_raw)}
+                    {calculateHoursWorked(
+                      log.time_in_raw,
+                      log.time_out_raw
+                    )}
                   </td>
 
                   <td style={styles.td}>
@@ -260,7 +278,6 @@ onMouseLeave={(e) => {
     </ManagerLayout>
   );
 }
-
 const styles = {
   header: { marginBottom: "20px" },
   title: { margin: 0, fontWeight: "600", color: "#111827" },

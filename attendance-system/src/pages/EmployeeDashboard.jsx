@@ -16,6 +16,23 @@ export default function EmployeeDashboard() {
     loadData();
   }, []);
 
+  // ✅ FORMAT TIME (NEW)
+  const formatDateTime = (dateString) => {
+    if (!dateString || dateString === "-") return "-";
+
+    const date = new Date(dateString);
+
+    return date.toLocaleString("en-PH", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  // ✅ LOAD DATA
   const loadData = async () => {
     const { data: userData } = await supabase.auth.getUser();
     const user = userData?.user;
@@ -23,25 +40,29 @@ export default function EmployeeDashboard() {
 
     const { data: profile } = await supabase
       .from("employee_profiles")
-      .select("full_name")
+      .select("id, full_name")
       .eq("id", user.id)
       .single();
 
-    setName(profile?.full_name || "Employee");
+    if (!profile) return;
+
+    const employeeId = profile.id;
+
+    setName(profile.full_name || "Employee");
 
     const today = new Date().toISOString().split("T")[0];
 
     const { data: attendance } = await supabase
       .from("attendance_logs")
       .select("*")
-      .eq("employee_id", user.id)
+      .eq("employee_id", employeeId)
       .eq("log_date", today)
       .maybeSingle();
 
     const { data: leave } = await supabase
       .from("leave_requests")
       .select("*")
-      .eq("employee_id", user.id)
+      .eq("employee_id", employeeId)
       .eq("status", "Approved");
 
     let currentStatus = "Absent";
@@ -81,16 +102,20 @@ export default function EmployeeDashboard() {
 
       const { data: profile } = await supabase
         .from("employee_profiles")
-        .select("full_name")
+        .select("id, full_name")
         .eq("id", user.id)
         .single();
+
+      if (!profile) return;
+
+      const employeeId = profile.id;
 
       const today = new Date().toISOString().split("T")[0];
 
       const { data: existing } = await supabase
         .from("attendance_logs")
         .select("*")
-        .eq("employee_id", user.id)
+        .eq("employee_id", employeeId)
         .eq("log_date", today)
         .maybeSingle();
 
@@ -119,9 +144,9 @@ export default function EmployeeDashboard() {
         body: formData,
       });
 
-      const data = await res.json();
+      const result = await res.json();
 
-      if (data.status !== "Match") {
+      if (result.status !== "Match") {
         alert("Face not recognized");
         return;
       }
@@ -132,16 +157,6 @@ export default function EmployeeDashboard() {
         .replace(/\s+/g, "_");
 
       const firstBlob = frames[0];
-
-      if (actionType === "time_in") {
-        await supabase.storage
-          .from("faces")
-          .upload(`attendance/${safeName}/time_in/.init.jpg`, firstBlob, { upsert: true });
-
-        await supabase.storage
-          .from("faces")
-          .upload(`attendance/${safeName}/time_out/.init.jpg`, firstBlob, { upsert: true });
-      }
 
       const fileName = `attendance/${safeName}/${actionType}/${Date.now()}.jpg`;
 
@@ -154,11 +169,6 @@ export default function EmployeeDashboard() {
         return;
       }
 
-      await supabase.storage
-        .from("faces")
-        .remove([`attendance/${safeName}/${actionType}/.init.jpg`])
-        .catch(() => {});
-
       const { data: urlData } = supabase.storage
         .from("faces")
         .getPublicUrl(fileName);
@@ -167,24 +177,24 @@ export default function EmployeeDashboard() {
 
       if (actionType === "time_in") {
         await supabase.from("attendance_logs").insert({
-          employee_id: user.id,
+          employee_id: employeeId,
           log_date: today,
           time_in: new Date().toISOString(),
-          face_url: faceUrl,
+          time_in_face_url: faceUrl,
         });
       } else {
         await supabase
           .from("attendance_logs")
           .update({
             time_out: new Date().toISOString(),
-            face_url: faceUrl,
+            time_out_face_url: faceUrl,
           })
-          .eq("id", existing.id);
+          .eq("employee_id", employeeId)
+          .is("time_out", null);
       }
 
       alert("Attendance recorded");
       loadData();
-
     } catch (err) {
       console.error(err);
       alert("Scan failed");
@@ -195,37 +205,31 @@ export default function EmployeeDashboard() {
 
   return (
     <EmployeeLayout>
-      {/* HEADER */}
       <div style={styles.header}>
-        <h2 style={styles.title}>Attendance</h2>
+        <h2 style={styles.title}>Employee Dashboard</h2>
       </div>
 
-      {/* WELCOME */}
       <h3 style={{ marginBottom: "20px" }}>Welcome, {name}</h3>
 
-      {/* STATUS CARDS */}
       <div style={styles.cards}>
         <div style={styles.card}>
-          <p style={styles.cardLabel}>Status</p>
+          <p>Status</p>
           <h3 style={styles.status(status)}>{status}</h3>
         </div>
 
         <div style={styles.card}>
-          <p style={styles.cardLabel}>Time In</p>
-          <h3>{timeIn}</h3>
+          <p>Time In</p>
+          <h3>{formatDateTime(timeIn)}</h3>
         </div>
 
         <div style={styles.card}>
-          <p style={styles.cardLabel}>Time Out</p>
-          <h3>{timeOut}</h3>
+          <p>Time Out</p>
+          <h3>{formatDateTime(timeOut)}</h3>
         </div>
       </div>
 
-      {/* CAMERA SECTION */}
       <div style={styles.cameraCard}>
-        <p style={{ marginBottom: "10px" }}>
-          Please blink your eyes during scanning
-        </p>
+        <p>Please blink your eyes during scanning</p>
 
         <Webcam
           ref={webcamRef}
@@ -257,13 +261,9 @@ export default function EmployeeDashboard() {
 
 const styles = {
   header: { marginBottom: "20px" },
-  title: { margin: 0, fontWeight: "600", color: "#111827" },
+  title: { margin: 0 },
 
-  cards: {
-    display: "flex",
-    gap: "20px",
-    marginBottom: "25px",
-  },
+  cards: { display: "flex", gap: "20px", marginBottom: "25px" },
 
   card: {
     flex: 1,
@@ -273,8 +273,6 @@ const styles = {
     border: "2px solid #e5e7eb",
   },
 
-   cardLabel: { fontSize: "14px", color: "#374151" },
-
   cameraCard: {
     background: "#fff",
     padding: "20px",
@@ -283,25 +281,15 @@ const styles = {
     textAlign: "center",
   },
 
-  camera: {
-    width: "320px",
-    borderRadius: "12px",
-    marginBottom: "15px",
-  },
+  camera: { width: "320px", marginBottom: "15px" },
 
-  actions: {
-    display: "flex",
-    justifyContent: "center",
-    gap: "12px",
-  },
+  actions: { display: "flex", justifyContent: "center", gap: "12px" },
 
   primaryBtn: {
     padding: "10px 20px",
     background: "#f97316",
     color: "#fff",
     border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
   },
 
   secondaryBtn: {
@@ -309,16 +297,14 @@ const styles = {
     background: "#374151",
     color: "#fff",
     border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
   },
 
   status: (status) => ({
     color:
       status === "Present"
-        ? "#16a34a"
+        ? "green"
         : status === "On Leave"
-        ? "#f59e0b"
-        : "#dc2626",
+        ? "orange"
+        : "red",
   }),
 };
