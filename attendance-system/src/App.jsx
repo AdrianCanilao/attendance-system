@@ -8,6 +8,7 @@ import ManagerLeave from "./pages/ManagerLeave";
 import MyLeave from "./pages/MyLeave";
 import RegisterEmployee from "./pages/RegisterEmployee";
 import EditEmployee from "./pages/EditEmployee";
+import Profile from "./pages/Profile";
 
 export default function App() {
   return (
@@ -69,6 +70,9 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/employee/profile" element={<Profile />} />
+<Route path="/manager/profile" element={<Profile />} />
       </Routes>
     </BrowserRouter>
   );

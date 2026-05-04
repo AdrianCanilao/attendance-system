@@ -47,6 +47,7 @@ export default function ManagerLayout({ children }) {
   );
 }
 
+
 const styles = {
   container: {
     display: "flex",

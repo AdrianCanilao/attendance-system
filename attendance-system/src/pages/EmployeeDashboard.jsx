@@ -68,8 +68,6 @@ export default function EmployeeDashboard() {
   };
 
   const handleScan = async (actionType) => {
-    console.log("🔥 BUTTON CLICKED:", actionType);
-
     if (loading) return;
 
     try {
@@ -79,10 +77,7 @@ export default function EmployeeDashboard() {
 
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
-      if (!user) {
-        alert("User not found");
-        return;
-      }
+      if (!user) return;
 
       const { data: profile } = await supabase
         .from("employee_profiles")
@@ -99,7 +94,6 @@ export default function EmployeeDashboard() {
         .eq("log_date", today)
         .maybeSingle();
 
-      // 🚫 VALIDATION
       if (actionType === "time_in" && existing?.time_in) {
         alert("Already timed in today");
         return;
@@ -115,7 +109,6 @@ export default function EmployeeDashboard() {
         return;
       }
 
-      // 🔥 VERIFY FACE
       const formData = new FormData();
       frames.forEach((blob) => formData.append("files", blob));
       formData.append("user_id", user.id);
@@ -133,7 +126,6 @@ export default function EmployeeDashboard() {
         return;
       }
 
-      // 🔥 FILE STRUCTURE
       const safeName = profile.full_name
         .trim()
         .toLowerCase()
@@ -141,7 +133,6 @@ export default function EmployeeDashboard() {
 
       const firstBlob = frames[0];
 
-      // 🔥 CREATE FOLDERS IF FIRST TIME-IN
       if (actionType === "time_in") {
         await supabase.storage
           .from("faces")
@@ -154,24 +145,18 @@ export default function EmployeeDashboard() {
 
       const fileName = `attendance/${safeName}/${actionType}/${Date.now()}.jpg`;
 
-      console.log("📁 Uploading:", fileName);
-
       const { error: uploadError } = await supabase.storage
         .from("faces")
         .upload(fileName, firstBlob, { upsert: true });
 
       if (uploadError) {
-        console.error(uploadError);
         alert("Upload failed");
         return;
       }
 
-      // 🔥 AUTO DELETE INIT FILE
-      const initPath = `attendance/${safeName}/${actionType}/.init.jpg`;
-
       await supabase.storage
         .from("faces")
-        .remove([initPath])
+        .remove([`attendance/${safeName}/${actionType}/.init.jpg`])
         .catch(() => {});
 
       const { data: urlData } = supabase.storage
@@ -180,7 +165,6 @@ export default function EmployeeDashboard() {
 
       const faceUrl = urlData.publicUrl;
 
-      // 🔥 SAVE DB
       if (actionType === "time_in") {
         await supabase.from("attendance_logs").insert({
           employee_id: user.id,
@@ -211,16 +195,37 @@ export default function EmployeeDashboard() {
 
   return (
     <EmployeeLayout>
-      <h2>Welcome, {name}</h2>
-
-      <div style={styles.card}>
-        <h3>Status: <span style={styles.status(status)}>{status}</span></h3>
-        <p>Time In: {timeIn}</p>
-        <p>Time Out: {timeOut}</p>
+      {/* HEADER */}
+      <div style={styles.header}>
+        <h2 style={styles.title}>Attendance</h2>
       </div>
 
-      <div style={styles.cameraBox}>
-        <p>Please blink your eyes during scanning</p>
+      {/* WELCOME */}
+      <h3 style={{ marginBottom: "20px" }}>Welcome, {name}</h3>
+
+      {/* STATUS CARDS */}
+      <div style={styles.cards}>
+        <div style={styles.card}>
+          <p style={styles.cardLabel}>Status</p>
+          <h3 style={styles.status(status)}>{status}</h3>
+        </div>
+
+        <div style={styles.card}>
+          <p style={styles.cardLabel}>Time In</p>
+          <h3>{timeIn}</h3>
+        </div>
+
+        <div style={styles.card}>
+          <p style={styles.cardLabel}>Time Out</p>
+          <h3>{timeOut}</h3>
+        </div>
+      </div>
+
+      {/* CAMERA SECTION */}
+      <div style={styles.cameraCard}>
+        <p style={{ marginBottom: "10px" }}>
+          Please blink your eyes during scanning
+        </p>
 
         <Webcam
           ref={webcamRef}
@@ -228,70 +233,92 @@ export default function EmployeeDashboard() {
           style={styles.camera}
         />
 
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button onClick={() => handleScan("time_in")} disabled={loading}>
+        <div style={styles.actions}>
+          <button
+            style={styles.primaryBtn}
+            onClick={() => handleScan("time_in")}
+            disabled={loading}
+          >
             {loading ? "Processing..." : "Time In"}
           </button>
 
-          <button onClick={() => handleScan("time_out")} disabled={loading}>
+          <button
+            style={styles.secondaryBtn}
+            onClick={() => handleScan("time_out")}
+            disabled={loading}
+          >
             {loading ? "Processing..." : "Time Out"}
           </button>
         </div>
       </div>
-
-      <button onClick={loadData}>Refresh</button>
     </EmployeeLayout>
   );
 }
+
 const styles = {
-  card: {
-    background: "#fff",
-    padding: "20px",
-    borderRadius: "10px",
-    marginTop: "20px",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+  header: { marginBottom: "20px" },
+  title: { margin: 0, fontWeight: "600", color: "#111827" },
+
+  cards: {
+    display: "flex",
+    gap: "20px",
+    marginBottom: "25px",
   },
 
-  cameraBox: {
-    marginTop: "30px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "10px",
+  card: {
+    flex: 1,
+    background: "#fff",
+    padding: "20px",
+    borderRadius: "12px",
+    border: "2px solid #e5e7eb",
+  },
+
+   cardLabel: { fontSize: "14px", color: "#374151" },
+
+  cameraCard: {
+    background: "#fff",
+    padding: "20px",
+    borderRadius: "12px",
+    border: "2px solid #e5e7eb",
+    textAlign: "center",
   },
 
   camera: {
     width: "320px",
-    borderRadius: "10px",
-  },
-
-  scanBtn: {
-    padding: "12px 20px",
-    background: "#f97316",
-    color: "#fff",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
+    borderRadius: "12px",
+    marginBottom: "15px",
   },
 
   actions: {
-    marginTop: "20px",
+    display: "flex",
+    justifyContent: "center",
+    gap: "12px",
   },
 
-  btn: {
+  primaryBtn: {
     padding: "10px 20px",
-    background: "#555",
+    background: "#f97316",
     color: "#fff",
     border: "none",
-    borderRadius: "5px",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+
+  secondaryBtn: {
+    padding: "10px 20px",
+    background: "#374151",
+    color: "#fff",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
   },
 
   status: (status) => ({
     color:
       status === "Present"
-        ? "green"
+        ? "#16a34a"
         : status === "On Leave"
-        ? "orange"
-        : "red",
+        ? "#f59e0b"
+        : "#dc2626",
   }),
 };
