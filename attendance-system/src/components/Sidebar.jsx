@@ -18,47 +18,84 @@ export default function Sidebar({ role }) {
       </div>
 
       {/* EMPLOYEE SIDE */}
-      {role === "employee" && (
+      {/* EMPLOYEE SIDE */}
+{role === "employee" && (
+  <>
+    <button
+      onClick={() => navigate("/employee/profile")}
+      style={{
+        ...styles.link,
+        ...(isActive("/employee/profile") && styles.activeLink),
+      }}
+    >
+      <FaUser /> Profile
+    </button>
+
+    <button
+      onClick={() => navigate("/employee")}
+      style={{
+        ...styles.link,
+        ...(isActive("/employee") && styles.activeLink),
+      }}
+    >
+      <FaChartBar /> Take Attendance
+    </button>
+
+    {/* 🔽 LEAVE MANAGEMENT */}
+    <div>
+      <button
+        onClick={() => setOpenEmployee(!openEmployee)}
+        style={styles.link}
+      >
+        <FaClipboardList /> Leave Management{" "}
+        {openEmployee ? "▾" : "▸"}
+      </button>
+
+      <div
+        style={{
+          ...styles.dropdown,
+          maxHeight: openEmployee ? "200px" : "0px",
+          opacity: openEmployee ? 1 : 0,
+        }}
+      >
+        <button
+          onClick={() => navigate("/leave")}
+          style={{
+            ...styles.sublink,
+            ...(isActive("/leave") && styles.activeSubLink),
+          }}
+        >
+          Leave Request
+        </button>
+
+        <button
+          onClick={() => navigate("/my-leave")}
+          style={{
+            ...styles.sublink,
+            ...(isActive("/my-leave") && styles.activeSubLink),
+          }}
+        >
+          Leave Records
+        </button>
+      </div>
+    </div>
+  </>
+)}
+
+      {/* MANAGER SIDE */}
+      {role === "manager" && (
         <>
+          {/* 🔥 PROFILE FIRST */}
           <button
-            onClick={() => navigate("/employee/profile")}
+            onClick={() => navigate("/manager/profile")}
             style={{
               ...styles.link,
-              ...(isActive("/profile") && styles.activeLink),
+              ...(isActive("/manager/profile") && styles.activeLink),
             }}
           >
             <FaUser /> Profile
           </button>
 
-          <button
-            onClick={() => navigate("/employee")}
-            style={{
-              ...styles.link,
-              ...(isActive("/employee") && styles.activeLink),
-            }}
-          >
-            Attendance Log
-          </button>
-
-          <button
-            onClick={() => navigate("/leave")}
-            style={styles.link}
-          >
-            Leave Request
-          </button>
-
-          <button
-            onClick={() => navigate("/my-leave")}
-            style={styles.link}
-          >
-            My Leave
-          </button>
-        </>
-      )}
-
-      {/* MANAGER SIDE */}
-      {role === "manager" && (
-        <>
           <button
             onClick={() => navigate("/manager")}
             style={{
@@ -75,7 +112,7 @@ export default function Sidebar({ role }) {
               onClick={() => setOpenEmployee(!openEmployee)}
               style={styles.link}
             >
-              <FaUsers color="#ffffff" /> Employee {openEmployee ? "▾" : "▸"}
+              <FaUsers color="#ffffff" /> Employee Management {openEmployee ? "▾" : "▸"}
             </button>
 
             <div
@@ -115,17 +152,6 @@ export default function Sidebar({ role }) {
             }}
           >
             <FaClipboardList /> Manage Leave
-          </button>
-
-          {/* 🔥 NEW PROFILE BUTTON */}
-          <button
-            onClick={() => navigate("/manager/profile")}
-            style={{
-              ...styles.link,
-              ...(isActive("/profile") && styles.activeLink),
-            }}
-          >
-            <FaUser /> Profile
           </button>
         </>
       )}

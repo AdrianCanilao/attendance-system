@@ -154,7 +154,7 @@ export default function RegisterEmployee() {
   return (
     <ManagerLayout>
       <div style={styles.wrapper}>
-        <h2 style={styles.title}>Register Employee</h2>
+        <h1 style={styles.title}>Register Employee</h1>
 
         <div style={styles.card}>
           <div style={styles.topSection}>
@@ -280,7 +280,12 @@ export default function RegisterEmployee() {
 const styles = {
   wrapper: { padding: "20px" },
 
-  title: { marginBottom: "15px" },
+  title: {
+  margin: 0,
+  fontSize: "24px",
+  fontWeight: "700",
+  color: "#111827",
+},
 
   card: {
     background: "#fff",

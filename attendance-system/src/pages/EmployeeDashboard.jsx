@@ -205,11 +205,9 @@ export default function EmployeeDashboard() {
 
   return (
     <EmployeeLayout>
-      <div style={styles.header}>
-        <h2 style={styles.title}>Employee Dashboard</h2>
-      </div>
-
-      <h3 style={{ marginBottom: "20px" }}>Welcome, {name}</h3>
+      <div style={styles.pageHeader}>
+  <h1 style={styles.pageTitle}>Take Attendance</h1>
+</div>
 
       <div style={styles.cards}>
         <div style={styles.card}>
@@ -297,6 +295,25 @@ const styles = {
     background: "#374151",
     color: "#fff",
     border: "none",
+  },
+  pageHeader: {
+  marginBottom: "25px",
+  paddingTop: "10px",
+},
+title: {
+  margin: 0,
+  fontSize: "24px",
+  fontWeight: "700",
+  color: "#111827",
+},
+ pageTitle: {
+    fontSize: "25px",
+    fontWeight: "650",
+    color: "#111827",
+    margin: "0 20px 0",
+    padding: 0,
+    letterSpacing: "-0.3px",
+    lineHeight: "1.2",
   },
 
   status: (status) => ({

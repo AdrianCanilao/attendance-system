@@ -11,30 +11,27 @@ export default function ManagerLeave() {
   }, []);
 
   const fetchRequests = async () => {
-  setLoading(true);
+    setLoading(true);
 
-  const { data, error } = await supabase
-    .from("leave_requests")
-    .select(`
-  *,
-  employee_profiles!leave_requests_employee_id_fkey (
-    full_name
-  )
-`)
+    const { data, error } = await supabase
+      .from("leave_requests")
+      .select(`
+        *,
+        employee_profiles!leave_requests_employee_id_fkey (
+          full_name
+        )
+      `)
+      .order("created_at", { ascending: false });
 
-    .order("created_at", { ascending: false });
+    if (error) {
+      console.log(error);
+      setLoading(false);
+      return;
+    }
 
-  if (error) {
-    console.log(error);
+    setRequests(data);
     setLoading(false);
-    return;
-  }
-
-  console.log("REQUESTS:", data); // 🔥 DEBUG
-
-  setRequests(data);
-  setLoading(false);
-};
+  };
 
   const updateStatus = async (id, status) => {
     const { error } = await supabase
@@ -67,6 +64,7 @@ export default function ManagerLeave() {
                   <th style={styles.header}>Type</th>
                   <th style={styles.header}>Dates</th>
                   <th style={styles.header}>Reason</th>
+                  <th style={styles.header}>Attachment</th>
                   <th style={styles.header}>Status</th>
                   <th style={styles.header}>Action</th>
                 </tr>
@@ -75,29 +73,65 @@ export default function ManagerLeave() {
               <tbody>
                 {requests.length === 0 ? (
                   <tr>
-                    <td colSpan="6" style={styles.empty}>
+                    <td colSpan="7" style={styles.empty}>
                       No leave requests
                     </td>
                   </tr>
                 ) : (
                   requests.map((req) => (
                     <tr key={req.id} style={styles.row}>
-                      <td>
-                        <td>
-  {req.employee_profiles?.full_name || "Unknown"}
-</td>
+                      <td style={styles.cell}>
+                        {req.employee_profiles?.full_name || "Unknown"}
                       </td>
 
-                      <td style={styles.cell}>{req.leave_type}</td>
+                      <td style={styles.cell}>
+                        {req.leave_type}
+                      </td>
 
-                      <td>
+                      <td style={styles.cell}>
                         {req.start_date} - {req.end_date}
                       </td>
 
-                      <td>{req.reason}</td>
+                      <td style={styles.cell}>
+                        {req.reason || "—"}
+                      </td>
+
+                      {/* ATTACHMENT */}
+                      <td style={styles.cell}>
+                        {req.attachment_url ? (
+                          req.attachment_url.match(
+                            /\.(jpg|jpeg|png|gif|webp)$/i
+                          ) ? (
+                            <img
+                              src={req.attachment_url}
+                              alt="attachment"
+                              style={styles.attachmentImage}
+                              onClick={() =>
+                                window.open(
+                                  req.attachment_url,
+                                  "_blank"
+                                )
+                              }
+                            />
+                          ) : (
+                            <a
+                              href={req.attachment_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={styles.fileLink}
+                            >
+                              View File
+                            </a>
+                          )
+                        ) : (
+                          <span style={styles.noAttachment}>
+                            No Attachment
+                          </span>
+                        )}
+                      </td>
 
                       {/* STATUS */}
-                      <td>
+                      <td style={styles.cell}>
                         <span
                           style={{
                             ...styles.status,
@@ -113,7 +147,7 @@ export default function ManagerLeave() {
                       </td>
 
                       {/* ACTION */}
-                      <td>
+                      <td style={styles.cell}>
                         {req.status === "Pending" ? (
                           <div style={styles.actionGroup}>
                             <button
@@ -157,15 +191,18 @@ const styles = {
 
   title: {
     marginBottom: "16px",
-    fontWeight: "600",
+    fontWeight: "700",
+    fontSize: "32px",
+    color: "#111827",
   },
 
   card: {
-  background: "#fff",
-  borderRadius: "12px",
-  padding: "20px",
-  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-},
+    background: "#fff",
+    borderRadius: "16px",
+    padding: "20px",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+    overflowX: "auto",
+  },
 
   loading: {
     textAlign: "center",
@@ -173,15 +210,29 @@ const styles = {
   },
 
   table: {
-  width: "100%",
-  borderCollapse: "separate",
-  borderSpacing: "0 10px", // 🔥 adds vertical spacing between rows
-},
+    width: "100%",
+    borderCollapse: "separate",
+    borderSpacing: "0 10px",
+  },
 
   row: {
-  background: "#fafafa",
-  borderRadius: "10px",
-},
+    background: "#fafafa",
+  },
+
+  header: {
+    textAlign: "left",
+    padding: "14px 16px",
+    fontSize: "14px",
+    color: "#6b7280",
+    fontWeight: "600",
+  },
+
+  cell: {
+    padding: "16px",
+    verticalAlign: "middle",
+    background: "#f9fafb",
+  },
+
   empty: {
     textAlign: "center",
     padding: "20px",
@@ -189,10 +240,10 @@ const styles = {
   },
 
   status: {
-    padding: "5px 10px",
-    borderRadius: "6px",
+    padding: "6px 12px",
+    borderRadius: "999px",
     fontSize: "12px",
-    fontWeight: "500",
+    fontWeight: "600",
   },
 
   approved: {
@@ -211,38 +262,50 @@ const styles = {
   },
 
   actionGroup: {
-  display: "flex",
-  gap: "10px", // 🔥 more spacing
-},
+    display: "flex",
+    gap: "10px",
+  },
 
   approveBtn: {
-  background: "#22c55e",
-  color: "#fff",
-  border: "none",
-  padding: "8px 14px",
-  borderRadius: "6px",
-  cursor: "pointer",
-},
+    background: "#22c55e",
+    color: "#fff",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: "600",
+  },
 
   rejectBtn: {
-  background: "#ef4444",
-  color: "#fff",
-  border: "none",
-  padding: "8px 14px",
-  borderRadius: "6px",
-  cursor: "pointer",
-},
+    background: "#ef4444",
+    color: "#fff",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: "600",
+  },
+
   done: {
     color: "#9ca3af",
   },
-  cell: {
-  padding: "14px 16px",
-  verticalAlign: "middle",
-},
-header: {
-  textAlign: "left",
-  padding: "10px 16px",
-  fontSize: "14px",
-  color: "#6b7280",
-},
+
+  attachmentImage: {
+    width: "70px",
+    height: "70px",
+    objectFit: "cover",
+    borderRadius: "10px",
+    border: "1px solid #d1d5db",
+    cursor: "pointer",
+  },
+
+  fileLink: {
+    color: "#f97316",
+    fontWeight: "600",
+    textDecoration: "none",
+  },
+
+  noAttachment: {
+    color: "#9ca3af",
+  },
 };

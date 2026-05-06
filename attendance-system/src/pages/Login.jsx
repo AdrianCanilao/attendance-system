@@ -70,7 +70,7 @@ const handleLogin = async () => {
 
     // 🚀 NAVIGATE
     if (role === "manager") {
-      navigate("/manager");
+      navigate("/manager/profile");
     } else {
       navigate("/employee/profile");
     }

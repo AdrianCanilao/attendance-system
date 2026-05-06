@@ -91,7 +91,7 @@ export default function Profile() {
   return (
     <Layout>
       <div style={styles.container}>
-        <h2 style={styles.sectionHeader}>Profile</h2>
+        <h1 style={styles.pageTitle}>Profile</h1>
 
         <div style={styles.grid}>
           {/* LEFT PROFILE CARD */}
@@ -333,5 +333,20 @@ const styles = {
     fontSize: "14px",
     margin: 0,
     color: "#6b7280",
+  },
+  title: {
+  margin: 0,
+  fontSize: "24px",
+  fontWeight: "700",
+  color: "#111827",
+},
+  pageTitle: {
+    fontSize: "25px",
+    fontWeight: "650",
+    color: "#111827",
+    margin: "0 0 20px 0",
+    padding: 0,
+    letterSpacing: "-0.3px",
+    lineHeight: "1.2",
   },
 };
