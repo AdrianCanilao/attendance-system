@@ -1,26 +1,44 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import Login from "./pages/Login";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+
 import LeaveRequest from "./pages/LeaveRequest";
 import ManagerLeave from "./pages/ManagerLeave";
 import MyLeave from "./pages/MyLeave";
+
 import RegisterEmployee from "./pages/RegisterEmployee";
 import EditEmployee from "./pages/EditEmployee";
+
 import Profile from "./pages/Profile";
+import LeaveCounts from "./pages/LeaveCounts";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+
+        {/* LOGIN */}
         <Route path="/" element={<Login />} />
+
+        {/* ================= MANAGER ================= */}
 
         <Route
           path="/manager"
           element={
             <ProtectedRoute role="manager">
               <ManagerDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/manager/profile"
+          element={
+            <ProtectedRoute role="manager">
+              <Profile />
             </ProtectedRoute>
           }
         />
@@ -33,7 +51,15 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/manager/edit" element={<EditEmployee />} />
+
+        <Route
+          path="/manager/edit"
+          element={
+            <ProtectedRoute role="manager">
+              <EditEmployee />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/manager/leave"
@@ -45,6 +71,26 @@ export default function App() {
         />
 
         <Route
+          path="/manager/leave-approval"
+          element={
+            <ProtectedRoute role="manager">
+              <ManagerLeave />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/manager/edit-leave-counts"
+          element={
+            <ProtectedRoute role="manager">
+              <LeaveCounts />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ================= EMPLOYEE ================= */}
+
+        <Route
           path="/employee"
           element={
             <ProtectedRoute role="employee">
@@ -54,7 +100,16 @@ export default function App() {
         />
 
         <Route
-          path="/leave"
+          path="/employee/profile"
+          element={
+            <ProtectedRoute role="employee">
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/employee/leave-request"
           element={
             <ProtectedRoute role="employee">
               <LeaveRequest />
@@ -63,7 +118,7 @@ export default function App() {
         />
 
         <Route
-          path="/my-leave"
+          path="/employee/myleave"
           element={
             <ProtectedRoute role="employee">
               <MyLeave />
@@ -71,8 +126,6 @@ export default function App() {
           }
         />
 
-        <Route path="/employee/profile" element={<Profile />} />
-<Route path="/manager/profile" element={<Profile />} />
       </Routes>
     </BrowserRouter>
   );

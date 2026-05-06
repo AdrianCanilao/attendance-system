@@ -1,11 +1,23 @@
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { FaChartBar, FaClipboardList, FaUsers, FaUser } from "react-icons/fa";
+import {
+  useNavigate,
+  useLocation,
+  Link,
+} from "react-router-dom";
+
+import {
+  FaChartBar,
+  FaClipboardList,
+  FaUsers,
+  FaUser,
+} from "react-icons/fa";
 
 export default function Sidebar({ role }) {
   const navigate = useNavigate();
   const location = useLocation();
+
   const [openEmployee, setOpenEmployee] = useState(false);
+  const [leaveDropdown, setLeaveDropdown] = useState(false);
 
   const isActive = (path) => location.pathname === path;
 
@@ -17,75 +29,34 @@ export default function Sidebar({ role }) {
         <h3 style={styles.logoText}>CIBO</h3>
       </div>
 
-      {/* EMPLOYEE SIDE */}
-      {/* EMPLOYEE SIDE */}
-{role === "employee" && (
-  <>
-    <button
-      onClick={() => navigate("/employee/profile")}
-      style={{
-        ...styles.link,
-        ...(isActive("/employee/profile") && styles.activeLink),
-      }}
-    >
-      <FaUser /> Profile
-    </button>
+      {/* ================= EMPLOYEE ================= */}
+      {role === "employee" && (
+        <>
+          <button
+            onClick={() => navigate("/employee/profile")}
+            style={{
+              ...styles.link,
+              ...(isActive("/employee/profile") && styles.activeLink),
+            }}
+          >
+            <FaUser /> Profile
+          </button>
 
-    <button
-      onClick={() => navigate("/employee")}
-      style={{
-        ...styles.link,
-        ...(isActive("/employee") && styles.activeLink),
-      }}
-    >
-      <FaChartBar /> Take Attendance
-    </button>
+          <button
+            onClick={() => navigate("/employee")}
+            style={{
+              ...styles.link,
+              ...(isActive("/employee") && styles.activeLink),
+            }}
+          >
+            <FaChartBar /> Attendance Log
+          </button>
+        </>
+      )}
 
-    {/* 🔽 LEAVE MANAGEMENT */}
-    <div>
-      <button
-        onClick={() => setOpenEmployee(!openEmployee)}
-        style={styles.link}
-      >
-        <FaClipboardList /> Leave Management{" "}
-        {openEmployee ? "▾" : "▸"}
-      </button>
-
-      <div
-        style={{
-          ...styles.dropdown,
-          maxHeight: openEmployee ? "200px" : "0px",
-          opacity: openEmployee ? 1 : 0,
-        }}
-      >
-        <button
-          onClick={() => navigate("/leave")}
-          style={{
-            ...styles.sublink,
-            ...(isActive("/leave") && styles.activeSubLink),
-          }}
-        >
-          Leave Request
-        </button>
-
-        <button
-          onClick={() => navigate("/my-leave")}
-          style={{
-            ...styles.sublink,
-            ...(isActive("/my-leave") && styles.activeSubLink),
-          }}
-        >
-          Leave Records
-        </button>
-      </div>
-    </div>
-  </>
-)}
-
-      {/* MANAGER SIDE */}
+      {/* ================= MANAGER ================= */}
       {role === "manager" && (
         <>
-          {/* 🔥 PROFILE FIRST */}
           <button
             onClick={() => navigate("/manager/profile")}
             style={{
@@ -106,13 +77,15 @@ export default function Sidebar({ role }) {
             <FaChartBar /> Attendance Log
           </button>
 
-          {/* 🔽 EMPLOYEE DROPDOWN */}
+          {/* EMPLOYEE MANAGEMENT */}
           <div>
             <button
               onClick={() => setOpenEmployee(!openEmployee)}
               style={styles.link}
             >
-              <FaUsers color="#ffffff" /> Employee Management {openEmployee ? "▾" : "▸"}
+              <FaUsers />
+              Employee Management
+              {openEmployee ? " ▾" : " ▸"}
             </button>
 
             <div
@@ -126,7 +99,8 @@ export default function Sidebar({ role }) {
                 onClick={() => navigate("/manager/register")}
                 style={{
                   ...styles.sublink,
-                  ...(isActive("/manager/register") && styles.activeSubLink),
+                  ...(isActive("/manager/register") &&
+                    styles.activeSubLink),
                 }}
               >
                 Register Employee
@@ -136,7 +110,8 @@ export default function Sidebar({ role }) {
                 onClick={() => navigate("/manager/edit")}
                 style={{
                   ...styles.sublink,
-                  ...(isActive("/manager/edit") && styles.activeSubLink),
+                  ...(isActive("/manager/edit") &&
+                    styles.activeSubLink),
                 }}
               >
                 Edit Employee
@@ -144,15 +119,47 @@ export default function Sidebar({ role }) {
             </div>
           </div>
 
-          <button
-            onClick={() => navigate("/manager/leave")}
-            style={{
-              ...styles.link,
-              ...(isActive("/manager/leave") && styles.activeLink),
-            }}
-          >
-            <FaClipboardList /> Manage Leave
-          </button>
+          {/* LEAVE MANAGEMENT */}
+          <div>
+            <button
+              onClick={() => setLeaveDropdown(!leaveDropdown)}
+              style={styles.link}
+            >
+              <FaClipboardList />
+              Leave Management
+              {leaveDropdown ? " ▾" : " ▸"}
+            </button>
+
+            <div
+              style={{
+                ...styles.dropdown,
+                maxHeight: leaveDropdown ? "200px" : "0px",
+                opacity: leaveDropdown ? 1 : 0,
+              }}
+            >
+              <button
+                onClick={() => navigate("/manager/leave-approval")}
+                style={{
+                  ...styles.sublink,
+                  ...(isActive("/manager/leave-approval") &&
+                    styles.activeSubLink),
+                }}
+              >
+                Leave Approval
+              </button>
+
+              <button
+                onClick={() => navigate("/manager/edit-leave-counts")}
+                style={{
+                  ...styles.sublink,
+                  ...(isActive("/manager/edit-leave-counts") &&
+                    styles.activeSubLink),
+                }}
+              >
+                Edit Leave Counts
+              </button>
+            </div>
+          </div>
         </>
       )}
     </div>
@@ -167,6 +174,7 @@ const styles = {
     padding: "24px 18px",
     display: "flex",
     flexDirection: "column",
+    minHeight: "100vh",
   },
 
   logoContainer: {
@@ -192,7 +200,6 @@ const styles = {
     margin: 0,
     fontSize: "18px",
     fontWeight: "600",
-    letterSpacing: "0.5px",
   },
 
   link: {
@@ -207,25 +214,25 @@ const styles = {
     borderRadius: "10px",
     fontSize: "14px",
     fontWeight: "500",
-    letterSpacing: "0.3px",
-    transition: "0.2s",
+    marginBottom: "8px",
+    width: "100%",
+    textAlign: "left",
   },
 
   activeLink: {
     background: "#f97316",
     color: "#fff",
-    fontWeight: "600",
   },
 
   dropdown: {
-    display: "flex",
-    flexDirection: "column",
-    marginLeft: "28px",
-    marginTop: "6px",
-    gap: "4px",
-    overflow: "hidden",
-    transition: "all 0.3s ease",
-  },
+  display: "flex",
+  flexDirection: "column",
+  marginLeft: "28px",
+  marginTop: "6px",
+  gap: "4px",
+  overflow: "hidden",
+  transition: "all 0.3s ease",
+},
 
   sublink: {
     padding: "8px 10px",
@@ -234,15 +241,24 @@ const styles = {
     border: "none",
     textAlign: "left",
     cursor: "pointer",
-    fontSize: "13.5px",
+    fontSize: "13px",
     borderRadius: "8px",
-    fontWeight: "400",
-    transition: "0.2s",
   },
 
   activeSubLink: {
     background: "#f97316",
     color: "#fff",
-    fontWeight: "500",
   },
+
+  subMenuItem: {
+  padding: "8px 10px",
+  background: "transparent",
+  color: "#9ca3af",
+  border: "none",
+  textAlign: "left",
+  cursor: "pointer",
+  fontSize: "13px",
+  borderRadius: "8px",
+  textDecoration: "none",
+},
 };
