@@ -51,6 +51,48 @@ export default function Sidebar({ role }) {
           >
             <FaChartBar /> Attendance Log
           </button>
+
+          {/* LEAVE MANAGEMENT */}
+          <div>
+  <button
+    onClick={() => setLeaveDropdown(!leaveDropdown)}
+    style={styles.link}
+  >
+    <FaClipboardList />
+    Leave Overview
+    {leaveDropdown ? " ▾" : " ▸"}
+  </button>
+
+  <div
+    style={{
+      ...styles.dropdown,
+      maxHeight: leaveDropdown ? "200px" : "0px",
+      opacity: leaveDropdown ? 1 : 0,
+    }}
+  >
+    <button
+      onClick={() => navigate("/employee/leave-request")}
+      style={{
+        ...styles.sublink,
+        ...(isActive("/employee/leave-request") &&
+          styles.activeSubLink),
+      }}
+    >
+      Leave Request
+    </button>
+
+    <button
+      onClick={() => navigate("/employee/myleave")}
+      style={{
+        ...styles.sublink,
+        ...(isActive("/employee/myleave") &&
+          styles.activeSubLink),
+      }}
+    >
+      Leave Records
+    </button>
+  </div>
+</div>
         </>
       )}
 
@@ -119,47 +161,48 @@ export default function Sidebar({ role }) {
             </div>
           </div>
 
-          {/* LEAVE MANAGEMENT */}
-          <div>
-            <button
-              onClick={() => setLeaveDropdown(!leaveDropdown)}
-              style={styles.link}
-            >
-              <FaClipboardList />
-              Leave Management
-              {leaveDropdown ? " ▾" : " ▸"}
-            </button>
+          {/* MANAGER LEAVE MANAGEMENT */}
+          {/* MANAGER LEAVE MANAGEMENT */}
+<div>
+  <button
+    onClick={() => setLeaveDropdown(!leaveDropdown)}
+    style={styles.link}
+  >
+    <FaClipboardList />
+    Leave Management
+    {leaveDropdown ? " ▾" : " ▸"}
+  </button>
 
-            <div
-              style={{
-                ...styles.dropdown,
-                maxHeight: leaveDropdown ? "200px" : "0px",
-                opacity: leaveDropdown ? 1 : 0,
-              }}
-            >
-              <button
-                onClick={() => navigate("/manager/leave-approval")}
-                style={{
-                  ...styles.sublink,
-                  ...(isActive("/manager/leave-approval") &&
-                    styles.activeSubLink),
-                }}
-              >
-                Leave Approval
-              </button>
+  <div
+    style={{
+      ...styles.dropdown,
+      maxHeight: leaveDropdown ? "200px" : "0px",
+      opacity: leaveDropdown ? 1 : 0,
+    }}
+  >
+    <button
+      onClick={() => navigate("/manager/leave")}
+      style={{
+        ...styles.sublink,
+        ...(isActive("/manager/leave") &&
+          styles.activeSubLink),
+      }}
+    >
+      Leave Approval
+    </button>
 
-              <button
-                onClick={() => navigate("/manager/edit-leave-counts")}
-                style={{
-                  ...styles.sublink,
-                  ...(isActive("/manager/edit-leave-counts") &&
-                    styles.activeSubLink),
-                }}
-              >
-                Edit Leave Counts
-              </button>
-            </div>
-          </div>
+    <button
+      onClick={() => navigate("/manager/edit-leave-counts")}
+      style={{
+        ...styles.sublink,
+        ...(isActive("/manager/edit-leave-counts") &&
+          styles.activeSubLink),
+      }}
+    >
+      Edit Leave Counts
+    </button>
+  </div>
+</div>
         </>
       )}
     </div>
@@ -215,8 +258,6 @@ const styles = {
     fontSize: "14px",
     fontWeight: "500",
     marginBottom: "8px",
-    width: "100%",
-    textAlign: "left",
   },
 
   activeLink: {
@@ -225,14 +266,13 @@ const styles = {
   },
 
   dropdown: {
-  display: "flex",
-  flexDirection: "column",
-  marginLeft: "28px",
-  marginTop: "6px",
-  gap: "4px",
-  overflow: "hidden",
-  transition: "all 0.3s ease",
-},
+    display: "flex",
+    flexDirection: "column",
+    marginLeft: "28px",
+    marginTop: "6px",
+    overflow: "hidden",
+    transition: "all 0.3s ease",
+  },
 
   sublink: {
     padding: "8px 10px",
@@ -250,15 +290,43 @@ const styles = {
     color: "#fff",
   },
 
+  menuGroup: {
+    width: "100%",
+  },
+
+  menuItem: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "12px 14px",
+    cursor: "pointer",
+    borderRadius: "10px",
+    color: "#e5e7eb",
+  },
+
+  menuLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+  },
+
+  dropdownArrow: {
+    fontSize: "12px",
+  },
+
+  subMenu: {
+    marginLeft: "38px",
+    marginTop: "8px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+  },
+
   subMenuItem: {
-  padding: "8px 10px",
-  background: "transparent",
-  color: "#9ca3af",
-  border: "none",
-  textAlign: "left",
-  cursor: "pointer",
-  fontSize: "13px",
-  borderRadius: "8px",
-  textDecoration: "none",
-},
+    color: "#ffffff",
+    textDecoration: "none",
+    fontSize: "14px",
+    padding: "8px 12px",
+    borderRadius: "8px",
+  },
 };

@@ -80,13 +80,13 @@ export default function App() {
         />
 
         <Route
-          path="/manager/edit-leave-counts"
-          element={
-            <ProtectedRoute role="manager">
-              <LeaveCounts />
-            </ProtectedRoute>
-          }
-        />
+  path="/manager/edit-leave-counts"
+  element={
+    <ProtectedRoute role="manager">
+      <LeaveCounts />
+    </ProtectedRoute>
+  }
+/>
 
         {/* ================= EMPLOYEE ================= */}
 
