@@ -3,126 +3,217 @@ import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] =
+    useState("");
+
+  const [password, setPassword] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
+
   const navigate = useNavigate();
 
-const handleLogin = async () => {
-  console.log("Login clicked");
+  const handleLogin = async () => {
 
-  if (!email || !password) {
-    alert("Please enter email and password");
-    return;
-  }
+    console.log("Login clicked");
 
-  setLoading(true);
-
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    console.log("LOGIN RESPONSE:", data, error);
-
-    // 🔥 FIX: CHECK BOTH data AND user
-    if (error || !data || !data.user) {
-      alert(error?.message || "Invalid login credentials");
+    if (!email || !password) {
+      alert(
+        "Please enter email and password"
+      );
       return;
     }
 
-    const user = data.user;
+    setLoading(true);
 
-    // 👤 PROFILE
-    const { data: profile, error: profileError } = await supabase
-      .from("employee_profiles")
-      .select("id, role_id")
-      .eq("id", user.id)
-      .single();
+    try {
+      const { data, error } =
+        await supabase.auth.signInWithPassword(
+          {
+            email,
+            password,
+          }
+        );
 
-    console.log("PROFILE:", profile, profileError);
+      console.log(
+        "LOGIN RESPONSE:",
+        data,
+        error
+      );
 
-    if (profileError || !profile) {
-      alert("Profile not found. Contact admin.");
-      return;
+      if (
+        error ||
+        !data ||
+        !data.user
+      ) {
+        alert(
+          error?.message ||
+            "Invalid login credentials"
+        );
+        return;
+      }
+
+      const user = data.user;
+
+      // 👤 GET PROFILE
+      const {
+        data: profile,
+        error: profileError,
+      } = await supabase
+        .from("employee_profiles")
+        .select("id, role_id")
+        .eq("id", user.id)
+        .single();
+
+      console.log(
+        "PROFILE:",
+        profile,
+        profileError
+      );
+
+      if (
+        profileError ||
+        !profile
+      ) {
+        alert(
+          "Profile not found. Contact admin."
+        );
+        return;
+      }
+
+      // 🧑‍💼 GET ROLE
+      const {
+        data: roleData,
+        error: roleError,
+      } = await supabase
+        .from("roles")
+        .select("name")
+        .eq("id", profile.role_id)
+        .single();
+
+      console.log(
+        "ROLE:",
+        roleData,
+        roleError
+      );
+
+      if (
+        roleError ||
+        !roleData
+      ) {
+        alert("Role not found.");
+        return;
+      }
+
+      const role = roleData.name.trim().toLowerCase();
+
+      console.log(
+        "FINAL ROLE:",
+        role
+      );
+
+      // ✅ SAVE ROLE
+      localStorage.setItem(
+        "role",
+        role
+      );
+
+      // ✅ WAIT BEFORE NAVIGATION
+      setTimeout(() => {
+        if (role === "manager") {
+  console.log("GOING TO MANAGER");
+  navigate("/manager/profile");
+}
+else if (role === "hr") {
+  console.log("GOING TO HR");
+  navigate("/hr/profile");
+}
+else if (role === "employee") {
+  console.log("GOING TO EMPLOYEE");
+  navigate("/employee/profile");
+}
+else {
+  console.log("UNKNOWN ROLE");
+}
+      }, 150);
+    } catch (err) {
+      console.error(
+        "LOGIN ERROR:",
+        err
+      );
+
+      alert("Something went wrong");
+    } finally {
+      setLoading(false);
     }
-
-    // 🧑‍💼 ROLE
-    const { data: roleData, error: roleError } = await supabase
-      .from("roles")
-      .select("name")
-      .eq("id", profile.role_id)
-      .single();
-
-    console.log("ROLE:", roleData, roleError);
-
-    if (roleError || !roleData) {
-      alert("Role not found.");
-      return;
-    }
-
-    const role = roleData.name;
-
-    console.log("FINAL ROLE:", role);
-
-    localStorage.setItem("role", role);
-
-    // 🚀 NAVIGATE
-    if (role === "manager") {
-      navigate("/manager/profile");
-    } else {
-      navigate("/employee/profile");
-    }
-
-  } catch (err) {
-    console.error("LOGIN ERROR:", err);
-    alert("Something went wrong");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div style={styles.container}>
       <div style={styles.overlay}></div>
 
       <div style={styles.card}>
-        <img src="/logo.png" alt="logo" style={styles.logo} />
+        <img
+          src="/logo.png"
+          alt="logo"
+          style={styles.logo}
+        />
 
         <h1 style={styles.title}>
-          Attendance <br /> System
+          Attendance <br />
+          System
         </h1>
 
-        <p style={styles.subtitle}>Company Login Portal</p>
+        <p style={styles.subtitle}>
+          Company Login Portal
+        </p>
 
-        <div style={styles.group}>
-          <label>Email</label>
-          <input
-            type="email"
-            placeholder="Enter email"
-            style={styles.input}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+        {/* ✅ FORM */}
+        <div>
+          <div style={styles.group}>
+            <label>Email</label>
+
+            <input
+              type="email"
+              placeholder="Enter email"
+              style={styles.input}
+              value={email}
+              onChange={(e) =>
+                setEmail(
+                  e.target.value
+                )
+              }
+            />
+          </div>
+
+          <div style={styles.group}>
+            <label>Password</label>
+
+            <input
+              type="password"
+              placeholder="Enter password"
+              style={styles.input}
+              value={password}
+              onChange={(e) =>
+                setPassword(
+                  e.target.value
+                )
+              }
+            />
+          </div>
+
+          <button
+  type="button"
+  onClick={handleLogin}
+            style={styles.button}
+            disabled={loading}
+          >
+            {loading
+              ? "Logging in..."
+              : "Login"}
+          </button>
         </div>
-
-        <div style={styles.group}>
-          <label>Password</label>
-          <input
-            type="password"
-            placeholder="Enter password"
-            style={styles.input}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-
-        <button
-          style={styles.button}
-          onClick={handleLogin}
-          disabled={loading}
-        >
-          {loading ? "Logging in..." : "Login"}
-        </button>
       </div>
     </div>
   );
@@ -133,10 +224,14 @@ const styles = {
     height: "100vh",
     width: "100vw",
     overflow: "hidden",
-    backgroundImage: "url('/bg.jpg')",
+    backgroundImage:
+      "url('/bg.jpg')",
+
     backgroundSize: "cover",
     backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
+    backgroundRepeat:
+      "no-repeat",
+
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -146,7 +241,8 @@ const styles = {
   overlay: {
     position: "absolute",
     inset: 0,
-    background: "rgba(0,0,0,0.6)",
+    background:
+      "rgba(0,0,0,0.6)",
   },
 
   card: {
@@ -156,8 +252,12 @@ const styles = {
     background: "#ffffff",
     padding: "35px",
     borderRadius: "10px",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
-    borderTop: "5px solid #f97316",
+    boxShadow:
+      "0 10px 30px rgba(0,0,0,0.3)",
+
+    borderTop:
+      "5px solid #f97316",
+
     textAlign: "center",
   },
 

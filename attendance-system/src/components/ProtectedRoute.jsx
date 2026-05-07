@@ -1,55 +1,33 @@
 import { Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
 
-export default function ProtectedRoute({ children, role }) {
-  const [loading, setLoading] = useState(true);
-  const [allowed, setAllowed] = useState(false);
+export default function ProtectedRoute({
+  children,
+  role,
+}) {
+  const userRole =
+    localStorage.getItem("role");
 
-  useEffect(() => {
-    checkAccess();
-  }, []);
+  console.log(
+    "ProtectedRoute role:",
+    role
+  );
 
-  const checkAccess = async () => {
-    // 🔹 Check Supabase session
-    const { data } = await supabase.auth.getUser();
-    const user = data?.user;
+  console.log(
+    "Stored role:",
+    userRole
+  );
 
-    if (!user) {
-      setAllowed(false);
-      setLoading(false);
-      return;
-    }
-
-    // 🔹 Check role from localStorage
-    const userRole = localStorage.getItem("role");
-
-    if (!userRole) {
-      setAllowed(false);
-      setLoading(false);
-      return;
-    }
-
-    // 🔹 Compare role
-    if (role && userRole !== role) {
-      setAllowed(false);
-    } else {
-      setAllowed(true);
-    }
-
-    setLoading(false);
-  };
-
-  // ⏳ wait while checking
-  if (loading) {
-    return <p style={{ textAlign: "center" }}>Loading...</p>;
-  }
-
-  // 🚫 block access
-  if (!allowed) {
+  if (!userRole) {
+    console.log("NO ROLE FOUND");
     return <Navigate to="/" />;
   }
 
-  // ✅ allow access
+  if (role && userRole !== role) {
+    console.log("ROLE MISMATCH");
+    return <Navigate to="/" />;
+  }
+
+  console.log("ACCESS GRANTED");
+
   return children;
 }

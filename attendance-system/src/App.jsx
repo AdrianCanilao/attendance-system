@@ -11,6 +11,8 @@ import EditEmployee from "./pages/EditEmployee";
 import Profile from "./pages/Profile";
 import LeaveCounts from "./pages/LeaveCounts";
 import EmployeeList from "./pages/EmployeeList";
+import HRDashboard from "./pages/HRDashboard";
+import HRAuditTrail from "./pages/HRAuditTrail";
 
 export default function App() {
   return (
@@ -124,6 +126,17 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/hr" element={<HRDashboard />} />
+
+        <Route
+  path="/hr/audit-trail"
+  element={<HRAuditTrail />}
+/>
+<Route
+  path="/hr/profile"
+  element={<HRAuditTrail />}
+/>
 
       </Routes>
     </BrowserRouter>
