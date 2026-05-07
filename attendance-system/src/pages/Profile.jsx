@@ -14,7 +14,10 @@ export default function Profile() {
     timeOut: 0,
   });
   const [attendanceLogs, setAttendanceLogs] = useState([]);
-
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [selectedLog, setSelectedLog] = useState(null);
+  const [correctionReason, setCorrectionReason] = useState("");
+  const [correctionFile, setCorrectionFile] = useState(null);
   const [today] = useState(new Date());
 
   useEffect(() => {
@@ -330,6 +333,7 @@ setAttendanceLogs(logs || []);
   "Overtime",
   "Hours Worked",
   "Status",
+  "Correction",
         ].map((header) => (
           <th
             key={header}
@@ -567,6 +571,32 @@ setAttendanceLogs(logs || []);
               {log.status || "Present"}
             </span>
           </td>
+          {/* CORRECTION */}
+<td
+  style={{
+    padding: "16px",
+    textAlign: "center",
+  }}
+>
+  <button
+    onClick={() => {
+      setSelectedLog(log);
+      setShowCorrectionModal(true);
+    }}
+    style={{
+      background: "#f97316",
+      color: "#fff",
+      border: "none",
+      padding: "10px 14px",
+      borderRadius: "8px",
+      cursor: "pointer",
+      fontWeight: "600",
+      fontSize: "13px",
+    }}
+  >
+    Request to Correct
+  </button>
+</td>
         </tr>
       ))}
     </tbody>
@@ -574,6 +604,174 @@ setAttendanceLogs(logs || []);
 </div>
         </div>
       </div>
+      {showCorrectionModal && (
+  <div
+    style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      background: "rgba(0,0,0,0.5)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 9999,
+    }}
+  >
+    <div
+      style={{
+        background: "#fff",
+        width: "500px",
+        borderRadius: "16px",
+        padding: "24px",
+      }}
+    >
+      <h2
+        style={{
+          marginBottom: "16px",
+          fontSize: "22px",
+          fontWeight: "700",
+        }}
+      >
+        Attendance Correction
+      </h2>
+
+      <textarea
+        placeholder="Enter your concern..."
+        value={correctionReason}
+        onChange={(e) =>
+          setCorrectionReason(e.target.value)
+        }
+        style={{
+  width: "100%",
+  height: "140px",
+  padding: "18px",
+  marginTop: "10px",
+  borderRadius: "12px",
+  border: "1px solid #d1d5db",
+  resize: "none",
+  fontSize: "15px",
+  outline: "none",
+  background: "#ffffff",
+  color: "#000000",
+  boxSizing: "border-box",
+  lineHeight: "1.5",
+}}
+      />
+
+      <input
+        type="file"
+        className="customFileInput"
+        onChange={(e) =>
+          setCorrectionFile(e.target.files[0])
+        }
+        style={{
+  marginTop: "18px",
+  color: "#000",
+  background: "#fff",
+  padding: "8px",
+  borderRadius: "8px",
+}}
+      />
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: "10px",
+          marginTop: "20px",
+        }}
+      >
+        <button
+  onClick={() => setShowCorrectionModal(false)}
+  style={{
+    padding: "10px 24px",
+    borderRadius: "10px",
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    color: "#000",
+    fontWeight: "600",
+    cursor: "pointer",
+  }}
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={async () => {
+  try {
+    let uploadedFileUrl = null;
+
+    // ✅ upload attachment if exists
+    if (correctionFile) {
+      const fileExt = correctionFile.name.split(".").pop();
+
+      const fileName = `${Date.now()}.${fileExt}`;
+
+      const filePath = `corrections/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("faces")
+        .upload(filePath, correctionFile);
+
+      if (uploadError) {
+        console.error(uploadError);
+        alert("Failed to upload attachment");
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("faces")
+        .getPublicUrl(filePath);
+
+      uploadedFileUrl = publicUrlData.publicUrl;
+    }
+
+    // ✅ save correction request to database
+    const { error } = await supabase
+      .from("attendance_corrections")
+      .insert([
+        {
+          employee_id: profile.id,
+          concern: correctionReason,
+          attachment_url: uploadedFileUrl,
+          attendance_log_id: selectedLog?.id,
+        },
+      ]);
+
+    if (error) {
+      console.error(error);
+      alert("Failed to submit correction");
+      return;
+    }
+
+    alert("Correction request submitted");
+
+    setShowCorrectionModal(false);
+    setCorrectionReason("");
+    setCorrectionFile(null);
+  } catch (err) {
+    console.error(err);
+    alert("Something went wrong");
+  }
+}}
+          style={{
+            padding: "10px 16px",
+            borderRadius: "8px",
+            border: "none",
+            background: "#f97316",
+            color: "#fff",
+            cursor: "pointer",
+            fontWeight: "600",
+          }}
+        >
+          Submit Request
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </Layout>
   );
 }

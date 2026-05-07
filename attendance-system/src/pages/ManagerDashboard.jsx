@@ -105,6 +105,16 @@ export default function ManagerDashboard() {
       .from("leave_requests")
       .select("*")
       .eq("status", "Approved");
+      const {
+  data: corrections,
+  error: correctionError,
+} = await supabase
+  .from("attendance_corrections")
+  .select("*");
+
+if (correctionError) {
+  console.log(correctionError);
+}
 
     let result = [];
     let presentCount = 0;
@@ -181,6 +191,11 @@ export default function ManagerDashboard() {
         time_out_face_url:attendanceToday?.time_out_face_url || null,
 
         status,
+
+correction:
+  corrections?.find(
+    (c) => c.employee_id === emp.id
+  ) || null,
       });
     });
 
@@ -284,6 +299,7 @@ export default function ManagerDashboard() {
                 <th style={styles.th}>Overtime</th>
                 <th style={styles.th}>Hours Worked</th>
                 <th style={styles.th}>Status</th>
+                <th style={styles.th}>Correction</th>
               </tr>
             </thead>
 
@@ -375,6 +391,50 @@ export default function ManagerDashboard() {
                       {log.status}
                     </span>
                   </td>
+                  <td style={styles.td}>
+  {log.correction ? (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+      }}
+    >
+      <span
+        style={{
+          fontSize: "13px",
+          color: "#374151",
+          maxWidth: "220px",
+          wordBreak: "break-word",
+        }}
+      >
+        {log.correction.concern}
+      </span>
+
+      {log.correction.attachment_url && (
+        <a
+          href={log.correction.attachment_url}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            background: "#f97316",
+            color: "#fff",
+            padding: "6px 10px",
+            borderRadius: "8px",
+            textDecoration: "none",
+            fontSize: "12px",
+            fontWeight: "600",
+            width: "fit-content",
+          }}
+        >
+          View Attachment
+        </a>
+      )}
+    </div>
+  ) : (
+    "-"
+  )}
+</td>
                 </tr>
               ))}
             </tbody>
