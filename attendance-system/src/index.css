@@ -161,3 +161,64 @@ code {
   padding: 0;
   line-height: 1.2;
 }
+
+.calendar-input {
+  width: 120px !important;
+  height: 34px;
+
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+
+  font-size: 13px;
+  font-weight: 500;
+
+  background: white;
+  color: #111827;
+
+  cursor: pointer;
+  outline: none;
+
+  text-align: center;   /* ✅ center text horizontally */
+  padding: 0;           /* ✅ remove left spacing */
+}
+
+.react-datepicker__input-container input {
+  text-align: center;
+}
+.react-datepicker-wrapper {
+  width: auto !important;
+}
+
+.react-datepicker__input-container {
+  width: auto !important;
+}
+
+.react-datepicker {
+  border-radius: 14px !important;
+  border: 1px solid #e5e7eb !important;
+  overflow: hidden;
+  font-family: inherit !important;
+}
+
+.react-datepicker__header {
+  background: #f97316 !important;
+  border-bottom: none !important;
+}
+
+.react-datepicker__current-month {
+  color: white !important;
+  font-weight: 600;
+}
+
+.react-datepicker__day-name {
+  color: white !important;
+}
+
+.react-datepicker__day--selected {
+  background: #f97316 !important;
+  border-radius: 50% !important;
+}
+
+.react-datepicker__day:hover {
+  border-radius: 50% !important;
+}

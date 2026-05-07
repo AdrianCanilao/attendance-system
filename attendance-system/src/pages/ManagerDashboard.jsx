@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
 
@@ -10,10 +12,13 @@ export default function ManagerDashboard() {
   const [present, setPresent] = useState(0);
   const [absent, setAbsent] = useState(0);
   const [hoveredImage, setHoveredImage] = useState(null);
+const [selectedDate, setSelectedDate] = useState(
+  new Date()
+);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  fetchDashboardData();
+}, [selectedDate]);
 
   const calculateHoursWorked = (timeInISO, timeOutISO) => {
     if (!timeInISO || !timeOutISO) return "-";
@@ -89,7 +94,10 @@ export default function ManagerDashboard() {
 };
 
   const fetchDashboardData = async () => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = selectedDate
+  .toISOString()
+  .split("T")[0];
+    
 
     const { data: employees } = await supabase
       .from("employee_profiles")
@@ -98,8 +106,12 @@ export default function ManagerDashboard() {
       );
 
     const { data: attendance } = await supabase
-      .from("attendance_logs")
-      .select("*");
+  .from("attendance_logs")
+  .select("*")
+  .eq(
+  "log_date",
+  selectedDate.toISOString().split("T")[0]
+);
 
     const { data: leaves } = await supabase
       .from("leave_requests")
@@ -248,14 +260,31 @@ correction:
               Daily Attendance Report
             </h3>
 
-            <p style={styles.dateText}>
-              {new Date().toLocaleDateString(undefined, {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
+            <div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    marginTop: "6px",
+  }}
+>
+  <p style={styles.dateText}>
+    {selectedDate.toLocaleDateString(undefined, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })}
+  </p>
+
+  <DatePicker
+  selected={selectedDate}
+  onChange={(date) => setSelectedDate(date)}
+  dateFormat="MMMM d, yyyy"
+  popperPlacement="bottom-start"
+  className="calendar-input"
+/>
+</div>
           </div>
 
           <div style={styles.searchWrapper}>

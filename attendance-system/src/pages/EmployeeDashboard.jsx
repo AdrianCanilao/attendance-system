@@ -204,7 +204,7 @@ export default function EmployeeDashboard() {
       if (actionType === "time_in") {
         await supabase.from("attendance_logs").insert({
           employee_id: employeeId,
-          log_date: today,
+          log_date: new Date().toISOString().split("T")[0],
           time_in: new Date().toISOString(),
           time_in_face_url: faceUrl,
         });
