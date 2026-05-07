@@ -6,10 +6,10 @@ export default function ManagerDashboard() {
   const [logs, setLogs] = useState([]);
   const [filteredLogs, setFilteredLogs] = useState([]);
   const [search, setSearch] = useState("");
-
   const [total, setTotal] = useState(0);
   const [present, setPresent] = useState(0);
   const [absent, setAbsent] = useState(0);
+  const [hoveredImage, setHoveredImage] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -302,7 +302,14 @@ export default function ManagerDashboard() {
                         <img
                           src={log.time_in_face_url}
                           alt="Time In"
-                          style={styles.timeAvatar}
+                          onMouseEnter={() => setHoveredImage(`in-${i}`)}
+                          onMouseLeave={() => setHoveredImage(null)}
+                          style={{
+                            ...styles.timeAvatar,
+                            ...(hoveredImage === `in-${i}`
+                              ? styles.timeAvatarHover
+                              : {}),
+                          }}
                         />
                       )}
 
@@ -316,7 +323,14 @@ export default function ManagerDashboard() {
                         <img
                           src={log.time_out_face_url}
                           alt="Time Out"
-                          style={styles.timeAvatar}
+                          onMouseEnter={() => setHoveredImage(`out-${i}`)}
+                          onMouseLeave={() => setHoveredImage(null)}
+                          style={{
+                            ...styles.timeAvatar,
+                            ...(hoveredImage === `out-${i}`
+                              ? styles.timeAvatarHover
+                              : {}),
+                          }}
                         />
                       )}
 
@@ -393,16 +407,16 @@ const styles = {
     color: "#374151",
   },
 
- tableCard: {
-  background: "#fff",
-  borderRadius: "12px",
-  padding: "20px",
-  border: "2px solid #e5e7eb",
+  tableCard: {
+    background: "#fff",
+    borderRadius: "12px",
+    padding: "20px",
+    border: "2px solid #e5e7eb",
 
-  minHeight: "calc(100vh - 220px)",
-  display: "flex",
-  flexDirection: "column",
-},
+    minHeight: "calc(100vh - 220px)",
+    display: "flex",
+    flexDirection: "column",
+  },
 
   tableHeader: {
     display: "flex",
@@ -487,7 +501,7 @@ const styles = {
   alignItems: "center",
   gap: "10px",
   minHeight: "40px",
-},
+  },
   timeAvatar: {
     width: "32px",
     height: "32px",
@@ -495,20 +509,29 @@ const styles = {
     objectFit: "cover",
     border: "2px solid #e5e7eb",
     cursor: "pointer",
+    transition: "0.25s ease",
   },
 
-tableWrapperScrollable: {
-  width: "100%",
-  flex: 1,
-  overflowY: "auto",
-},
-  pageTitle: {
-    fontSize: "25px",
-    fontWeight: "650",
-    color: "#111827",
-    margin: "0 0 20px 0",
-    padding: 0,
-    letterSpacing: "-0.3px",
-    lineHeight: "1.2",
+  timeAvatarHover: {
+    transform: "scale(4)",
+    borderRadius: "12px",
+    zIndex: 9999,
+    position: "relative",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.25)",
+  },
+
+  tableWrapperScrollable: {
+    width: "100%",
+    flex: 1,
+    overflowY: "auto",
+  },
+    pageTitle: {
+      fontSize: "25px",
+      fontWeight: "650",
+      color: "#111827",
+      margin: "0 0 20px 0",
+      padding: 0,
+      letterSpacing: "-0.3px",
+      lineHeight: "1.2",
   },
 };
