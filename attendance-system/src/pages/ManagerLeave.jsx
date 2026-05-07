@@ -55,7 +55,7 @@ export default function ManagerLeave() {
   return (
     <ManagerLayout>
       <div style={styles.container}>
-        <h2 style={styles.title}>Leave Requests</h2>
+        <h2 style={styles.pagetitle}>Leave Requests</h2>
 
         <div style={styles.card}>
           {loading ? (
@@ -310,5 +310,14 @@ const styles = {
 
   noAttachment: {
     color: "#9ca3af",
+  },
+    pageTitle: {
+    fontSize: "25px",
+    fontWeight: "650",
+    color: "#111827",
+    margin: "0 20px 0",
+    padding: 0,
+    letterSpacing: "-0.3px",
+    lineHeight: "1.2",
   },
 };

@@ -152,3 +152,12 @@ code {
 .customFileInput::file-selector-button:hover {
   background: #f3f4f6;
 }
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 24px 0;
+  padding: 0;
+  line-height: 1.2;
+}

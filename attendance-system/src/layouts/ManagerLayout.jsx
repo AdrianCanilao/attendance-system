@@ -63,14 +63,16 @@ const styles = {
   },
 
   topbar: {
-    height: "70px",
-    background: "#f5f5f5",
-    borderBottom: "2px solid #f97316",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 20px",
-  },
+  height: "76px",
+  minHeight: "76px",
+  background: "#ffffff",
+  borderBottom: "2px solid #f97316",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "0 28px",
+  boxSizing: "border-box",
+},
 
   topRight: {
     display: "flex",
@@ -106,6 +108,8 @@ const styles = {
   },
 
   content: {
-    padding: "20px",
+  padding: "24px",
+  flex: 1,
+  overflow: "auto",
   },
 };

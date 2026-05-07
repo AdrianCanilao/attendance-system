@@ -387,11 +387,11 @@ const styles = {
     color: "#6b7280",
     fontSize: "16px",
   },
-    pageTitle: {
+  pageTitle: {
     fontSize: "25px",
     fontWeight: "650",
     color: "#111827",
-    margin: "0 0 20px 0",
+    margin: "0 20px 0",
     padding: 0,
     letterSpacing: "-0.3px",
     lineHeight: "1.2",

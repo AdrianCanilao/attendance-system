@@ -60,16 +60,17 @@ const styles = {
     flexDirection: "column",
   },
 
-  topbar: {
-    height: "70px",
-    background: "#f5f5f5",
-    borderBottom: "2px solid #f97316",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 20px",
-  },
-
+ topbar: {
+  height: "76px",
+  minHeight: "76px",
+  background: "#ffffff",
+  borderBottom: "2px solid #f97316",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "0 28px",
+  boxSizing: "border-box",
+},
   topRight: {
     display: "flex",
     alignItems: "center",
@@ -103,7 +104,9 @@ const styles = {
     cursor: "pointer",
   },
 
-  content: {
-    padding: "20px",
+content: {
+  padding: "24px",
+  flex: 1,
+  overflow: "auto",
   },
 };
