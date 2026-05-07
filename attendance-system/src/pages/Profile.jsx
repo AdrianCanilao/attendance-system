@@ -13,6 +13,7 @@ export default function Profile() {
     timeIn: 0,
     timeOut: 0,
   });
+  const [attendanceLogs, setAttendanceLogs] = useState([]);
 
   const [today] = useState(new Date());
 
@@ -95,6 +96,13 @@ export default function Profile() {
       .replace(/\s+/g, "_");
 
     fetchAttendanceStats(safeName);
+    const { data: logs } = await supabase
+  .from("attendance_logs")
+  .select("*")
+  .eq("employee_id", emp.id)
+  .order("created_at", { ascending: false });
+
+setAttendanceLogs(logs || []);
   };
 
   const fetchAttendanceStats = async (safeName) => {
@@ -111,6 +119,21 @@ export default function Profile() {
       timeOut: timeOutFiles?.length || 0,
     });
   };
+  const calculateHoursWorked = (timeInISO, timeOutISO) => {
+  if (!timeInISO || !timeOutISO) return "-";
+
+  const start = new Date(timeInISO);
+  const end = new Date(timeOutISO);
+
+  const diff = (end - start) / 1000 / 60;
+
+  if (diff <= 0) return "-";
+
+  const hours = Math.floor(diff / 60);
+  const minutes = Math.floor(diff % 60);
+
+  return `${hours}h ${minutes}m`;
+};
 
   const generateCalendar = () => {
     const date = new Date();
@@ -266,27 +289,289 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* STATS */}
-        <div style={styles.statsContainer}>
-          <div style={styles.statCard}>
-            <h2 style={styles.statVal}>
-              {stats.timeIn}
-            </h2>
+        <div
+  style={{
+    ...styles.statCard,
+    minHeight: "calc(100vh - 420px)",
+    display: "flex",
+    flexDirection: "column",
+  }}
+>
+          <h2
+            style={{
+              fontSize: "20px",
+              fontWeight: "700",
+              marginBottom: "16px",
+              color: "#111827",
+            }}
+          >
+            Attendance Summary
+          </h2>
 
-            <p style={styles.statLabel}>
-              Time In Records
-            </p>
-          </div>
+          <div style={{ overflowX: "auto" }}>
+  <table
+    style={{
+      width: "100%",
+      borderCollapse: "collapse",
+      tableLayout: "fixed",
+    }}
+  >
+    <thead>
+      <tr
+        style={{
+          borderBottom: "1px solid #e5e7eb",
+        }}
+      >
+        {[
+          "Date",
+  "Time In",
+  "Time Out",
+  "Late",
+  "Overtime",
+  "Hours Worked",
+  "Status",
+        ].map((header) => (
+          <th
+            key={header}
+            style={{
+              padding: "14px",
+              textAlign: "center",
+              fontWeight: "700",
+              fontSize: "16px",
+              color: "#111827",
+            }}
+          >
+            {header}
+          </th>
+        ))}
+      </tr>
+    </thead>
 
-          <div style={styles.statCard}>
-            <h2 style={styles.statVal}>
-              {stats.timeOut}
-            </h2>
+    <tbody>
+      {(attendanceLogs || []).slice(0, 5).map((log, index) => (
+        <tr
+          key={index}
+          style={{
+            borderBottom: "1px solid #f1f5f9",
+          }}
+        >
+          {/* DATE */}
+<td
+  style={{
+    padding: "16px",
+    textAlign: "center",
+    verticalAlign: "middle",
+  }}
+>
+  {log.time_in
+    ? new Date(log.time_in).toLocaleDateString(
+        "en-US",
+        {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "Asia/Manila",
+        }
+      )
+    : "-"}
+</td>
+          {/* TIME IN */}
+          <td
+            style={{
+              padding: "16px",
+              textAlign: "center",
+              verticalAlign: "middle",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+              }}
+            >
+              {log.time_in_face_url && (
+                <img
+                  src={log.time_in_face_url}
+                  alt="Time In"
+                  style={{
+                    width: "42px",
+                    height: "42px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform =
+                      "scale(2.8)";
+                    e.currentTarget.style.zIndex = "999";
+                    e.currentTarget.style.position =
+                      "relative";
+                    e.currentTarget.style.boxShadow =
+                      "0 8px 20px rgba(0,0,0,0.25)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform =
+                      "scale(1)";
+                    e.currentTarget.style.zIndex = "1";
+                    e.currentTarget.style.boxShadow =
+                      "none";
+                  }}
+                />
+              )}
 
-            <p style={styles.statLabel}>
-              Time Out Records
-            </p>
-          </div>
+              <span>
+                {log.time_in
+                  ? new Date(
+                      log.time_in
+                    ).toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                      timeZone: "Asia/Manila",
+                    })
+                  : "-"}
+              </span>
+            </div>
+          </td>
+
+          {/* TIME OUT */}
+          <td
+            style={{
+              padding: "16px",
+              textAlign: "center",
+              verticalAlign: "middle",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+              }}
+            >
+              {log.time_out_face_url && (
+                <img
+                  src={log.time_out_face_url}
+                  alt="Time Out"
+                  style={{
+                    width: "42px",
+                    height: "42px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform =
+                      "scale(2.8)";
+                    e.currentTarget.style.zIndex = "999";
+                    e.currentTarget.style.position =
+                      "relative";
+                    e.currentTarget.style.boxShadow =
+                      "0 8px 20px rgba(0,0,0,0.25)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform =
+                      "scale(1)";
+                    e.currentTarget.style.zIndex = "1";
+                    e.currentTarget.style.boxShadow =
+                      "none";
+                  }}
+                />
+              )}
+
+              <span>
+                {log.time_out
+                  ? new Date(
+                      log.time_out
+                    ).toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                      timeZone: "Asia/Manila",
+                    })
+                  : "-"}
+              </span>
+            </div>
+          </td>
+
+          {/* LATE */}
+          <td
+            style={{
+              padding: "16px",
+              textAlign: "center",
+            }}
+          >
+            {log.late_minutes
+              ? `${log.late_minutes}m`
+              : "-"}
+          </td>
+
+          {/* OVERTIME */}
+          <td
+            style={{
+              padding: "16px",
+              textAlign: "center",
+            }}
+          >
+            {log.overtime_minutes
+              ? `${log.overtime_minutes}m`
+              : "-"}
+          </td>
+
+          {/* HOURS WORKED */}
+          <td
+            style={{
+              padding: "16px",
+              textAlign: "center",
+            }}
+          >
+            {calculateHoursWorked(
+              log.time_in,
+              log.time_out
+            )}
+          </td>
+
+          {/* STATUS */}
+          <td
+            style={{
+              padding: "16px",
+              textAlign: "center",
+            }}
+          >
+            <span
+              style={{
+                padding: "6px 14px",
+                borderRadius: "999px",
+                fontSize: "12px",
+                fontWeight: "600",
+                background:
+                  log.status === "Absent"
+                    ? "#fee2e2"
+                    : log.status === "Late"
+                    ? "#fef3c7"
+                    : "#dcfce7",
+
+                color:
+                  log.status === "Absent"
+                    ? "#b91c1c"
+                    : log.status === "Late"
+                    ? "#92400e"
+                    : "#166534",
+              }}
+            >
+              {log.status || "Present"}
+            </span>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
         </div>
       </div>
     </Layout>

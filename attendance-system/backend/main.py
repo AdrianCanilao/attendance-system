@@ -95,17 +95,24 @@ async def verify_face(
         frames = []
 
         # =========================
-        # LOAD FRAMES
+        # LOAD FRAMES (FASTER)
         # =========================
-        for file in files:
+        for file in files[:5]:  # 🔥 only use first 5 frames
             contents = await file.read()
+
             npimg = np.frombuffer(contents, np.uint8)
             img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
             if img is None:
-                return {"status": "Error", "message": "Invalid frame"}
+                continue
+
+            # 🔥 smaller image = faster
+            img = cv2.resize(img, (320, 240))
 
             frames.append(img)
+
+        if len(frames) < 2:
+            return {"status": "Error", "message": "Not enough frames"}
 
         print("📸 Frames:", len(frames), flush=True)
 
@@ -116,6 +123,7 @@ async def verify_face(
 
         for img in frames:
             rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
             result = face_mesh.process(rgb)
 
             if result.multi_face_landmarks:
@@ -123,12 +131,13 @@ async def verify_face(
                 h, w, _ = img.shape
 
                 points = [(int(l.x * w), int(l.y * h)) for l in landmarks]
+
                 left_eye = [33, 160, 158, 133, 153, 144]
 
                 ear = eye_aspect_ratio(points, left_eye)
                 ear_values.append(ear)
 
-        if len(ear_values) < 3:
+        if len(ear_values) < 2:
             return {"status": "Fake", "message": "Face not detected properly"}
 
         closed = any(e < 0.18 for e in ear_values)
@@ -145,11 +154,20 @@ async def verify_face(
         valid_frames = []
 
         for img in frames:
-            faces = DeepFace.extract_faces(img_path=img, enforce_detection=False)
-            if faces:
-                valid_frames.append(img)
+            try:
+                faces = DeepFace.extract_faces(
+                    img_path=img,
+                    detector_backend="opencv",
+                    enforce_detection=False
+                )
 
-        if len(valid_frames) < 2:
+                if faces:
+                    valid_frames.append(img)
+
+            except:
+                pass
+
+        if len(valid_frames) < 1:
             return {"status": "No Face"}
 
         # =========================
@@ -161,24 +179,24 @@ async def verify_face(
         files_list = supabase.storage.from_("faces").list(folder_path) or []
 
         print("📁 USER FOLDER:", folder_path, flush=True)
-        print("📁 FILES:", [f["name"] for f in files_list], flush=True)
 
         if not files_list:
             return {"status": "Error", "message": "No registered faces"}
 
-        distances = []
         best_distance = 1.0
+        matched = False
 
         # =========================
-        # MATCH
+        # MATCH (OPTIMIZED)
         # =========================
         for f in files_list:
-            # 🔥 FIXED PATH (IMPORTANT)
+
             file_path = f"{folder_path}/{f['name']}"
 
             url = f"{SUPABASE_URL}/storage/v1/object/public/faces/{file_path}"
 
             response = requests.get(url)
+
             if response.status_code != 200:
                 continue
 
@@ -190,40 +208,46 @@ async def verify_face(
             if stored_img is None:
                 continue
 
-            stored_img = cv2.resize(stored_img, (160, 160))
+            # 🔥 smaller image = faster
+            stored_img = cv2.resize(stored_img, (112, 112))
 
             for img in valid_frames:
-                img_resized = cv2.resize(img, (160, 160))
 
-                result = DeepFace.verify(
-                    img_resized,
-                    stored_img,
-                    model_name="ArcFace",
-                    enforce_detection=False
-                )
+                img_resized = cv2.resize(img, (112, 112))
 
-                distance = result.get("distance", 1)
-                distances.append(distance)
+                try:
+                    result = DeepFace.verify(
+                        img1_path=img_resized,
+                        img2_path=stored_img,
+                        model_name="ArcFace",
+                        detector_backend="opencv",
+                        enforce_detection=False
+                    )
 
-                if distance < best_distance:
-                    best_distance = distance
+                    distance = result.get("distance", 1)
 
-        if not distances:
-            return {"status": "No Match"}
+                    print("📏 Distance:", distance, flush=True)
 
-        variation = max(distances) - min(distances)
+                    if distance < best_distance:
+                        best_distance = distance
+
+                    # 🔥 EARLY STOP FOR SPEED
+                    if distance < 0.50:
+                        matched = True
+                        break
+
+                except Exception as e:
+                    print("VERIFY ERROR:", str(e), flush=True)
+
+            if matched:
+                break
 
         print("🔥 BEST DISTANCE:", best_distance, flush=True)
-        print("📊 VARIATION:", variation, flush=True)
 
         # =========================
-        # FINAL DECISION (BALANCED)
+        # FINAL DECISION
         # =========================
-        valid_matches = [d for d in distances if d < 0.55]
-
-        print("✅ VALID MATCHES:", valid_matches, flush=True)
-
-        if len(valid_matches) >= 1:
+        if matched or best_distance < 0.55:
             return {"status": "Match"}
         else:
             return {"status": "No Match"}
