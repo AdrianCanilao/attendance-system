@@ -179,7 +179,7 @@ setImageSrc(emp.face_url || null);
   return (
     <ManagerLayout>
       <div style={styles.wrapper}>
-        <h2>Edit Employee</h2>
+        <h1 style={styles.pageTitle}>Edit Employee</h1>
 
         <div style={styles.searchWrapper}>
           <span style={styles.searchIcon}>
@@ -516,4 +516,13 @@ avatarImg: {
 
   cursor: "not-allowed",
 },
+  pageTitle: {
+    fontSize: "25px",
+    fontWeight: "650",
+    color: "#111827",
+    margin: "0 0 20px 0",
+    padding: 0,
+    letterSpacing: "-0.3px",
+    lineHeight: "1.2",
+  },
 };

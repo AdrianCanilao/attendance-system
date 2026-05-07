@@ -12,6 +12,8 @@ export default function RegisterEmployee() {
     password: "",
     contact: "",
     position: "",
+    clock_in: "",
+    clock_out: "",
   });
 
   const [showCamera, setShowCamera] = useState(false);
@@ -64,9 +66,25 @@ export default function RegisterEmployee() {
   };
 
   const handleRegister = async () => {
-    const { name, email, password, contact, position } = form;
+    const {
+      name,
+      email,
+      password,
+      contact,
+      position,
+      clock_in,
+      clock_out,
+    } = form;
 
-    if (!name || !email || !password || !contact || !position) {
+    if (
+      !name ||
+      !email ||
+      !password ||
+      !contact ||
+      !position ||
+      !clock_in ||
+      !clock_out
+    ) {
       alert("Please fill all fields");
       return;
     }
@@ -98,17 +116,19 @@ export default function RegisterEmployee() {
           contact_number: contact,
           position,
           role_id: EMPLOYEE_ROLE_ID,
+          clock_in,
+          clock_out,
         },
       ]);
 
-      // 🔥 UPLOAD MULTIPLE IMAGES (FIXED)
+      // 🔥 UPLOAD MULTIPLE IMAGES
       for (let i = 0; i < capturedImages.length; i++) {
         const blob = await fetch(capturedImages[i]).then((r) => r.blob());
 
         const formData = new FormData();
         formData.append("file", blob);
         formData.append("user_id", userId);
-        formData.append("full_name", name); // ✅ FIXED HERE
+        formData.append("full_name", name);
 
         const res = await fetch("http://127.0.0.1:8000/upload-face", {
           method: "POST",
@@ -138,6 +158,8 @@ export default function RegisterEmployee() {
         password: "",
         contact: "",
         position: "",
+        clock_in: "",
+        clock_out: "",
       });
 
       setCapturedImages([]);
@@ -154,7 +176,7 @@ export default function RegisterEmployee() {
   return (
     <ManagerLayout>
       <div style={styles.wrapper}>
-        <h1 style={styles.title}>Register Employee</h1>
+        <h1 style={styles.pageTitle}>Register Employee</h1>
 
         <div style={styles.card}>
           <div style={styles.topSection}>
@@ -186,20 +208,20 @@ export default function RegisterEmployee() {
                   </p>
 
                   <Webcam
-  ref={webcamRef}
-  screenshotFormat="image/jpeg"
-  videoConstraints={{
-    width: 300,
-    height: 300,
-    facingMode: "user",
-  }}
-  style={{
-    width: "260px",
-    height: "182px",
-    borderRadius: "12px",
-    objectFit: "cover",
-  }}
-/>
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    videoConstraints={{
+                      width: 300,
+                      height: 300,
+                      facingMode: "user",
+                    }}
+                    style={{
+                      width: "260px",
+                      height: "182px",
+                      borderRadius: "12px",
+                      objectFit: "cover",
+                    }}
+                  />
 
                   <button onClick={captureFace} style={styles.captureBtn}>
                     Capture
@@ -257,6 +279,28 @@ export default function RegisterEmployee() {
               />
             </div>
 
+            <div>
+              <label style={styles.label}>Clock In</label>
+              <input
+                type="time"
+                name="clock_in"
+                value={form.clock_in}
+                onChange={handleChange}
+                style={styles.input}
+              />
+            </div>
+
+            <div>
+              <label style={styles.label}>Clock Out</label>
+              <input
+                type="time"
+                name="clock_out"
+                value={form.clock_out}
+                onChange={handleChange}
+                style={styles.input}
+              />
+            </div>
+
             <div style={{ gridColumn: "span 2" }}>
               <label style={styles.label}>Position</label>
               <input
@@ -277,15 +321,16 @@ export default function RegisterEmployee() {
     </ManagerLayout>
   );
 }
+
 const styles = {
   wrapper: { padding: "20px" },
 
   title: {
-  margin: 0,
-  fontSize: "24px",
-  fontWeight: "700",
-  color: "#111827",
-},
+    margin: 0,
+    fontSize: "24px",
+    fontWeight: "700",
+    color: "#111827",
+  },
 
   card: {
     background: "#fff",
@@ -301,35 +346,33 @@ const styles = {
   },
 
   avatarWrapper: {
-  width: "193px",        // 🔥 SAME SIZE
-  flexShrink: 0,         // 🔥 STOP SHRINKING
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "12px",
-},
+    width: "193px",
+    flexShrink: 0,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "12px",
+  },
 
   defaultAvatar: {
-  width: "193px",
-  height: "193px",
-  borderRadius: "50%",
-  background: "#e5e7eb",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  overflow: "hidden",
-
-  flexShrink: 0,          // 🔥 PREVENT FLEX SHRINK
-},
-
+    width: "193px",
+    height: "193px",
+    borderRadius: "50%",
+    background: "#e5e7eb",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    flexShrink: 0,
+  },
 
   cameraWrapper: {
-  width: "260px",
-  minHeight: "220px",   // prevents layout jump
-  display: "flex",
-  flexDirection: "column",
-  gap: "10px",
-},
+    width: "260px",
+    minHeight: "220px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+  },
 
   camera: {
     width: "260px",
@@ -355,21 +398,21 @@ const styles = {
   },
 
   grid: {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: "20px",
-},
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "20px",
+  },
 
   input: {
-  width: "100%",
-  padding: "12px",
-  borderRadius: "8px",
-  border: "1px solid #e5e7eb",
-  background: "#ffffff",        // 🔥 WHITE BG
-  fontSize: "14px",
-  color: "#111827",             // text color
-  boxSizing: "border-box",
-},
+    width: "100%",
+    padding: "12px",
+    borderRadius: "8px",
+    border: "1px solid #e5e7eb",
+    background: "#ffffff",
+    fontSize: "14px",
+    color: "#111827",
+    boxSizing: "border-box",
+  },
 
   primaryBtn: {
     marginTop: "15px",
@@ -380,48 +423,58 @@ const styles = {
     borderRadius: "8px",
     cursor: "pointer",
   },
+
   label: {
-  display: "block",
-  fontSize: "13px",
-  fontWeight: "500",
-  color: "#374151",
-  marginBottom: "6px",
-},
-avatarBox: {
-  width: "193px",
-  height: "193px",
-  minWidth: "193px",
-  minHeight: "193px",
-  flexShrink: 0,
+    display: "block",
+    fontSize: "13px",
+    fontWeight: "500",
+    color: "#374151",
+    marginBottom: "6px",
+  },
 
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-},
+  avatarBox: {
+    width: "193px",
+    height: "193px",
+    minWidth: "193px",
+    minHeight: "193px",
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-avatarInner: {
-  width: "100%",
-  height: "100%",
-  borderRadius: "50%",
-  background: "#e5e7eb",
+  avatarInner: {
+    width: "100%",
+    height: "100%",
+    borderRadius: "50%",
+    background: "#e5e7eb",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
 
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
+  avatarImg: {
+    width: "300px",
+    height: "300px",
+    borderRadius: "50%",
+    objectFit: "cover",
+  },
 
-  overflow: "hidden",   // 🔥 THIS IS THE KEY
-},
+  stepText: {
+    marginTop: "-25px",
+    marginBottom: "0px",
+    fontWeight: "500",
+    textAlign: "center",
+  },
 
-avatarImg: {
-  width: "300px",
-  height: "300px",
-  borderRadius: "50%",
-  objectFit: "cover",
-},
-stepText: {
-  marginTop: "-25px",
-  marginBottom: "0px",
-  fontWeight: "500",
-  textAlign: "center",
-},
+  pageTitle: {
+    fontSize: "25px",
+    fontWeight: "650",
+    color: "#111827",
+    margin: "0 0 20px 0",
+    padding: 0,
+    letterSpacing: "-0.3px",
+    lineHeight: "1.2",
+  },
 };

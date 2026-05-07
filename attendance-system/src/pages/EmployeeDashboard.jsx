@@ -8,6 +8,8 @@ export default function EmployeeDashboard() {
   const [status, setStatus] = useState("Absent");
   const [timeIn, setTimeIn] = useState("-");
   const [timeOut, setTimeOut] = useState("-");
+  const [profileClockIn, setProfileClockIn] = useState("-");
+  const [profileClockOut, setProfileClockOut] = useState("-");
   const [loading, setLoading] = useState(false);
 
   const webcamRef = useRef(null);
@@ -16,7 +18,7 @@ export default function EmployeeDashboard() {
     loadData();
   }, []);
 
-  // ✅ FORMAT TIME (NEW)
+  // ✅ FORMAT TIME
   const formatDateTime = (dateString) => {
     if (!dateString || dateString === "-") return "-";
 
@@ -31,16 +33,30 @@ export default function EmployeeDashboard() {
       hour12: true,
     });
   };
+  const formatTime = (time) => {
+  if (!time || time === "-") return "-";
+
+  const [hours, minutes] = time.split(":");
+
+  let hour = parseInt(hours);
+  const ampm = hour >= 12 ? "PM" : "AM";
+
+  hour = hour % 12;
+  hour = hour ? hour : 12;
+
+  return `${hour}:${minutes} ${ampm}`;
+};
 
   // ✅ LOAD DATA
   const loadData = async () => {
     const { data: userData } = await supabase.auth.getUser();
     const user = userData?.user;
+
     if (!user) return;
 
     const { data: profile } = await supabase
       .from("employee_profiles")
-      .select("id, full_name")
+      .select("id, full_name, clock_in, clock_out")
       .eq("id", user.id)
       .single();
 
@@ -49,6 +65,9 @@ export default function EmployeeDashboard() {
     const employeeId = profile.id;
 
     setName(profile.full_name || "Employee");
+
+    setProfileClockIn(profile.clock_in || "-");
+    setProfileClockOut(profile.clock_out || "-");
 
     const today = new Date().toISOString().split("T")[0];
 
@@ -66,6 +85,7 @@ export default function EmployeeDashboard() {
       .eq("status", "Approved");
 
     let currentStatus = "Absent";
+
     if (attendance?.time_in) currentStatus = "Present";
     else if (leave?.length > 0) currentStatus = "On Leave";
 
@@ -76,12 +96,15 @@ export default function EmployeeDashboard() {
 
   const captureFrames = async () => {
     const frames = [];
+
     await new Promise((res) => setTimeout(res, 2000));
 
     for (let i = 0; i < 5; i++) {
       const image = webcamRef.current.getScreenshot();
       const blob = await fetch(image).then((res) => res.blob());
+
       frames.push(blob);
+
       await new Promise((res) => setTimeout(res, 600));
     }
 
@@ -98,6 +121,7 @@ export default function EmployeeDashboard() {
 
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
+
       if (!user) return;
 
       const { data: profile } = await supabase
@@ -135,7 +159,9 @@ export default function EmployeeDashboard() {
       }
 
       const formData = new FormData();
+
       frames.forEach((blob) => formData.append("files", blob));
+
       formData.append("user_id", user.id);
       formData.append("full_name", profile.full_name);
 
@@ -194,6 +220,7 @@ export default function EmployeeDashboard() {
       }
 
       alert("Attendance recorded");
+
       loadData();
     } catch (err) {
       console.error(err);
@@ -206,8 +233,8 @@ export default function EmployeeDashboard() {
   return (
     <EmployeeLayout>
       <div style={styles.pageHeader}>
-  <h1 style={styles.pageTitle}>Take Attendance</h1>
-</div>
+        <h1 style={styles.pageTitle}>Take Attendance</h1>
+      </div>
 
       <div style={styles.cards}>
         <div style={styles.card}>
@@ -223,6 +250,16 @@ export default function EmployeeDashboard() {
         <div style={styles.card}>
           <p>Time Out</p>
           <h3>{formatDateTime(timeOut)}</h3>
+        </div>
+
+        <div style={styles.card}>
+          <p>Registered Clock In</p>
+          <h3>{formatTime(profileClockIn)}</h3>
+        </div>
+
+        <div style={styles.card}>
+          <p>Registered Clock Out</p>
+          <h3>{formatTime(profileClockOut)}</h3>
         </div>
       </div>
 
@@ -258,13 +295,22 @@ export default function EmployeeDashboard() {
 }
 
 const styles = {
-  header: { marginBottom: "20px" },
-  title: { margin: 0 },
+  header: {
+    marginBottom: "20px",
+  },
 
-  cards: { display: "flex", gap: "20px", marginBottom: "25px" },
+  title: {
+    margin: 0,
+  },
+
+  cards: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "20px",
+    marginBottom: "25px",
+  },
 
   card: {
-    flex: 1,
     background: "#fff",
     padding: "20px",
     borderRadius: "12px",
@@ -279,15 +325,24 @@ const styles = {
     textAlign: "center",
   },
 
-  camera: { width: "320px", marginBottom: "15px" },
+  camera: {
+    width: "320px",
+    marginBottom: "15px",
+  },
 
-  actions: { display: "flex", justifyContent: "center", gap: "12px" },
+  actions: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "12px",
+  },
 
   primaryBtn: {
     padding: "10px 20px",
     background: "#f97316",
     color: "#fff",
     border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
   },
 
   secondaryBtn: {
@@ -295,18 +350,16 @@ const styles = {
     background: "#374151",
     color: "#fff",
     border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
   },
+
   pageHeader: {
-  marginBottom: "25px",
-  paddingTop: "10px",
-},
-title: {
-  margin: 0,
-  fontSize: "24px",
-  fontWeight: "700",
-  color: "#111827",
-},
- pageTitle: {
+    marginBottom: "25px",
+    paddingTop: "10px",
+  },
+
+  pageTitle: {
     fontSize: "25px",
     fontWeight: "650",
     color: "#111827",

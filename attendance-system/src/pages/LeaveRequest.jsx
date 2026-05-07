@@ -13,8 +13,8 @@ export default function LeaveRequest() {
   const [reason, setReason] = useState("");
 
   const [credits, setCredits] = useState({
-    sick_leave: 5,
-    vacation_leave: 5,
+    sick_leave: 1,
+    vacation_leave: 1,
     emergency_leave: 5,
     service_incentive_leave: 5,
     birthday_leave: 1,
@@ -32,19 +32,16 @@ export default function LeaveRequest() {
 
     if (!user) return;
 
-    const { data: profile } = await supabase
+    const { data, error } = await supabase
       .from("employee_profiles")
-      .select("id")
+      .select("*")
       .eq("email", user.email)
       .single();
 
-    if (!profile) return;
-
-    const { data } = await supabase
-      .from("leave_credits")
-      .select("*")
-      .eq("employee_id", profile.id)
-      .single();
+    if (error) {
+      console.log(error);
+      return;
+    }
 
     if (data) {
       setCredits(data);
@@ -52,47 +49,48 @@ export default function LeaveRequest() {
   };
 
   const leaveCards = [
-  {
-    title: "Sick Leave",
-    type: "Sick Leave",
-    key: "sick_leave",
-    color: "#f97316",
-  },
-  {
-    title: "Vacation Leave",
-    type: "Vacation Leave",
-    key: "vacation_leave",
-    color: "#f97316",
-  },
-  {
-    title: "Emergency Leave",
-    type: "Emergency Leave",
-    key: "emergency_leave",
-    color: "#f97316",
-  },
-  {
-    title: "Service Incentive Leave",
-    type: "Service Incentive Leave",
-    key: "service_incentive_leave",
-    color: "#f97316",
-  },
-  {
-    title: "Birthday Leave",
-    type: "Birthday Leave",
-    key: "birthday_leave",
-    color: "#f97316",
-  },
-  {
-    title: "Official Business",
-    type: "Official Business",
-    key: "official_business",
-    color: "#f97316",
-  },
-];
-const openModal = (leaveType) => {
-  setSelectedLeave(leaveType);
-  setShowModal(true);
-};
+    {
+      title: "Sick Leave",
+      type: "Sick Leave",
+      key: "sick_leave",
+      color: "#f97316",
+    },
+    {
+      title: "Vacation Leave",
+      type: "Vacation Leave",
+      key: "vacation_leave",
+      color: "#f97316",
+    },
+    {
+      title: "Emergency Leave",
+      type: "Emergency Leave",
+      key: "emergency_leave",
+      color: "#f97316",
+    },
+    {
+      title: "Service Incentive Leave",
+      type: "Service Incentive Leave",
+      key: "service_incentive_leave",
+      color: "#f97316",
+    },
+    {
+      title: "Birthday Leave",
+      type: "Birthday Leave",
+      key: "birthday_leave",
+      color: "#f97316",
+    },
+    {
+      title: "Official Business",
+      type: "Official Business",
+      key: "official_business",
+      color: "#f97316",
+    },
+  ];
+
+  const openModal = (leaveType) => {
+    setSelectedLeave(leaveType);
+    setShowModal(true);
+  };
 
   const submitLeave = async (e) => {
     e.preventDefault();
@@ -107,17 +105,40 @@ const openModal = (leaveType) => {
     }
 
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("employee_profiles")
-        .select("id")
+        .select("*")
         .eq("email", user.email)
         .single();
 
-      if (!profile) {
+      if (profileError || !profile) {
+        console.log(profileError);
         alert("Employee profile not found");
         return;
       }
 
+      let attachmentUrl = null;
+
+      // FILE UPLOAD
+      if (attachment) {
+        const fileName = `${Date.now()}-${attachment.name}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("leave-attachments")
+          .upload(fileName, attachment);
+
+        if (uploadError) {
+          console.log(uploadError);
+        } else {
+          const { data } = supabase.storage
+            .from("leave-attachments")
+            .getPublicUrl(fileName);
+
+          attachmentUrl = data.publicUrl;
+        }
+      }
+
+      // INSERT LEAVE REQUEST
       const { error } = await supabase
         .from("leave_requests")
         .insert([
@@ -128,6 +149,7 @@ const openModal = (leaveType) => {
             end_date: end,
             reason,
             status: "Pending",
+            attachment: attachmentUrl,
           },
         ]);
 
@@ -137,15 +159,32 @@ const openModal = (leaveType) => {
         return;
       }
 
-      // 🔥 LOCAL DEDUCTION
       const selectedCard = leaveCards.find(
         (card) => card.title === selectedLeave
       );
 
       if (selectedCard) {
+        const updatedValue = Math.max(
+          Number(profile[selectedCard.key]) - 1,
+          0
+        );
+
+        const { error: updateError } = await supabase
+          .from("employee_profiles")
+          .update({
+            [selectedCard.key]: updatedValue,
+          })
+          .eq("id", profile.id);
+
+        if (updateError) {
+          console.log(updateError);
+          alert("Failed to update leave credits");
+          return;
+        }
+
         setCredits((prev) => ({
           ...prev,
-          [selectedCard.key]: Math.max(prev[selectedCard.key] - 1, 0),
+          [selectedCard.key]: updatedValue,
         }));
       }
 
@@ -156,6 +195,7 @@ const openModal = (leaveType) => {
       setStart("");
       setEnd("");
       setReason("");
+      setAttachment(null);
 
     } catch (err) {
       console.log(err);
@@ -199,7 +239,6 @@ const openModal = (leaveType) => {
           ))}
         </div>
 
-        {/* MODAL */}
         {showModal && (
           <div style={styles.overlay}>
             <div style={styles.modal}>
@@ -270,35 +309,36 @@ const openModal = (leaveType) => {
                 </div>
 
                 <div style={styles.formGroup}>
-  <label style={styles.label}>Attachment</label>
-
-  {/* 🔥 FILE INPUT CUSTOM STYLE */}
-  <style>
+                  <label style={styles.label}>
+                    Attachment
+                  </label>
+                   <style>
     {`
       input[type="file"]::file-selector-button {
         background: #ffffff;
-        color: #111827;
+        color: #000000;
         border: 1px solid #d1d5db;
         padding: 8px 14px;
         border-radius: 8px;
         cursor: pointer;
-        margin-right: 12px;
-        font-weight: 500;
+        margin-right: 10px;
       }
 
       input[type="file"]::file-selector-button:hover {
-        background: #f9fafb;
+        background: #f3f4f6;
       }
     `}
   </style>
 
-  <input
-    type="file"
-    accept="image/*,.pdf,.doc,.docx"
-    onChange={(e) => setAttachment(e.target.files[0])}
-    style={styles.fileInput}
-  />
-</div>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx"
+                    onChange={(e) =>
+                      setAttachment(e.target.files[0])
+                    }
+                    style={styles.fileInput}
+                  />
+                </div>
 
                 <button
                   type="submit"
@@ -320,11 +360,14 @@ const styles = {
     padding: "0px 10px",
   },
 
-  pageTitle: {
+   pageTitle: {
     fontSize: "25px",
     fontWeight: "650",
-    marginBottom: "20px",
     color: "#111827",
+    margin: "0 0 20px 0",
+    padding: 0,
+    letterSpacing: "-0.3px",
+    lineHeight: "1.2",
   },
 
   grid: {
@@ -362,7 +405,6 @@ const styles = {
     fontSize: "42px",
     fontWeight: "700",
     background: "#fff",
-    color: "#f97316",
   },
 
   remainingText: {
@@ -373,10 +415,7 @@ const styles = {
 
   overlay: {
     position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    inset: 0,
     background: "rgba(0,0,0,0.4)",
     display: "flex",
     alignItems: "center",
@@ -405,13 +444,13 @@ const styles = {
   },
 
   closeButton: {
-  border: "none",
-  background: "transparent",
-  fontSize: "28px",
-  cursor: "pointer",
-  color: "#000000", // 🔥 black X
-  fontWeight: "600",
-},
+    border: "none",
+    background: "transparent",
+    fontSize: "28px",
+    cursor: "pointer",
+    color: "#000",
+    fontWeight: "600",
+  },
 
   form: {
     display: "flex",
@@ -431,25 +470,24 @@ const styles = {
   },
 
   input: {
-  padding: "14px",
-  borderRadius: "10px",
-  border: "1px solid #d1d5db",
-  fontSize: "14px",
-
-  background: "#ffffff", // 🔥 white
-  color: "#111827",      // 🔥 black text
-},
+    padding: "14px",
+    borderRadius: "10px",
+    border: "1px solid #d1d5db",
+    fontSize: "14px",
+    background: "#ffffff",
+    color: "#111827",
+    colorScheme: "light",
+  },
 
   textarea: {
-  padding: "14px",
-  borderRadius: "10px",
-  border: "1px solid #d1d5db",
-  resize: "none",
-  fontSize: "14px",
-
-  background: "#ffffff", // 🔥 white
-  color: "#111827",      // 🔥 black text
-},
+    padding: "14px",
+    borderRadius: "10px",
+    border: "1px solid #d1d5db",
+    resize: "none",
+    fontSize: "14px",
+    background: "#ffffff",
+    color: "#111827",
+  },
 
   submitButton: {
     marginTop: "10px",
@@ -462,15 +500,16 @@ const styles = {
     fontSize: "15px",
     cursor: "pointer",
   },
-  fileInput: {
+
+fileInput: {
   width: "100%",
-  padding: "12px 16px",
+  padding: "12px",
   background: "#ffffff",
   border: "1px solid #d1d5db",
   borderRadius: "10px",
   fontSize: "14px",
   color: "#111827",
-  cursor: "pointer",
   boxSizing: "border-box",
+  cursor: "pointer",
 },
 };

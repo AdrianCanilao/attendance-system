@@ -29,7 +29,7 @@ export default function ManagerLeave() {
       return;
     }
 
-    setRequests(data);
+    setRequests(data || []);
     setLoading(false);
   };
 
@@ -46,6 +46,10 @@ export default function ManagerLeave() {
     }
 
     fetchRequests();
+  };
+
+  const isImage = (url) => {
+    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
   };
 
   return (
@@ -98,37 +102,35 @@ export default function ManagerLeave() {
 
                       {/* ATTACHMENT */}
                       <td style={styles.cell}>
-                        {req.attachment_url ? (
-                          req.attachment_url.match(
-                            /\.(jpg|jpeg|png|gif|webp)$/i
-                          ) ? (
-                            <img
-                              src={req.attachment_url}
-                              alt="attachment"
-                              style={styles.attachmentImage}
-                              onClick={() =>
-                                window.open(
-                                  req.attachment_url,
-                                  "_blank"
-                                )
-                              }
-                            />
-                          ) : (
-                            <a
-                              href={req.attachment_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={styles.fileLink}
-                            >
-                              View File
-                            </a>
-                          )
-                        ) : (
-                          <span style={styles.noAttachment}>
-                            No Attachment
-                          </span>
-                        )}
-                      </td>
+  {req.attachment ? (
+    isImage(req.attachment) ? (
+      <img
+        src={req.attachment}
+        alt="attachment"
+        style={styles.attachmentImage}
+        onClick={() =>
+          window.open(
+            req.attachment,
+            "_blank"
+          )
+        }
+      />
+    ) : (
+      <a
+        href={req.attachment}
+        target="_blank"
+        rel="noreferrer"
+        style={styles.fileLink}
+      >
+        View File
+      </a>
+    )
+  ) : (
+    <span style={styles.noAttachment}>
+      No Attachment
+    </span>
+  )}
+</td>
 
                       {/* STATUS */}
                       <td style={styles.cell}>
@@ -231,6 +233,7 @@ const styles = {
     padding: "16px",
     verticalAlign: "middle",
     background: "#f9fafb",
+    color: "#111827",
   },
 
   empty: {

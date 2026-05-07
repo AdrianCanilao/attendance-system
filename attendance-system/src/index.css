@@ -50,11 +50,14 @@
   }
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
+  overflow: hidden; /* 🔥 added */
+  background: #f3f4f6; /* 🔥 added */
 }
 
 #root {
@@ -62,7 +65,8 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  display: block; /* 🔥 important */
+  display: block;
+  overflow: hidden; /* 🔥 added */
 }
 
 h1,
@@ -76,20 +80,24 @@ h1 {
   font-size: 56px;
   letter-spacing: -1.68px;
   margin: 32px 0;
+
   @media (max-width: 1024px) {
     font-size: 36px;
     margin: 20px 0;
   }
 }
+
 h2 {
   font-size: 24px;
   line-height: 118%;
   letter-spacing: -0.24px;
   margin: 0 0 8px;
+
   @media (max-width: 1024px) {
     font-size: 20px;
   }
 }
+
 p {
   margin: 0;
 }
@@ -108,9 +116,11 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
 /* 🔥 scrollbar track */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px; /* 🔥 added */
 }
 
 /* 🔥 background */

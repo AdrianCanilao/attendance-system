@@ -1,5 +1,3 @@
-// formatted version of your file from :contentReference[oaicite:0]{index=0}
-
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
@@ -24,6 +22,7 @@ export default function ManagerDashboard() {
     const end = new Date(timeOutISO);
 
     const diff = (end - start) / 1000 / 60;
+
     if (diff <= 0) return "-";
 
     const hours = Math.floor(diff / 60);
@@ -32,12 +31,71 @@ export default function ManagerDashboard() {
     return `${hours}h ${minutes}m`;
   };
 
+  const calculateLate = (timeInISO, shiftIn) => {
+  if (!timeInISO || !shiftIn) return "-";
+
+  const actual = new Date(timeInISO);
+
+  const [hours, minutes] = shiftIn.split(":");
+
+  const shift = new Date(timeInISO);
+
+  // ✅ add 10 minute allowance
+  shift.setHours(parseInt(hours));
+  shift.setMinutes(parseInt(minutes) + 10);
+  shift.setSeconds(0);
+
+  // ✅ not late
+  if (actual <= shift) return "0m";
+
+  const diff = Math.floor((actual - shift) / 60000);
+
+  const hrs = Math.floor(diff / 60);
+  const mins = diff % 60;
+
+  if (hrs > 0) {
+    return `${hrs}h ${mins}m`;
+  }
+
+  return `${mins}m`;
+};
+
+ const calculateOvertime = (timeOutISO, shiftOut) => {
+  if (!timeOutISO || !shiftOut) return "-";
+
+  const actual = new Date(timeOutISO);
+
+  const [hours, minutes] = shiftOut.split(":");
+
+  const shift = new Date(timeOutISO);
+
+  shift.setHours(parseInt(hours));
+  shift.setMinutes(parseInt(minutes));
+  shift.setSeconds(0);
+
+  // ✅ no overtime
+  if (actual <= shift) return "0m";
+
+  const diff = Math.floor((actual - shift) / 60000);
+
+  const hrs = Math.floor(diff / 60);
+  const mins = diff % 60;
+
+  if (hrs > 0) {
+    return `${hrs}h ${mins}m`;
+  }
+
+  return `${mins}m`;
+};
+
   const fetchDashboardData = async () => {
     const today = new Date().toISOString().split("T")[0];
 
     const { data: employees } = await supabase
       .from("employee_profiles")
-      .select("id, full_name, position");
+      .select(
+        "id, full_name, position, clock_in, clock_out"
+      );
 
     const { data: attendance } = await supabase
       .from("attendance_logs")
@@ -54,7 +112,9 @@ export default function ManagerDashboard() {
 
     (employees || []).forEach((emp) => {
       const attendanceToday = attendance?.find(
-        (a) => a.employee_id === emp.id && a.log_date === today
+        (a) =>
+          a.employee_id === emp.id &&
+          a.log_date === today
       );
 
       const leaveToday = leaves?.find(
@@ -83,24 +143,42 @@ export default function ManagerDashboard() {
         time_out_raw: attendanceToday?.time_out || null,
 
         time_in: attendanceToday?.time_in
-          ? new Date(attendanceToday.time_in).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-              timeZone: "Asia/Manila",
-            })
+          ? new Date(attendanceToday.time_in).toLocaleTimeString(
+              "en-US",
+              {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+                timeZone: "Asia/Manila",
+              }
+            )
           : "-",
 
         time_out: attendanceToday?.time_out
-          ? new Date(attendanceToday.time_out).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-              timeZone: "Asia/Manila",
-            })
+          ? new Date(attendanceToday.time_out).toLocaleTimeString(
+              "en-US",
+              {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+                timeZone: "Asia/Manila",
+              }
+            )
           : "-",
 
-        face_url: attendanceToday?.face_url || null,
+        late: calculateLate(
+          attendanceToday?.time_in,
+          emp.clock_in
+        ),
+
+        overtime: calculateOvertime(
+          attendanceToday?.time_out,
+          emp.clock_out
+        ),
+
+        time_in_face_url:attendanceToday?.time_in_face_url || null,
+
+        time_out_face_url:attendanceToday?.time_out_face_url || null,
 
         status,
       });
@@ -117,7 +195,9 @@ export default function ManagerDashboard() {
     setSearch(value);
 
     const filtered = logs.filter((log) =>
-      (log.name || "").toLowerCase().includes(value.toLowerCase())
+      (log.name || "")
+        .toLowerCase()
+        .includes(value.toLowerCase())
     );
 
     setFilteredLogs(filtered);
@@ -126,7 +206,7 @@ export default function ManagerDashboard() {
   return (
     <ManagerLayout>
       <div style={styles.header}>
-        <h2 style={styles.title}>Attendance Log</h2>
+        <h2 style={styles.pageTitle}>Attendance Log</h2>
       </div>
 
       <div style={styles.cards}>
@@ -149,7 +229,10 @@ export default function ManagerDashboard() {
       <div style={styles.tableCard}>
         <div style={styles.tableHeader}>
           <div>
-            <h3 style={styles.tableTitle}>Daily Attendance Report</h3>
+            <h3 style={styles.tableTitle}>
+              Daily Attendance Report
+            </h3>
+
             <p style={styles.dateText}>
               {new Date().toLocaleDateString(undefined, {
                 weekday: "long",
@@ -169,14 +252,21 @@ export default function ManagerDashboard() {
               fill="none"
             >
               <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              <line
+                x1="21"
+                y1="21"
+                x2="16.65"
+                y2="16.65"
+              />
             </svg>
 
             <input
               type="text"
               placeholder="Search employee..."
               value={search}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={(e) =>
+                handleSearch(e.target.value)
+              }
               style={styles.searchInput}
             />
           </div>
@@ -190,6 +280,8 @@ export default function ManagerDashboard() {
                 <th style={styles.th}>Position</th>
                 <th style={styles.th}>Time In</th>
                 <th style={styles.th}>Time Out</th>
+                <th style={styles.th}>Late</th>
+                <th style={styles.th}>Overtime</th>
                 <th style={styles.th}>Hours Worked</th>
                 <th style={styles.th}>Status</th>
               </tr>
@@ -200,46 +292,45 @@ export default function ManagerDashboard() {
                 <tr key={i} style={styles.row}>
                   <td style={styles.td}>{log.name}</td>
 
-                  <td style={styles.td}>{log.position}</td>
-
-                  <td style={styles.timeInCell}>
-                    {log.face_url && (
-                      <div
-                        style={styles.avatarWrapper}
-                        onMouseEnter={(e) => {
-                          const preview =
-                            e.currentTarget.querySelector(".preview");
-                          preview.style.opacity = 1;
-                          preview.querySelector("img").style.transform =
-                            "scale(1)";
-                        }}
-                        onMouseLeave={(e) => {
-                          const preview =
-                            e.currentTarget.querySelector(".preview");
-                          preview.style.opacity = 0;
-                          preview.querySelector("img").style.transform =
-                            "scale(0.95)";
-                        }}
-                      >
-                        <img
-                          src={log.face_url}
-                          alt="face"
-                          style={styles.timeAvatar}
-                        />
-
-                        <div style={styles.preview} className="preview">
-                          <img
-                            src={log.face_url}
-                            style={styles.previewImg}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <span>{log.time_in}</span>
+                  <td style={styles.td}>
+                    {log.position}
                   </td>
 
-                  <td style={styles.td}>{log.time_out}</td>
+                  <td style={styles.td}>
+                    <div style={styles.timeContainer}>
+                      {log.time_in_face_url && (
+                        <img
+                          src={log.time_in_face_url}
+                          alt="Time In"
+                          style={styles.timeAvatar}
+                        />
+                      )}
+
+                      <span>{log.time_in}</span>
+                    </div>
+                  </td>
+
+                  <td style={styles.td}>
+                    <div style={styles.timeContainer}>
+                      {log.time_out_face_url && (
+                        <img
+                          src={log.time_out_face_url}
+                          alt="Time Out"
+                          style={styles.timeAvatar}
+                        />
+                      )}
+
+                      <span>{log.time_out}</span>
+                    </div>
+                  </td>
+
+                  <td style={styles.td}>
+                    {log.late}
+                  </td>
+
+                  <td style={styles.td}>
+                    {log.overtime}
+                  </td>
 
                   <td style={styles.td}>
                     {calculateHoursWorked(
@@ -258,6 +349,7 @@ export default function ManagerDashboard() {
                             : log.status === "On Leave"
                             ? "#fef9c3"
                             : "#fee2e2",
+
                         color:
                           log.status === "Present"
                             ? "#166534"
@@ -278,11 +370,15 @@ export default function ManagerDashboard() {
     </ManagerLayout>
   );
 }
+
 const styles = {
   header: { marginBottom: "20px" },
-  title: { margin: 0, fontWeight: "600", color: "#111827" },
 
-  cards: { display: "flex", gap: "20px", marginBottom: "25px" },
+  cards: {
+    display: "flex",
+    gap: "20px",
+    marginBottom: "25px",
+  },
 
   card: {
     flex: 1,
@@ -292,14 +388,21 @@ const styles = {
     border: "2px solid #e5e7eb",
   },
 
-  cardLabel: { fontSize: "14px", color: "#374151" },
-
-  tableCard: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "20px",
-    border: "2px solid #e5e7eb",
+  cardLabel: {
+    fontSize: "14px",
+    color: "#374151",
   },
+
+ tableCard: {
+  background: "#fff",
+  borderRadius: "12px",
+  padding: "20px",
+  border: "2px solid #e5e7eb",
+
+  minHeight: "calc(100vh - 220px)",
+  display: "flex",
+  flexDirection: "column",
+},
 
   tableHeader: {
     display: "flex",
@@ -310,9 +413,16 @@ const styles = {
     borderBottom: "2px solid #e5e7eb",
   },
 
-  dateText: { fontSize: "14px", color: "#374151" },
+  dateText: {
+    fontSize: "14px",
+    color: "#374151",
+  },
 
-  searchWrapper: { position: "relative", display: "flex", alignItems: "center" },
+  searchWrapper: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+  },
 
   searchIcon: {
     position: "absolute",
@@ -330,9 +440,10 @@ const styles = {
     color: "#111827",
   },
 
-  tableWrapper: { width: "100%", overflowX: "auto" },
-
-  table: { width: "100%", borderCollapse: "collapse" },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+  },
 
   th: {
     textAlign: "left",
@@ -347,20 +458,9 @@ const styles = {
     color: "#111827",
   },
 
-  employeeCell: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
+  row: {
+    transition: "0.2s",
   },
-
-  avatar: {
-    width: "36px",
-    height: "36px",
-    borderRadius: "50%",
-    objectFit: "cover",
-  },
-
-  row: { transition: "0.2s" },
 
   badge: {
     padding: "6px 12px",
@@ -375,55 +475,40 @@ const styles = {
     fontWeight: "600",
     color: "#111827",
   },
-  timeInCell: {
+
+
+  avatarWrapper: {
+    position: "relative",
+    display: "inline-block",
+  },
+
+    timeContainer: {
   display: "flex",
   alignItems: "center",
   gap: "10px",
+  minHeight: "40px",
 },
+  timeAvatar: {
+    width: "32px",
+    height: "32px",
+    borderRadius: "50%",
+    objectFit: "cover",
+    border: "2px solid #e5e7eb",
+    cursor: "pointer",
+  },
 
-avatarWrapper: {
-  position: "relative",
-  display: "inline-block",
-},
-
-timeAvatar: {
-  width: "32px",
-  height: "32px",
-  borderRadius: "50%",
-  objectFit: "cover",
-  border: "2px solid #e5e7eb",
-  cursor: "pointer",
-},
-
-/* 🔥 HOVER PREVIEW BOX */
-preview: {
-  position: "absolute",
-  bottom: "45px",        // 🔥 moves it ABOVE
-  left: "50%",
-  transform: "translateX(-50%)", // 🔥 center align
-
-  zIndex: 10,
-
-  opacity: 0,
-  pointerEvents: "none",
-  transition: "0.2s ease",
-
-  background: "#fff",
-  padding: "6px",
-  borderRadius: "10px",
-  boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
-},
-previewImg: {
-  width: "120px",
-  height: "120px",
-  objectFit: "cover",
-  borderRadius: "8px",
-  transform: "scale(0.95)",
-  transition: "0.2s",
-},
 tableWrapperScrollable: {
   width: "100%",
-  maxHeight: "350px",   // 🔥 adjust height as you like
-  overflowY: "auto",    // 🔥 enables vertical scroll
+  flex: 1,
+  overflowY: "auto",
 },
+  pageTitle: {
+    fontSize: "25px",
+    fontWeight: "650",
+    color: "#111827",
+    margin: "0 0 20px 0",
+    padding: 0,
+    letterSpacing: "-0.3px",
+    lineHeight: "1.2",
+  },
 };
