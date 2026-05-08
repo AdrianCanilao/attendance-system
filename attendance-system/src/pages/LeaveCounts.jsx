@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
+import { logAudit } from "../utils/auditLogger";
 
 export default function LeaveCounts() {
   const [employees, setEmployees] = useState([]);

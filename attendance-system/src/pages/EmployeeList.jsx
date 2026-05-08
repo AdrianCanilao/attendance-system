@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
 import { FaSearch } from "react-icons/fa";
+import { logAudit } from "../utils/auditLogger";
 
 export default function EmployeeList() {
   const [employees, setEmployees] = useState([]);

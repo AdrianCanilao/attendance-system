@@ -4,6 +4,7 @@ import ManagerLayout from "../layouts/ManagerLayout";
 import EmployeeLayout from "../layouts/EmployeeLayout";
 import { FaUser } from "react-icons/fa";
 import { useLocation } from "react-router-dom";
+import { logAudit } from "../utils/auditLogger";
 
 export default function Profile() {
   const [profile, setProfile] = useState(null);

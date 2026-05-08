@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import EmployeeLayout from "../layouts/EmployeeLayout";
+import { logAudit } from "../utils/auditLogger";
 
 export default function MyLeave() {
   const [requests, setRequests] = useState([]);

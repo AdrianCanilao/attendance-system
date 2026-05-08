@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import EmployeeLayout from "../layouts/EmployeeLayout";
+import { logAudit } from "../utils/auditLogger";
 
 export default function LeaveRequest() {
   const [showModal, setShowModal] = useState(false);
@@ -187,6 +188,13 @@ export default function LeaveRequest() {
           [selectedCard.key]: updatedValue,
         }));
       }
+      await logAudit({
+  user_id: profile.id,
+  user_name: profile.full_name,
+  role: "employee",
+  action: "LEAVE_REQUEST",
+  description: `${selectedLeave} leave requested from ${start} to ${end}`,
+});
 
       alert("Leave request submitted!");
 

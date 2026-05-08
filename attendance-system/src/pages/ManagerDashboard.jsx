@@ -3,6 +3,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
+import { logAudit } from "../utils/auditLogger";
 
 export default function ManagerDashboard() {
   const [logs, setLogs] = useState([]);
@@ -420,50 +421,50 @@ correction:
                       {log.status}
                     </span>
                   </td>
-                  <td style={styles.td}>
-  {log.correction ? (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "8px",
-      }}
-    >
-      <span
-        style={{
-          fontSize: "13px",
-          color: "#374151",
-          maxWidth: "220px",
-          wordBreak: "break-word",
-        }}
-      >
-        {log.correction.concern}
-      </span>
+                    <td style={styles.td}>
+                      {log.correction ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: "13px",
+                              color: "#374151",
+                              maxWidth: "220px",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {log.correction.concern}
+                          </span>
 
-      {log.correction.attachment_url && (
-        <a
-          href={log.correction.attachment_url}
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            background: "#f97316",
-            color: "#fff",
-            padding: "6px 10px",
-            borderRadius: "8px",
-            textDecoration: "none",
-            fontSize: "12px",
-            fontWeight: "600",
-            width: "fit-content",
-          }}
-        >
-          View Attachment
-        </a>
-      )}
-    </div>
-  ) : (
-    "-"
-  )}
-</td>
+                          {log.correction.attachment_url && (
+                            <a
+                              href={log.correction.attachment_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                background: "#f97316",
+                                color: "#fff",
+                                padding: "6px 10px",
+                                borderRadius: "8px",
+                                textDecoration: "none",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                width: "fit-content",
+                              }}
+                            >
+                              View Attachment
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
                 </tr>
               ))}
             </tbody>

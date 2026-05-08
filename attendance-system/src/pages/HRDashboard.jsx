@@ -3,6 +3,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
+import { logAudit } from "../utils/auditLogger";
 
 export default function HRDashboard() {
   const [logs, setLogs] = useState([]);
@@ -171,11 +172,6 @@ export default function HRDashboard() {
         absentCount++;
       }
 
-      const correction =
-        corrections?.find(
-          (c) => c.employee_id === emp.id
-        ) || null;
-
       result.push({
         name: emp.full_name,
         position: emp.position || "-",
@@ -226,9 +222,12 @@ export default function HRDashboard() {
           attendanceToday?.time_out_face_url ||
           null,
 
-        correction,
-
         status,
+
+        correction:
+          corrections?.find(
+            (c) => c.employee_id === emp.id
+          ) || null,
       });
     });
 
@@ -255,7 +254,7 @@ export default function HRDashboard() {
     <HRLayout>
       <div style={styles.header}>
         <h2 style={styles.pageTitle}>
-          HR Dashboard
+          Attendance Log
         </h2>
       </div>
 
@@ -290,7 +289,7 @@ export default function HRDashboard() {
         <div style={styles.tableHeader}>
           <div>
             <h3 style={styles.tableTitle}>
-              HR Attendance Monitoring
+              Daily Attendance Report
             </h3>
 
             <div
@@ -326,6 +325,22 @@ export default function HRDashboard() {
           </div>
 
           <div style={styles.searchWrapper}>
+            <svg
+              style={styles.searchIcon}
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+              fill="none"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line
+                x1="21"
+                y1="21"
+                x2="16.65"
+                y2="16.65"
+              />
+            </svg>
+
             <input
               type="text"
               placeholder="Search employee..."
@@ -348,20 +363,16 @@ export default function HRDashboard() {
                 <th style={styles.th}>Time Out</th>
                 <th style={styles.th}>Late</th>
                 <th style={styles.th}>Overtime</th>
-                <th style={styles.th}>
-                  Hours Worked
-                </th>
+                <th style={styles.th}>Hours Worked</th>
                 <th style={styles.th}>Status</th>
-                <th style={styles.th}>
-                  Correction
-                </th>
+                <th style={styles.th}>Correction</th>
               </tr>
             </thead>
 
             <tbody>
               {(filteredLogs || []).map(
                 (log, i) => (
-                  <tr key={i}>
+                  <tr key={i} style={styles.row}>
                     <td style={styles.td}>
                       {log.name}
                     </td>
@@ -371,11 +382,55 @@ export default function HRDashboard() {
                     </td>
 
                     <td style={styles.td}>
-                      {log.time_in}
+                      <div style={styles.timeContainer}>
+                        {log.time_in_face_url && (
+                          <img
+                            src={log.time_in_face_url}
+                            alt="Time In"
+                            onMouseEnter={() =>
+                              setHoveredImage(`in-${i}`)
+                            }
+                            onMouseLeave={() =>
+                              setHoveredImage(null)
+                            }
+                            style={{
+                              ...styles.timeAvatar,
+                              ...(hoveredImage ===
+                              `in-${i}`
+                                ? styles.timeAvatarHover
+                                : {}),
+                            }}
+                          />
+                        )}
+
+                        <span>{log.time_in}</span>
+                      </div>
                     </td>
 
                     <td style={styles.td}>
-                      {log.time_out}
+                      <div style={styles.timeContainer}>
+                        {log.time_out_face_url && (
+                          <img
+                            src={log.time_out_face_url}
+                            alt="Time Out"
+                            onMouseEnter={() =>
+                              setHoveredImage(`out-${i}`)
+                            }
+                            onMouseLeave={() =>
+                              setHoveredImage(null)
+                            }
+                            style={{
+                              ...styles.timeAvatar,
+                              ...(hoveredImage ===
+                              `out-${i}`
+                                ? styles.timeAvatarHover
+                                : {}),
+                            }}
+                          />
+                        )}
+
+                        <span>{log.time_out}</span>
+                      </div>
                     </td>
 
                     <td style={styles.td}>
@@ -398,8 +453,7 @@ export default function HRDashboard() {
                         style={{
                           ...styles.badge,
                           background:
-                            log.status ===
-                            "Present"
+                            log.status === "Present"
                               ? "#dcfce7"
                               : log.status ===
                                 "On Leave"
@@ -407,8 +461,7 @@ export default function HRDashboard() {
                               : "#fee2e2",
 
                           color:
-                            log.status ===
-                            "Present"
+                            log.status === "Present"
                               ? "#166534"
                               : log.status ===
                                 "On Leave"
@@ -422,21 +475,52 @@ export default function HRDashboard() {
 
                     <td style={styles.td}>
                       {log.correction ? (
-                        <span
+                        <div
                           style={{
-                            background:
-                              "#fef3c7",
-                            color: "#92400e",
-                            padding:
-                              "6px 10px",
-                            borderRadius:
-                              "999px",
-                            fontSize: "12px",
-                            fontWeight: "600",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
                           }}
                         >
-                          Pending Correction
-                        </span>
+                          <span
+                            style={{
+                              fontSize: "13px",
+                              color: "#374151",
+                              maxWidth: "220px",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {log.correction.concern}
+                          </span>
+
+                          {log.correction
+                            .attachment_url && (
+                            <a
+                              href={
+                                log.correction
+                                  .attachment_url
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                background:
+                                  "#f97316",
+                                color: "#fff",
+                                padding:
+                                  "6px 10px",
+                                borderRadius:
+                                  "8px",
+                                textDecoration:
+                                  "none",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                width: "fit-content",
+                              }}
+                            >
+                              View Attachment
+                            </a>
+                          )}
+                        </div>
                       ) : (
                         "-"
                       )}
@@ -453,9 +537,7 @@ export default function HRDashboard() {
 }
 
 const styles = {
-  header: {
-    marginBottom: "20px",
-  },
+  header: { marginBottom: "20px" },
 
   cards: {
     display: "flex",
@@ -481,6 +563,10 @@ const styles = {
     borderRadius: "12px",
     padding: "20px",
     border: "2px solid #e5e7eb",
+
+    minHeight: "calc(100vh - 220px)",
+    display: "flex",
+    flexDirection: "column",
   },
 
   tableHeader: {
@@ -488,13 +574,8 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: "15px",
-  },
-
-  tableTitle: {
-    margin: 0,
-    fontSize: "18px",
-    fontWeight: "600",
-    color: "#111827",
+    paddingBottom: "10px",
+    borderBottom: "2px solid #e5e7eb",
   },
 
   dateText: {
@@ -503,19 +584,25 @@ const styles = {
   },
 
   searchWrapper: {
+    position: "relative",
     display: "flex",
     alignItems: "center",
   },
 
-  searchInput: {
-    padding: "10px 14px",
-    borderRadius: "8px",
-    border: "1px solid #e5e7eb",
-    width: "250px",
+  searchIcon: {
+    position: "absolute",
+    left: "10px",
+    width: "16px",
+    height: "16px",
+    color: "#111827",
   },
 
-  tableWrapperScrollable: {
-    overflowX: "auto",
+  searchInput: {
+    padding: "8px 12px 8px 32px",
+    borderRadius: "8px",
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    color: "#111827",
   },
 
   table: {
@@ -536,6 +623,10 @@ const styles = {
     color: "#111827",
   },
 
+  row: {
+    transition: "0.2s",
+  },
+
   badge: {
     padding: "6px 12px",
     borderRadius: "999px",
@@ -543,9 +634,51 @@ const styles = {
     fontWeight: "600",
   },
 
+  tableTitle: {
+    margin: 0,
+    fontSize: "18px",
+    fontWeight: "600",
+    color: "#111827",
+  },
+
+  timeContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    minHeight: "40px",
+  },
+
+  timeAvatar: {
+    width: "32px",
+    height: "32px",
+    borderRadius: "50%",
+    objectFit: "cover",
+    border: "2px solid #e5e7eb",
+    cursor: "pointer",
+    transition: "0.25s ease",
+  },
+
+  timeAvatarHover: {
+    transform: "scale(4)",
+    borderRadius: "12px",
+    zIndex: 9999,
+    position: "relative",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.25)",
+  },
+
+  tableWrapperScrollable: {
+    width: "100%",
+    flex: 1,
+    overflowY: "auto",
+  },
+
   pageTitle: {
     fontSize: "25px",
     fontWeight: "650",
     color: "#111827",
+    margin: "0 20px 0",
+    padding: 0,
+    letterSpacing: "-0.3px",
+    lineHeight: "1.2",
   },
 };

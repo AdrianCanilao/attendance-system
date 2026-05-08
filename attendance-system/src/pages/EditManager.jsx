@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
-import ManagerLayout from "../layouts/ManagerLayout";
+import HRLayout from "../layouts/HRLayout";
 import Webcam from "react-webcam";
 import { logAudit } from "../utils/auditLogger";
 
-export default function EditEmployee() {
+export default function EditManager() {
   const [employees, setEmployees] = useState([]);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
@@ -22,7 +22,12 @@ export default function EditEmployee() {
   }, []);
 
   const fetchEmployees = async () => {
-    const { data } = await supabase.from("employee_profiles").select("*");
+    const MANAGER_ROLE_ID = "70c406fc-e0c9-482a-af4a-5f0fb01f4639";
+
+const { data } = await supabase
+  .from("employee_profiles")
+  .select("*")
+  .eq("role_id", MANAGER_ROLE_ID);
     setEmployees(data || []);
   };
 
@@ -154,17 +159,6 @@ setImageSrc(emp.face_url || null);
         await uploadFaces();
       }
 
-      const { data: currentUser } =
-  await supabase.auth.getUser();
-
-await logAudit({
-  user_id: currentUser.user.id,
-  user_name: currentUser.user.email,
-  role: "manager",
-  action: "UPDATE_EMPLOYEE",
-  description: `Updated employee profile: ${form.name}`,
-});
-
       alert("✅ Updated!");
       closeModal();
       fetchEmployees();
@@ -183,26 +177,15 @@ await logAudit({
       .delete()
       .eq("id", selected.id);
 
-    const { data: currentUser } =
-  await supabase.auth.getUser();
-
-await logAudit({
-  user_id: currentUser.user.id,
-  user_name: currentUser.user.email,
-  role: "manager",
-  action: "DELETE_EMPLOYEE",
-  description: `Deleted employee: ${selected.full_name}`,
-});
-
     alert("Deleted");
     closeModal();
     fetchEmployees();
   };
 
   return (
-    <ManagerLayout>
+    <HRLayout>
       <div style={styles.wrapper}>
-        <h1 style={styles.pageTitle}>Edit Employee</h1>
+        <h1 style={styles.pageTitle}>Edit Manager</h1>
 
         <div style={styles.searchWrapper}>
           <span style={styles.searchIcon}>
@@ -243,7 +226,7 @@ await logAudit({
         {selected && (
           <div style={styles.modalOverlay}>
             <div style={styles.modal}>
-              <h3>Edit Employee</h3>
+              <h3>Edit Manager</h3>
 
               <div style={styles.topSection}>
                 <div style={styles.avatarBox}>
@@ -354,7 +337,7 @@ await logAudit({
           </div>
         )}
       </div>
-    </ManagerLayout>
+    </HRLayout>
   );
 }
 const styles = {

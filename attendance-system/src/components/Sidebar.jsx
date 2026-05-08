@@ -9,6 +9,7 @@ import {
   FaClipboardList,
   FaUsers,
   FaUser,
+  FaHistory,
 } from "react-icons/fa";
 
 export default function Sidebar({ role }) {
@@ -214,6 +215,65 @@ export default function Sidebar({ role }) {
           </div>
         </>
       )}
+
+            {/* ================= HR ================= */}
+{role === "hr" && (
+  <>
+ 
+    <button
+      onClick={() => navigate("/hr/audit-trail")}
+      style={{
+        ...styles.link,
+        ...(isActive("/hr/audit-trail") &&
+          styles.activeLink),
+      }}
+    >
+      <FaChartBar /> Audit Trail
+    </button>
+
+    {/* MANAGER MANAGEMENT */}
+    <div>
+      <button
+        onClick={() => setOpenEmployee(!openEmployee)}
+        style={styles.link}
+      >
+        <FaUsers />
+        Employee Management
+        {openEmployee ? " ▾" : " ▸"}
+      </button>
+
+      <div
+        style={{
+          ...styles.dropdown,
+          maxHeight: openEmployee ? "250px" : "0px",
+          opacity: openEmployee ? 1 : 0,
+        }}
+      >
+        <button
+          onClick={() => navigate("/hr/register-manager")}
+          style={{
+            ...styles.sublink,
+            ...(isActive("/hr/register-manager") &&
+              styles.activeSubLink),
+          }}
+        >
+          Register Manager
+        </button>
+
+        <button
+          onClick={() => navigate("/hr/edit-manager")}
+          style={{
+            ...styles.sublink,
+            ...(isActive("/hr/edit-manager") &&
+              styles.activeSubLink),
+          }}
+        >
+          Edit Manager
+        </button>
+      </div>
+    </div>
+  </>
+)}
     </div>
   );
 }

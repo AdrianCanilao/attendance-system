@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { logAudit } from "../utils/auditLogger";
 
 export default function Login() {
   const [email, setEmail] =
@@ -107,6 +108,13 @@ export default function Login() {
       }
 
       const role = roleData.name.trim().toLowerCase();
+      await logAudit({
+  user_id: user.id,
+  user_name: user.email,
+  role: role,
+  action: "LOGIN",
+  description: `${user.email} logged into the system`,
+});
 
       console.log(
         "FINAL ROLE:",

@@ -13,6 +13,8 @@ import LeaveCounts from "./pages/LeaveCounts";
 import EmployeeList from "./pages/EmployeeList";
 import HRDashboard from "./pages/HRDashboard";
 import HRAuditTrail from "./pages/HRAuditTrail";
+import RegisterManager from "./pages/RegisterManager";
+import EditManager from "./pages/EditManager";
 
 export default function App() {
   return (
@@ -136,6 +138,16 @@ export default function App() {
 <Route
   path="/hr/profile"
   element={<HRAuditTrail />}
+/>
+
+<Route
+  path="/hr/register-manager"
+  element={<RegisterManager />}
+/>
+
+<Route
+  path="/hr/edit-manager"
+  element={<EditManager />}
 />
 
       </Routes>

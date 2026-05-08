@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import EmployeeLayout from "../layouts/EmployeeLayout";
 import Webcam from "react-webcam";
+import { logAudit } from "../utils/auditLogger";
 
 export default function EmployeeDashboard() {
   const [name, setName] = useState("");
@@ -208,6 +209,13 @@ export default function EmployeeDashboard() {
           time_in: new Date().toISOString(),
           time_in_face_url: faceUrl,
         });
+        await logAudit({
+  user_id: employeeId,
+  user_name: profile.full_name,
+  role: "employee",
+  action: "TIME_IN",
+  description: `${profile.full_name} timed in`,
+});
       } else {
         await supabase
           .from("attendance_logs")
@@ -218,6 +226,13 @@ export default function EmployeeDashboard() {
           .eq("employee_id", employeeId)
           .is("time_out", null);
       }
+      await logAudit({
+  user_id: employeeId,
+  user_name: profile.full_name,
+  role: "employee",
+  action: "TIME_OUT",
+  description: `${profile.full_name} timed out`,
+});
 
       alert("Attendance recorded");
 

@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { supabase } from "../supabaseClient";
-import ManagerLayout from "../layouts/ManagerLayout";
+import HRLayout from "../layouts/HRLayout";
 import { logAudit } from "../utils/auditLogger";
 
-export default function RegisterEmployee() {
+export default function RegisterManager() {
   const webcamRef = useRef(null);
 
   const [form, setForm] = useState({
@@ -107,7 +107,7 @@ export default function RegisterEmployee() {
       }
 
       const userId = authData.user.id;
-      const EMPLOYEE_ROLE_ID = "e4dbb928-7f0e-4da9-9eff-d7700d37b25a";
+      const MANAGER_ROLE_ID = "70c406fc-e0c9-482a-af4a-5f0fb01f4639";
 
       await supabase.from("employee_profiles").insert([
         {
@@ -116,7 +116,7 @@ export default function RegisterEmployee() {
           email,
           contact_number: contact,
           position,
-          role_id: EMPLOYEE_ROLE_ID,
+          role_id: MANAGER_ROLE_ID,
           clock_in,
           clock_out,
         },
@@ -149,17 +149,17 @@ export default function RegisterEmployee() {
             .update({ face_url: data.url })
             .eq("id", userId);
         }
-        const { data: currentUser } =
+      }
+      const { data: currentUser } =
   await supabase.auth.getUser();
 
 await logAudit({
   user_id: currentUser.user.id,
   user_name: currentUser.user.email,
-  role: "manager",
-  action: "REGISTER_EMPLOYEE",
-  description: `Registered employee: ${name}`,
+  role: "hr",
+  action: "REGISTER_MANAGER",
+  description: `Registered manager: ${name}`,
 });
-      }
 
       alert("✅ Employee registered!");
 
@@ -185,9 +185,9 @@ await logAudit({
   };
 
   return (
-    <ManagerLayout>
+    <HRLayout>
       <div style={styles.wrapper}>
-        <h1 style={styles.pageTitle}>Register Employee</h1>
+        <h1 style={styles.pageTitle}>Register Manager</h1>
 
         <div style={styles.card}>
           <div style={styles.topSection}>
@@ -325,11 +325,11 @@ await logAudit({
           </div>
 
           <button onClick={handleRegister} disabled={loading} style={styles.primaryBtn}>
-            {loading ? "Registering..." : "Register Employee"}
+            {loading ? "Registering..." : "Register Manager"}
           </button>
         </div>
       </div>
-    </ManagerLayout>
+    </HRLayout>
   );
 }
 
