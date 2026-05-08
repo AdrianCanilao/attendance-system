@@ -15,6 +15,7 @@ import HRDashboard from "./pages/HRDashboard";
 import HRAuditTrail from "./pages/HRAuditTrail";
 import RegisterManager from "./pages/RegisterManager";
 import EditManager from "./pages/EditManager";
+import ManagerAttendanceTracker from "./pages/ManagerAttendanceTracker";
 
 export default function App() {
   return (
@@ -26,63 +27,72 @@ export default function App() {
 
         {/* ================= MANAGER ================= */}
 
-        <Route
-          path="/manager"
-          element={
-            <ProtectedRoute role="manager">
-              <ManagerDashboard />
-            </ProtectedRoute>
-          }
-        />
+<Route
+  path="/manager"
+  element={
+    <ProtectedRoute role="manager">
+      <ManagerAttendanceTracker />
+    </ProtectedRoute>
+  }
+/>
 
-        <Route path="/manager/employees" element={<EmployeeList />} />
+<Route
+  path="/manager/attendance"
+  element={
+    <ProtectedRoute role="manager">
+      <ManagerDashboard />
+    </ProtectedRoute>
+  }
+/>
 
-        <Route
-          path="/manager/profile"
-          element={
-            <ProtectedRoute role="manager">
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
+<Route path="/manager/employees" element={<EmployeeList />} />
 
-        <Route
-          path="/manager/register"
-          element={
-            <ProtectedRoute role="manager">
-              <RegisterEmployee />
-            </ProtectedRoute>
-          }
-        />
+<Route
+  path="/manager/profile"
+  element={
+    <ProtectedRoute role="manager">
+      <Profile />
+    </ProtectedRoute>
+  }
+/>
 
-        <Route
-          path="/manager/edit"
-          element={
-            <ProtectedRoute role="manager">
-              <EditEmployee />
-            </ProtectedRoute>
-          }
-        />
+<Route
+  path="/manager/register"
+  element={
+    <ProtectedRoute role="manager">
+      <RegisterEmployee />
+    </ProtectedRoute>
+  }
+/>
 
-        <Route
-          path="/manager/leave"
-          element={
-            <ProtectedRoute role="manager">
-              <ManagerLeave />
-            </ProtectedRoute>
-          }
-        />
+<Route
+  path="/manager/edit"
+  element={
+    <ProtectedRoute role="manager">
+      <EditEmployee />
+    </ProtectedRoute>
+  }
+/>
 
-        <Route
-          path="/manager/leave-approval"
-          element={
-            <ProtectedRoute role="manager">
-              <ManagerLeave />
-            </ProtectedRoute>
-          }
-        />
+<Route
+  path="/manager/leave"
+  element={
+    <ProtectedRoute role="manager">
+      <ManagerLeave />
+    </ProtectedRoute>
+  }
+/>
 
-        <Route
+<Route
+  path="/manager/leave-approval"
+  element={
+    <ProtectedRoute role="manager">
+      <ManagerLeave />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
   path="/manager/edit-leave-counts"
   element={
     <ProtectedRoute role="manager">

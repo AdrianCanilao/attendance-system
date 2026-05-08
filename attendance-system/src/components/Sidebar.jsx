@@ -97,125 +97,142 @@ export default function Sidebar({ role }) {
       )}
 
       {/* ================= MANAGER ================= */}
-      {role === "manager" && (
-        <>
-          <button
-            onClick={() => navigate("/manager/profile")}
-            style={{
-              ...styles.link,
-              ...(isActive("/manager/profile") && styles.activeLink),
-            }}
-          >
-            <FaUser /> Profile
-          </button>
+{role === "manager" && (
+  <>
+    <button
+      onClick={() => navigate("/manager/profile")}
+      style={{
+        ...styles.link,
+        ...(isActive("/manager/profile") &&
+          styles.activeLink),
+      }}
+    >
+      <FaUser /> Profile
+    </button>
 
-          <button
-            onClick={() => navigate("/manager")}
-            style={{
-              ...styles.link,
-              ...(isActive("/manager") && styles.activeLink),
-            }}
-          >
-            <FaChartBar /> Attendance Log
-          </button>
+    {/* NEW MANAGER ATTENDANCE */}
+    <button
+      onClick={() => navigate("/manager/attendance")}
+      style={{
+        ...styles.link,
+        ...(isActive("/manager/attendance") &&
+          styles.activeLink),
+      }}
+    >
+      <FaChartBar /> Attendance Log
+    </button>
 
-          {/* EMPLOYEE MANAGEMENT */}
-          <div>
-            <button
-              onClick={() => setOpenEmployee(!openEmployee)}
-              style={styles.link}
-            >
-              <FaUsers />
-              Employee Management
-              {openEmployee ? " ▾" : " ▸"}
-            </button>
+    {/* ATTENDANCE TRACKER */}
+    <button
+      onClick={() => navigate("/manager")}
+      style={{
+        ...styles.link,
+        ...(isActive("/manager") &&
+          styles.activeLink),
+      }}
+    >
+      <FaHistory /> Attendance Tracker
+    </button>
 
-            <div
-              style={{
-                ...styles.dropdown,
-                maxHeight: openEmployee ? "250px" : "0px",
-                opacity: openEmployee ? 1 : 0,
-              }}
-            >
-              <button
-                onClick={() => navigate("/manager/register")}
-                style={{
-                  ...styles.sublink,
-                  ...(isActive("/manager/register") &&
-                    styles.activeSubLink),
-                }}
-              >
-                Register Employee
-              </button>
+    {/* EMPLOYEE MANAGEMENT */}
+    <div>
+      <button
+        onClick={() => setOpenEmployee(!openEmployee)}
+        style={styles.link}
+      >
+        <FaUsers />
+        Employee Management
+        {openEmployee ? " ▾" : " ▸"}
+      </button>
 
-              <button
-                onClick={() => navigate("/manager/edit")}
-                style={{
-                  ...styles.sublink,
-                  ...(isActive("/manager/edit") &&
-                    styles.activeSubLink),
-                }}
-              >
-                Edit Employee
-              </button>
+      <div
+        style={{
+          ...styles.dropdown,
+          maxHeight: openEmployee ? "250px" : "0px",
+          opacity: openEmployee ? 1 : 0,
+        }}
+      >
+        <button
+          onClick={() => navigate("/manager/register")}
+          style={{
+            ...styles.sublink,
+            ...(isActive("/manager/register") &&
+              styles.activeSubLink),
+          }}
+        >
+          Register Employee
+        </button>
 
-              <button
-                onClick={() => navigate("/manager/employees")}
-                style={{
-                  ...styles.sublink,
-                  ...(isActive("/manager/employees") &&
-                    styles.activeSubLink),
-                }}
-              >
-                Employee List
-              </button>
-            </div>
-          </div>
+        <button
+          onClick={() => navigate("/manager/edit")}
+          style={{
+            ...styles.sublink,
+            ...(isActive("/manager/edit") &&
+              styles.activeSubLink),
+          }}
+        >
+          Edit Employee
+        </button>
 
-          {/* MANAGER LEAVE MANAGEMENT */}
-          <div>
-            <button
-              onClick={() => setLeaveDropdown(!leaveDropdown)}
-              style={styles.link}
-            >
-              <FaClipboardList />
-              Leave Management
-              {leaveDropdown ? " ▾" : " ▸"}
-            </button>
+        <button
+          onClick={() => navigate("/manager/employees")}
+          style={{
+            ...styles.sublink,
+            ...(isActive("/manager/employees") &&
+              styles.activeSubLink),
+          }}
+        >
+          Employee List
+        </button>
+      </div>
+    </div>
 
-            <div
-              style={{
-                ...styles.dropdown,
-                maxHeight: leaveDropdown ? "200px" : "0px",
-                opacity: leaveDropdown ? 1 : 0,
-              }}
-            >
-              <button
-                onClick={() => navigate("/manager/leave")}
-                style={{
-                  ...styles.sublink,
-                  ...(isActive("/manager/leave") &&
-                    styles.activeSubLink),
-                }}
-              >
-                Leave Approval
-              </button>
+    {/* LEAVE MANAGEMENT */}
+    <div>
+      <button
+        onClick={() => setLeaveDropdown(!leaveDropdown)}
+        style={styles.link}
+      >
+        <FaClipboardList />
+        Leave Management
+        {leaveDropdown ? " ▾" : " ▸"}
+      </button>
 
-              <button
-                onClick={() => navigate("/manager/edit-leave-counts")}
-                style={{
-                  ...styles.sublink,
-                  ...(isActive("/manager/edit-leave-counts") &&
-                    styles.activeSubLink),
-                }}
-              >
-                Edit Leave Counts
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      <div
+        style={{
+          ...styles.dropdown,
+          maxHeight: leaveDropdown ? "200px" : "0px",
+          opacity: leaveDropdown ? 1 : 0,
+        }}
+      >
+        <button
+          onClick={() => navigate("/manager/leave")}
+          style={{
+            ...styles.sublink,
+            ...(isActive("/manager/leave") &&
+              styles.activeSubLink),
+          }}
+        >
+          Leave Approval
+        </button>
 
+        <button
+          onClick={() =>
+            navigate("/manager/edit-leave-counts")
+          }
+          style={{
+            ...styles.sublink,
+            ...(isActive(
+              "/manager/edit-leave-counts"
+            ) && styles.activeSubLink),
+          }}
+        >
+          Edit Leave Counts
+        </button>
+      </div>
+    </div>
+  </>
+)}
             {/* ================= HR ================= */}
 {role === "hr" && (
   <>

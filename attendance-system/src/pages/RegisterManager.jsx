@@ -107,7 +107,7 @@ export default function RegisterManager() {
       }
 
       const userId = authData.user.id;
-      const MANAGER_ROLE_ID = "70c406fc-e0c9-482a-af4a-5f0fb01f4639";
+      const MANAGER_ROLE_ID = "b381a7a0-9595-4c69-abf1-5c15a827647a";
 
       await supabase.from("employee_profiles").insert([
         {
