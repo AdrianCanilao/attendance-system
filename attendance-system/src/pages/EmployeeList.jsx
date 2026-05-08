@@ -22,15 +22,34 @@ export default function EmployeeList() {
   }, []);
 
   const fetchEmployees = async () => {
-    const { data, error } = await supabase
-      .from("employee_profiles")
-      .select("*")
-      .order("full_name", { ascending: true });
+  // CURRENT USER
+  const { data: authData } =
+    await supabase.auth.getUser();
 
-    if (!error) {
-      setEmployees(data || []);
-    }
-  };
+  const currentUserId = authData.user.id;
+
+  // GET CURRENT USER PROFILE
+  const { data: profile } = await supabase
+    .from("employee_profiles")
+    .select("branch_id")
+    .eq("id", currentUserId)
+    .single();
+
+  if (!profile) return;
+
+  // FETCH ONLY SAME BRANCH
+  const { data, error } = await supabase
+    .from("employee_profiles")
+    .select("*")
+    .eq("branch_id", profile.branch_id)
+    .order("full_name", {
+      ascending: true,
+    });
+
+  if (!error) {
+    setEmployees(data || []);
+  }
+};
 
   const filteredEmployees = employees.filter((employee) =>
   employee.full_name

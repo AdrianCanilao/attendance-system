@@ -102,14 +102,14 @@ export default function ManagerLayout({ children }) {
   return (
     <div style={styles.container}>
       {/* SIDEBAR */}
-      <Sidebar role="manager" />
+      <Sidebar role="maintenance" />
 
       {/* MAIN */}
       <div style={styles.main}>
         {/* TOPBAR */}
         <div style={styles.topbar}>
           <h3 style={{ margin: 0 }}>
-            Manager Dashboard
+            Maintenance Specialist Dashboard
           </h3>
 
           <div style={styles.topRight}>
@@ -183,7 +183,7 @@ export default function ManagerLayout({ children }) {
                     fontWeight: "600",
                   }}
                 >
-                  Manager
+                  M.S.
                 </p>
               </div>
             </div>

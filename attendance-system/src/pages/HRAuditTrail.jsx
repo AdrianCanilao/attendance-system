@@ -3,6 +3,11 @@ import HRLayout from "../layouts/HRLayout";
 import { supabase } from "../supabaseClient";
 import { logAudit } from "../utils/auditLogger";
 
+const searchPlaceholderStyle = `
+.searchInput::placeholder {
+  color: #666;
+}
+`;
 export default function HRAuditTrail() {
   const [logs, setLogs] = useState([]);
 const [loading, setLoading] = useState(true);
@@ -41,6 +46,7 @@ const [search, setSearch] = useState("");
 
         <input
   placeholder="Search audit logs..."
+  className="searchInput"
   value={search}
   onChange={(e) => setSearch(e.target.value)}
   style={styles.search}
@@ -177,12 +183,14 @@ const styles = {
     color: "#6b7280",
   },
   search: {
-  width: "100%",
-  padding: "12px",
+  width: "300px",
+  padding: "10px 14px",
   borderRadius: "10px",
   border: "1px solid #d1d5db",
   marginBottom: "15px",
   fontSize: "14px",
-  boxSizing: "border-box",
+  backgroundColor: "#ffffff",
+  color: "#000000",
+  outline: "none",
 },
 };

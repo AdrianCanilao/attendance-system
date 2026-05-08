@@ -21,11 +21,12 @@ export default function EmployeeDashboard({
   const location = window.location.pathname;
 
   const managerMode =
-    isManager ||
-    location.includes("/manager");
+  isManager ||
+  location.includes("/manager") ||
+  location.includes("/maintenance");
 
   const ROLE_IDS = {
-    manager:
+  maintenance:
       "b381a7a0-9595-4c69-abf1-5c15a827647a",
 
     employee:
@@ -366,8 +367,8 @@ export default function EmployeeDashboard({
             profile.full_name,
 
           role: managerMode
-            ? "manager"
-            : "employee",
+  ? "maintenance"
+  : "employee",
 
           action: "TIME_IN",
 
@@ -396,8 +397,8 @@ export default function EmployeeDashboard({
             profile.full_name,
 
           role: managerMode
-            ? "manager"
-            : "employee",
+  ? "maintenance"
+  : "employee",
 
           action: "TIME_OUT",
 

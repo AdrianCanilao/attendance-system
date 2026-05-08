@@ -97,7 +97,7 @@ export default function Sidebar({ role }) {
       )}
 
       {/* ================= MANAGER ================= */}
-{role === "manager" && (
+{role === "maintenance" && (
   <>
     <button
       onClick={() => navigate("/manager/profile")}
@@ -274,7 +274,7 @@ export default function Sidebar({ role }) {
               styles.activeSubLink),
           }}
         >
-          Register Manager
+          Register Maintenance Specialist
         </button>
 
         <button
@@ -285,7 +285,7 @@ export default function Sidebar({ role }) {
               styles.activeSubLink),
           }}
         >
-          Edit Manager
+          Edit Maintenance Specialist
         </button>
       </div>
     </div>

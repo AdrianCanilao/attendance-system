@@ -30,7 +30,7 @@ export default function App() {
 <Route
   path="/manager"
   element={
-    <ProtectedRoute role="manager">
+    <ProtectedRoute role="maintenance">
       <ManagerAttendanceTracker />
     </ProtectedRoute>
   }
@@ -39,7 +39,7 @@ export default function App() {
 <Route
   path="/manager/attendance"
   element={
-    <ProtectedRoute role="manager">
+    <ProtectedRoute role="maintenance">
       <ManagerDashboard />
     </ProtectedRoute>
   }
@@ -50,7 +50,7 @@ export default function App() {
 <Route
   path="/manager/profile"
   element={
-    <ProtectedRoute role="manager">
+    <ProtectedRoute role="maintenance">
       <Profile />
     </ProtectedRoute>
   }
@@ -59,7 +59,7 @@ export default function App() {
 <Route
   path="/manager/register"
   element={
-    <ProtectedRoute role="manager">
+    <ProtectedRoute role="maintenance">
       <RegisterEmployee />
     </ProtectedRoute>
   }
@@ -68,7 +68,7 @@ export default function App() {
 <Route
   path="/manager/edit"
   element={
-    <ProtectedRoute role="manager">
+    <ProtectedRoute role="maintenance">
       <EditEmployee />
     </ProtectedRoute>
   }
@@ -77,7 +77,7 @@ export default function App() {
 <Route
   path="/manager/leave"
   element={
-    <ProtectedRoute role="manager">
+    <ProtectedRoute role="maintenance">
       <ManagerLeave />
     </ProtectedRoute>
   }
@@ -86,7 +86,7 @@ export default function App() {
 <Route
   path="/manager/leave-approval"
   element={
-    <ProtectedRoute role="manager">
+    <ProtectedRoute role="maintenance">
       <ManagerLeave />
     </ProtectedRoute>
   }
@@ -95,7 +95,7 @@ export default function App() {
 <Route
   path="/manager/edit-leave-counts"
   element={
-    <ProtectedRoute role="manager">
+    <ProtectedRoute role="maintenance">
       <LeaveCounts />
     </ProtectedRoute>
   }

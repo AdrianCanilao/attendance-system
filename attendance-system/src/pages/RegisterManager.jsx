@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
@@ -15,6 +15,7 @@ export default function RegisterManager() {
     position: "",
     clock_in: "",
     clock_out: "",
+branch_id: "",
   });
 
   const [showCamera, setShowCamera] = useState(false);
@@ -22,6 +23,22 @@ export default function RegisterManager() {
   const [loading, setLoading] = useState(false);
   const [capturedImages, setCapturedImages] = useState([]);
   const [step, setStep] = useState(0);
+  const [branches, setBranches] = useState([]);
+
+useEffect(() => {
+  fetchBranches();
+}, []);
+
+const fetchBranches = async () => {
+  const { data, error } = await supabase
+    .from("branches")
+    .select("*")
+    .order("branch_name");
+
+  if (!error) {
+    setBranches(data || []);
+  }
+};
 
   const steps = ["Look straight", "Turn LEFT", "Turn RIGHT"];
 
@@ -84,7 +101,8 @@ export default function RegisterManager() {
       !contact ||
       !position ||
       !clock_in ||
-      !clock_out
+      !clock_out ||
+!form.branch_id
     ) {
       alert("Please fill all fields");
       return;
@@ -119,6 +137,7 @@ export default function RegisterManager() {
           role_id: MANAGER_ROLE_ID,
           clock_in,
           clock_out,
+branch_id: form.branch_id,
         },
       ]);
 
@@ -157,11 +176,11 @@ await logAudit({
   user_id: currentUser.user.id,
   user_name: currentUser.user.email,
   role: "hr",
-  action: "REGISTER_MANAGER",
+action: "REGISTER_MAINTENANCE",
   description: `Registered manager: ${name}`,
 });
 
-      alert("✅ Employee registered!");
+      alert("✅ Maintenance Specialist registered!");
 
       setForm({
         name: "",
@@ -171,6 +190,7 @@ await logAudit({
         position: "",
         clock_in: "",
         clock_out: "",
+        branch_id: "",
       });
 
       setCapturedImages([]);
@@ -187,7 +207,7 @@ await logAudit({
   return (
     <HRLayout>
       <div style={styles.wrapper}>
-        <h1 style={styles.pageTitle}>Register Manager</h1>
+        <h1 style={styles.pageTitle}>Register Maintenance Specialist</h1>
 
         <div style={styles.card}>
           <div style={styles.topSection}>
@@ -322,6 +342,25 @@ await logAudit({
                 style={styles.input}
               />
             </div>
+
+            <div style={{ gridColumn: "span 2" }}>
+  <label style={styles.label}>Branch Assignment</label>
+
+  <select
+    name="branch_id"
+    value={form.branch_id}
+    onChange={handleChange}
+    style={styles.input}
+  >
+    <option value="">Select Branch</option>
+
+    {branches.map((branch) => (
+      <option key={branch.id} value={branch.id}>
+        {branch.branch_name} ({branch.branch_code})
+      </option>
+    ))}
+  </select>
+</div>
           </div>
 
           <button onClick={handleRegister} disabled={loading} style={styles.primaryBtn}>

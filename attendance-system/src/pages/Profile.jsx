@@ -170,7 +170,9 @@ setAttendanceLogs(logs || []);
 
   const location = useLocation();
 
-  const Layout = location.pathname.startsWith("/manager")
+  const Layout =
+  location.pathname.startsWith("/manager") ||
+  location.pathname.startsWith("/maintenance")
     ? ManagerLayout
     : EmployeeLayout;
 

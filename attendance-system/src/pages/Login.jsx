@@ -129,8 +129,8 @@ export default function Login() {
 
       // ✅ WAIT BEFORE NAVIGATION
       setTimeout(() => {
-        if (role === "manager") {
-  console.log("GOING TO MANAGER");
+        if (role === "maintenance") {
+  console.log("GOING TO MAINTENANCE");
   navigate("/manager/profile");
 }
 else if (role === "hr") {
