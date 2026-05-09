@@ -158,7 +158,7 @@ async def verify_face(
                 faces = DeepFace.extract_faces(
                     img_path=img,
                     detector_backend="opencv",
-                    enforce_detection=False
+                    enforce_detection=True
                 )
 
                 if faces:
@@ -221,7 +221,7 @@ async def verify_face(
                         img2_path=stored_img,
                         model_name="ArcFace",
                         detector_backend="opencv",
-                        enforce_detection=False
+                        enforce_detection=True
                     )
 
                     distance = result.get("distance", 1)
@@ -232,7 +232,7 @@ async def verify_face(
                         best_distance = distance
 
                     # 🔥 EARLY STOP FOR SPEED
-                    if distance < 0.50:
+                    if distance < 0.30:
                         matched = True
                         break
 
@@ -247,7 +247,7 @@ async def verify_face(
         # =========================
         # FINAL DECISION
         # =========================
-        if matched or best_distance < 0.55:
+        if matched or best_distance < 0.35:
             return {"status": "Match"}
         else:
             return {"status": "No Match"}
