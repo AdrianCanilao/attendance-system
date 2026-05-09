@@ -123,7 +123,7 @@ setAttendanceLogs(logs || []);
       timeOut: timeOutFiles?.length || 0,
     });
   };
-  const calculateHoursWorked = (timeInISO, timeOutISO) => {
+ const calculateHoursWorked = (timeInISO, timeOutISO) => {
   if (!timeInISO || !timeOutISO) return "-";
 
   const start = new Date(timeInISO);
@@ -137,6 +137,63 @@ setAttendanceLogs(logs || []);
   const minutes = Math.floor(diff % 60);
 
   return `${hours}h ${minutes}m`;
+};
+
+const calculateLate = (timeInISO, shiftIn) => {
+  if (!timeInISO || !shiftIn) return "-";
+
+  const actual = new Date(timeInISO);
+
+  const [hours, minutes] = shiftIn.split(":");
+
+  const shift = new Date(timeInISO);
+
+  // ✅ 10 minute grace period
+  shift.setHours(parseInt(hours));
+  shift.setMinutes(parseInt(minutes) + 10);
+  shift.setSeconds(0);
+
+  // ✅ not late
+  if (actual <= shift) return "0m";
+
+  const diff = Math.floor((actual - shift) / 60000);
+
+  const hrs = Math.floor(diff / 60);
+  const mins = diff % 60;
+
+  if (hrs > 0) {
+    return `${hrs}h ${mins}m`;
+  }
+
+  return `${mins}m`;
+};
+
+const calculateOvertime = (timeOutISO, shiftOut) => {
+  if (!timeOutISO || !shiftOut) return "-";
+
+  const actual = new Date(timeOutISO);
+
+  const [hours, minutes] = shiftOut.split(":");
+
+  const shift = new Date(timeOutISO);
+
+  shift.setHours(parseInt(hours));
+  shift.setMinutes(parseInt(minutes));
+  shift.setSeconds(0);
+
+  // ✅ no overtime
+  if (actual <= shift) return "0m";
+
+  const diff = Math.floor((actual - shift) / 60000);
+
+  const hrs = Math.floor(diff / 60);
+  const mins = diff % 60;
+
+  if (hrs > 0) {
+    return `${hrs}h ${mins}m`;
+  }
+
+  return `${mins}m`;
 };
 
   const generateCalendar = () => {
@@ -513,9 +570,10 @@ setAttendanceLogs(logs || []);
               textAlign: "center",
             }}
           >
-            {log.late_minutes
-              ? `${log.late_minutes}m`
-              : "-"}
+            {calculateLate(
+  log.time_in,
+  profile?.clock_in
+)}
           </td>
 
           {/* OVERTIME */}
@@ -525,9 +583,10 @@ setAttendanceLogs(logs || []);
               textAlign: "center",
             }}
           >
-            {log.overtime_minutes
-              ? `${log.overtime_minutes}m`
-              : "-"}
+            {calculateOvertime(
+  log.time_out,
+  profile?.clock_out
+)}
           </td>
 
           {/* HOURS WORKED */}

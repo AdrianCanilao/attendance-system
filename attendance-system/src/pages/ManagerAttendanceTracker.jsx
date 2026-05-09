@@ -100,12 +100,36 @@ const [selectedDate, setSelectedDate] = useState(
   .split("T")[0];
     
 
-    const { data: employees } = await supabase
-      .from("employee_profiles")
-      .select(
-        "id, full_name, position, clock_in, clock_out"
-      );
+    // GET CURRENT USER
+const { data: userData } =
+  await supabase.auth.getUser();
 
+const user = userData?.user;
+
+// GET CURRENT USER PROFILE
+const { data: currentProfile } =
+  await supabase
+    .from("employee_profiles")
+    .select("branch_id")
+    .eq("id", user.id)
+    .single();
+
+// FETCH ONLY EMPLOYEES IN SAME BRANCH
+const { data: employees } =
+  await supabase
+    .from("employee_profiles")
+    .select(`
+      id,
+      full_name,
+      position,
+      clock_in,
+      clock_out,
+      branch_id
+    `)
+    .eq(
+      "branch_id",
+      currentProfile?.branch_id
+    );
     const { data: attendance } = await supabase
   .from("attendance_logs")
   .select("*")
