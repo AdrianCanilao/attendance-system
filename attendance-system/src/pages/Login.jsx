@@ -245,7 +245,10 @@ export default function Login() {
             <input
               type="email"
               placeholder="Enter email"
-              style={styles.input}
+              style={{
+    ...styles.input,
+    color: "#000",
+  }}
               value={email}
               onChange={(e) =>
                 setEmail(
@@ -261,7 +264,10 @@ export default function Login() {
             <input
               type="password"
               placeholder="Enter password"
-              style={styles.input}
+              style={{
+    ...styles.input,
+    color: "#000",
+  }}
               value={password}
               onChange={(e) =>
                 setPassword(
@@ -389,15 +395,21 @@ const styles = {
   },
 
   input: {
-    padding: "10px",
+  padding: "10px",
 
-    borderRadius: "5px",
+  borderRadius: "5px",
 
-    border:
-      "1px solid #ddd",
+  border:
+    "1px solid #ddd",
 
-    marginTop: "5px",
-  },
+  marginTop: "5px",
+
+  background: "#ffffff",
+
+  color: "#000",
+
+  fontSize: "14px",
+},
 
   button: {
     width: "100%",
