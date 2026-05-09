@@ -207,7 +207,9 @@ if (correctionError) {
 
 correction:
   corrections?.find(
-    (c) => c.employee_id === emp.id
+    (c) =>
+      c.employee_id === emp.id &&
+      c.created_at?.startsWith(today)
   ) || null,
       });
     });

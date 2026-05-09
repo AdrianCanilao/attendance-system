@@ -5,6 +5,7 @@ import Sidebar from "../components/Sidebar";
 import { useEffect, useRef, useState } from "react";
 
 export default function EmployeeLayout({ children }) {
+
   const navigate = useNavigate();
 
   const [showNotifications, setShowNotifications] =
@@ -13,21 +14,79 @@ export default function EmployeeLayout({ children }) {
   const [notifications, setNotifications] =
     useState([]);
 
+  const [branchName, setBranchName] =
+    useState("");
+
   const notificationRef = useRef(null);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+
     localStorage.removeItem("role");
+    localStorage.removeItem("email");
+    localStorage.removeItem("user_id");
+
     navigate("/");
   };
 
   useEffect(() => {
     fetchNotifications();
+    fetchBranch();
   }, []);
+
+  // ================= FETCH BRANCH =================
+
+  const fetchBranch = async () => {
+
+    try {
+
+      const email =
+        localStorage.getItem("email");
+
+      if (!email) return;
+
+      // GET EMPLOYEE PROFILE
+      const { data: profile } =
+        await supabase
+          .from("employee_profiles")
+          .select(`
+            branch_id,
+            branches (
+              branch_name
+            )
+          `)
+          .eq("email", email)
+          .single();
+
+      console.log(
+        "EMPLOYEE PROFILE:",
+        profile
+      );
+
+      if (
+        profile?.branches?.branch_name
+      ) {
+        setBranchName(
+          profile.branches.branch_name
+        );
+      }
+
+    } catch (err) {
+
+      console.log(
+        "BRANCH FETCH ERROR:",
+        err
+      );
+
+    }
+  };
 
   // CLOSE WHEN CLICK OUTSIDE
   useEffect(() => {
-    const handleClickOutside = (event) => {
+
+    const handleClickOutside =
+      (event) => {
+
       if (
         notificationRef.current &&
         !notificationRef.current.contains(
@@ -49,103 +108,141 @@ export default function EmployeeLayout({ children }) {
         handleClickOutside
       );
     };
+
   }, []);
 
-  const fetchNotifications = async () => {
-  let notif = [];
+  // ================= NOTIFICATIONS =================
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const fetchNotifications =
+    async () => {
 
-  if (!user) return;
+    let notif = [];
 
-  const today = new Date()
-    .toISOString()
-    .split("T")[0];
+    const {
+      data: { user },
+    } =
+      await supabase.auth.getUser();
 
-  // GET LATEST ATTENDANCE TODAY
-  const { data, error } = await supabase
-    .from("attendance_logs")
-    .select("*")
-    .eq("employee_id", user.id)
-    .gte(
-      "created_at",
-      `${today}T00:00:00`
-    )
-    .lte(
-      "created_at",
-      `${today}T23:59:59`
-    )
-    .order("created_at", {
-      ascending: false,
-    });
+    if (!user) return;
 
-  console.log("TODAY ATTENDANCE:", data);
-  console.log("ERROR:", error);
+    const today = new Date()
+      .toISOString()
+      .split("T")[0];
 
-  if (data && data.length > 0) {
-    const attendance = data[0];
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("attendance_logs")
+      .select("*")
+      .eq("employee_id", user.id)
+      .gte(
+        "created_at",
+        `${today}T00:00:00`
+      )
+      .lte(
+        "created_at",
+        `${today}T23:59:59`
+      )
+      .order("created_at", {
+        ascending: false,
+      });
 
-    // NOT TIMED IN
-    if (!attendance.time_in) {
+    console.log(
+      "TODAY ATTENDANCE:",
+      data
+    );
+
+    console.log(
+      "ERROR:",
+      error
+    );
+
+    if (data && data.length > 0) {
+
+      const attendance =
+        data[0];
+
+      // NOT TIMED IN
+      if (!attendance.time_in) {
+
+        notif.push({
+          message:
+            "⚠ You have not timed in today.",
+          level: "urgent",
+        });
+
+      }
+
+      // TIMED IN BUT NO TIME OUT
+      else if (
+        attendance.time_in &&
+        attendance.time_out === null
+      ) {
+
+        notif.push({
+          message:
+            "⚠ You still haven't timed out today.",
+          level: "urgent",
+        });
+
+      }
+
+    } else {
+
       notif.push({
         message:
           "⚠ You have not timed in today.",
         level: "urgent",
       });
+
     }
 
-    // TIMED IN BUT NO TIME OUT
-    else if (
-      attendance.time_in &&
-      attendance.time_out === null
-    ) {
+    // NORMAL
+    if (notif.length === 0) {
+
       notif.push({
         message:
-          "⚠ You still haven't timed out today.",
-        level: "urgent",
+          "✅ No attendance reminders today.",
+        level: "normal",
       });
+
     }
-  } else {
-    notif.push({
-      message:
-        "⚠ You have not timed in today.",
-      level: "urgent",
-    });
-  }
 
-  // NORMAL
-  if (notif.length === 0) {
-    notif.push({
-      message:
-        "✅ No attendance reminders today.",
-      level: "normal",
-    });
-  }
-
-  setNotifications(notif);
-};
+    setNotifications(notif);
+  };
 
   return (
     <div style={styles.container}>
+
       {/* SIDEBAR */}
       <Sidebar role="employee" />
 
       {/* MAIN */}
       <div style={styles.main}>
+
         {/* TOPBAR */}
         <div style={styles.topbar}>
+
           <h3 style={{ margin: 0 }}>
+
             Employee Dashboard
+
+            {branchName &&
+              ` - ${branchName}`}
+
           </h3>
 
           <div style={styles.topRight}>
+
             {/* NOTIFICATION */}
             <div
-              style={styles.notificationWrapper}
+              style={
+                styles.notificationWrapper
+              }
               ref={notificationRef}
             >
+
               <div
                 style={styles.bellContainer}
                 onClick={() =>
@@ -154,6 +251,7 @@ export default function EmployeeLayout({ children }) {
                   )
                 }
               >
+
                 <FaBell
                   size={18}
                   style={{
@@ -161,18 +259,32 @@ export default function EmployeeLayout({ children }) {
                   }}
                 />
 
-                <div style={styles.redDot}></div>
+                <div
+                  style={styles.redDot}
+                ></div>
+
               </div>
 
               {/* DROPDOWN */}
               {showNotifications && (
-                <div style={styles.notificationDropdown}>
-                  <h4 style={styles.notificationTitle}>
+
+                <div
+                  style={
+                    styles.notificationDropdown
+                  }
+                >
+
+                  <h4
+                    style={
+                      styles.notificationTitle
+                    }
+                  >
                     Notifications
                   </h4>
 
                   {notifications.map(
                     (notif, index) => (
+
                       <div
                         key={index}
                         style={{
@@ -187,17 +299,25 @@ export default function EmployeeLayout({ children }) {
                       >
                         {notif.message}
                       </div>
+
                     )
                   )}
+
                 </div>
+
               )}
+
             </div>
 
             {/* PROFILE */}
             <div style={styles.profile}>
-              <div style={styles.avatar}>E</div>
+
+              <div style={styles.avatar}>
+                E
+              </div>
 
               <div>
+
                 <p
                   style={{
                     margin: 0,
@@ -206,7 +326,9 @@ export default function EmployeeLayout({ children }) {
                 >
                   Employee
                 </p>
+
               </div>
+
             </div>
 
             {/* LOGOUT */}
@@ -216,14 +338,18 @@ export default function EmployeeLayout({ children }) {
             >
               Logout
             </button>
+
           </div>
+
         </div>
 
         {/* CONTENT */}
         <div style={styles.content}>
           {children}
         </div>
+
       </div>
+
     </div>
   );
 }
@@ -246,10 +372,12 @@ const styles = {
     height: "76px",
     minHeight: "76px",
     background: "#ffffff",
-    borderBottom: "2px solid #f97316",
+    borderBottom:
+      "2px solid #f97316",
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent:
+      "space-between",
     padding: "0 28px",
     boxSizing: "border-box",
   },
@@ -285,7 +413,8 @@ const styles = {
     right: 0,
     width: "300px",
     background: "#fff",
-    border: "1px solid #e5e7eb",
+    border:
+      "1px solid #e5e7eb",
     borderRadius: "12px",
     boxShadow:
       "0 10px 25px rgba(0,0,0,0.08)",

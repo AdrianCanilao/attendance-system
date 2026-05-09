@@ -10,10 +10,38 @@ export default function ManagerLayout({ children }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef(null);
 
+  const [branchName, setBranchName] = useState("");
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem("role");
     navigate("/");
+  };
+
+  // FETCH BRANCH NAME
+  useEffect(() => {
+    fetchBranch();
+  }, []);
+
+  const fetchBranch = async () => {
+    const email = localStorage.getItem("email");
+
+    if (!email) return;
+
+    const { data, error } = await supabase
+      .from("employee_profiles")
+      .select(`
+        branch_id,
+        branches (
+          branch_name
+        )
+      `)
+      .eq("email", email)
+      .single();
+
+    if (!error && data?.branches?.branch_name) {
+      setBranchName(data.branches.branch_name);
+    }
   };
 
   // CLOSE NOTIFICATION WHEN CLICK OUTSIDE
@@ -110,6 +138,7 @@ export default function ManagerLayout({ children }) {
         <div style={styles.topbar}>
           <h3 style={{ margin: 0 }}>
             Maintenance Specialist Dashboard
+            {branchName && ` - ${branchName}`}
           </h3>
 
           <div style={styles.topRight}>

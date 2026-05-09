@@ -107,14 +107,19 @@ export default function Login() {
         return;
       }
 
-      const role = roleData.name.trim().toLowerCase();
+      const role =
+        roleData.name
+          .trim()
+          .toLowerCase();
+
       await logAudit({
-  user_id: user.id,
-  user_name: user.email,
-  role: role,
-  action: "LOGIN",
-  description: `${user.email} logged into the system`,
-});
+        user_id: user.id,
+        user_name: user.email,
+        role: role,
+        action: "LOGIN",
+        description:
+          `${user.email} logged into the system`,
+      });
 
       console.log(
         "FINAL ROLE:",
@@ -127,33 +132,88 @@ export default function Login() {
         role
       );
 
+      // ✅ SAVE EMAIL
+      localStorage.setItem(
+        "email",
+        email
+      );
+
+      // ✅ SAVE USER ID
+      localStorage.setItem(
+        "user_id",
+        user.id
+      );
+
       // ✅ WAIT BEFORE NAVIGATION
       setTimeout(() => {
+
         if (role === "maintenance") {
-  console.log("GOING TO MAINTENANCE");
-  navigate("/manager/profile");
-}
-else if (role === "hr") {
-  console.log("GOING TO HR");
-  navigate("/hr/profile");
-}
-else if (role === "employee") {
-  console.log("GOING TO EMPLOYEE");
-  navigate("/employee/profile");
-}
-else {
-  console.log("UNKNOWN ROLE");
-}
+
+          console.log(
+            "GOING TO MAINTENANCE"
+          );
+
+          navigate(
+            "/manager/profile"
+          );
+
+        }
+
+        else if (role === "hr") {
+
+          console.log(
+            "GOING TO HR"
+          );
+
+          navigate(
+            "/hr/profile"
+          );
+
+        }
+
+        else if (
+          role === "employee"
+        ) {
+
+          console.log(
+            "GOING TO EMPLOYEE"
+          );
+
+          navigate(
+            "/employee/profile"
+          );
+
+        }
+
+        else {
+
+          console.log(
+            "UNKNOWN ROLE"
+          );
+
+          alert(
+            "Unknown role detected"
+          );
+
+        }
+
       }, 150);
+
     } catch (err) {
+
       console.error(
         "LOGIN ERROR:",
         err
       );
 
-      alert("Something went wrong");
+      alert(
+        "Something went wrong"
+      );
+
     } finally {
+
       setLoading(false);
+
     }
   };
 
@@ -177,8 +237,8 @@ else {
           Company Login Portal
         </p>
 
-        {/* ✅ FORM */}
         <div>
+
           <div style={styles.group}>
             <label>Email</label>
 
@@ -212,8 +272,8 @@ else {
           </div>
 
           <button
-  type="button"
-  onClick={handleLogin}
+            type="button"
+            onClick={handleLogin}
             style={styles.button}
             disabled={loading}
           >
@@ -221,6 +281,7 @@ else {
               ? "Logging in..."
               : "Login"}
           </button>
+
         </div>
       </div>
     </div>
@@ -232,34 +293,51 @@ const styles = {
     height: "100vh",
     width: "100vw",
     overflow: "hidden",
+
     backgroundImage:
       "url('/bg.jpg')",
 
     backgroundSize: "cover",
-    backgroundPosition: "center",
+
+    backgroundPosition:
+      "center",
+
     backgroundRepeat:
       "no-repeat",
 
     display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
+
+    justifyContent:
+      "center",
+
+    alignItems:
+      "center",
+
     position: "relative",
   },
 
   overlay: {
     position: "absolute",
+
     inset: 0,
+
     background:
       "rgba(0,0,0,0.6)",
   },
 
   card: {
     position: "relative",
+
     zIndex: 1,
+
     width: "360px",
+
     background: "#ffffff",
+
     padding: "35px",
+
     borderRadius: "10px",
+
     boxShadow:
       "0 10px 30px rgba(0,0,0,0.3)",
 
@@ -271,49 +349,75 @@ const styles = {
 
   logo: {
     width: "70px",
+
     height: "70px",
+
     objectFit: "contain",
+
     marginBottom: "10px",
   },
 
   title: {
     marginBottom: "10px",
+
     color: "#f97316",
+
     fontWeight: "bold",
+
     fontSize: "26px",
+
     lineHeight: "1.2",
   },
 
   subtitle: {
     marginBottom: "20px",
+
     color: "#777",
+
     fontSize: "14px",
   },
 
   group: {
     display: "flex",
-    flexDirection: "column",
+
+    flexDirection:
+      "column",
+
     marginBottom: "15px",
+
     textAlign: "left",
   },
 
   input: {
     padding: "10px",
+
     borderRadius: "5px",
-    border: "1px solid #ddd",
+
+    border:
+      "1px solid #ddd",
+
     marginTop: "5px",
   },
 
   button: {
     width: "100%",
+
     padding: "12px",
+
     background: "#f97316",
+
     color: "#fff",
+
     border: "none",
+
     borderRadius: "5px",
+
     fontWeight: "bold",
+
     cursor: "pointer",
+
     marginTop: "10px",
+
     transition: "0.3s",
   },
 };

@@ -331,17 +331,19 @@ role: "maintenance",
               />
             </div>
 
-            <div style={{ gridColumn: "span 2" }}>
-              <label style={styles.label}>Position</label>
-              <input
-                name="position"
-                placeholder="Enter position"
-                value={form.position}
-                onChange={handleChange}
-                style={styles.input}
-              />
-            </div>
-            <div style={{ gridColumn: "span 2" }}>
+            <div>
+  <label style={styles.label}>Position</label>
+
+  <input
+    name="position"
+    placeholder="Enter position"
+    value={form.position}
+    onChange={handleChange}
+    style={styles.input}
+  />
+</div>
+
+<div>
   <label style={styles.label}>Branch Assignment</label>
 
   <select
