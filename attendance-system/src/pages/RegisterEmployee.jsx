@@ -8,15 +8,14 @@ export default function RegisterEmployee() {
   const webcamRef = useRef(null);
 
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    contact: "",
-    position: "",
-    clock_in: "",
-    clock_out: "",
-branch_id: "",
-  });
+  name: "",
+  email: "",
+  password: "",
+  contact: "",
+  position: "",
+  branch_id: "",
+  shift_id: "",
+});
 
   const [showCamera, setShowCamera] = useState(false);
   const [imageSrc, setImageSrc] = useState(null);
@@ -24,6 +23,7 @@ branch_id: "",
   const [capturedImages, setCapturedImages] = useState([]);
   const [step, setStep] = useState(0);
   const [branches, setBranches] = useState([]);
+  const [shifts, setShifts] = useState([]);
   useEffect(() => {
   fetchBranches();
 }, []);
@@ -38,13 +38,44 @@ const fetchBranches = async () => {
     setBranches(data || []);
   }
 };
+const fetchShifts = async (branchId) => {
+  if (!branchId) {
+    setShifts([]);
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("branch_shifts")
+    .select("*")
+    .eq("branch_id", branchId)
+    .eq("is_active", true)
+    .order("time_in");
+
+  if (!error) {
+    setShifts(data || []);
+  }
+};
 
   const steps = ["Look straight", "Turn LEFT", "Turn RIGHT"];
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const handleChange = async (e) => {
+  const { name, value } = e.target;
 
+  setForm((prev) => ({
+    ...prev,
+    [name]: value,
+  }));
+
+  if (name === "branch_id") {
+    setForm((prev) => ({
+      ...prev,
+      branch_id: value,
+      shift_id: "",
+    }));
+
+    fetchShifts(value);
+  }
+};
   const openCamera = () => {
     setCapturedImages([]);
     setStep(0);
@@ -84,14 +115,12 @@ const fetchBranches = async () => {
 
   const handleRegister = async () => {
     const {
-      name,
-      email,
-      password,
-      contact,
-      position,
-      clock_in,
-      clock_out,
-    } = form;
+  name,
+  email,
+  password,
+  contact,
+  position,
+} = form;
 
     if (
       !name ||
@@ -99,13 +128,12 @@ const fetchBranches = async () => {
       !password ||
       !contact ||
       !position ||
-      !clock_in ||
-      !clock_out ||
-!form.branch_id
-    ) {
-      alert("Please fill all fields");
-      return;
-    }
+      !form.branch_id ||
+      !form.shift_id
+      ) {
+          alert("Please fill all fields");
+          return;
+        }
 
     if (capturedImages.length < 3) {
       alert("Complete all face steps");
@@ -134,9 +162,8 @@ const fetchBranches = async () => {
           contact_number: contact,
           position,
           role_id: EMPLOYEE_ROLE_ID,
-          clock_in,
-          clock_out,
-branch_id: form.branch_id,
+          branch_id: form.branch_id,
+          shift_id: form.shift_id,
         },
       ]);
 
@@ -187,9 +214,8 @@ role: "maintenance",
         password: "",
         contact: "",
         position: "",
-        clock_in: "",
-        clock_out: "",
         branch_id: "",
+        shift_id: "",
       });
 
       setCapturedImages([]);
@@ -310,28 +336,6 @@ role: "maintenance",
             </div>
 
             <div>
-              <label style={styles.label}>Clock In</label>
-              <input
-                type="time"
-                name="clock_in"
-                value={form.clock_in}
-                onChange={handleChange}
-                style={styles.input}
-              />
-            </div>
-
-            <div>
-              <label style={styles.label}>Clock Out</label>
-              <input
-                type="time"
-                name="clock_out"
-                value={form.clock_out}
-                onChange={handleChange}
-                style={styles.input}
-              />
-            </div>
-
-            <div>
   <label style={styles.label}>Position</label>
 
   <input
@@ -361,6 +365,25 @@ role: "maintenance",
     ))}
   </select>
 </div>
+<div>
+  <label style={styles.label}>Shift Assignment</label>
+
+  <select
+    name="shift_id"
+    value={form.shift_id}
+    onChange={handleChange}
+    style={styles.input}
+    disabled={!form.branch_id}
+  >
+    <option value="">Select Shift</option>
+
+    {shifts.map((shift) => (
+      <option key={shift.id} value={shift.id}>
+        {shift.shift_name} ({shift.time_in} - {shift.time_out})
+      </option>
+    ))}
+  </select>
+</div>
           </div>
 
           <button onClick={handleRegister} disabled={loading} style={styles.primaryBtn}>
@@ -368,9 +391,11 @@ role: "maintenance",
           </button>
         </div>
       </div>
+
     </ManagerLayout>
   );
 }
+
 
 const styles = {
   wrapper: { padding: "20px" },

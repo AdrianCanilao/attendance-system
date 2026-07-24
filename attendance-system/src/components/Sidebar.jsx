@@ -134,58 +134,59 @@ export default function Sidebar({ role }) {
       <FaHistory /> Attendance Tracker
     </button>
 
-    {/* EMPLOYEE MANAGEMENT */}
-    <div>
-      <button
-        onClick={() => setOpenEmployee(!openEmployee)}
-        style={styles.link}
-      >
-        <FaUsers />
-        Employee Management
-        {openEmployee ? " ▾" : " ▸"}
-      </button>
+{/* MANAGER MANAGEMENT */}
+<div>
+  <button
+    onClick={() => setOpenEmployee(!openEmployee)}
+    style={styles.link}
+  >
+    <FaUsers />
+    Employee Management
+    {openEmployee ? " ▾" : " ▸"}
+  </button>
 
-      <div
-        style={{
-          ...styles.dropdown,
-          maxHeight: openEmployee ? "250px" : "0px",
-          opacity: openEmployee ? 1 : 0,
-        }}
-      >
-        <button
-          onClick={() => navigate("/manager/register")}
-          style={{
-            ...styles.sublink,
-            ...(isActive("/manager/register") &&
-              styles.activeSubLink),
-          }}
-        >
-          Register Employee
-        </button>
+  <div
+    style={{
+      ...styles.dropdown,
+      maxHeight: openEmployee ? "200px" : "0px",
+      opacity: openEmployee ? 1 : 0,
+    }}
+  >
+    <button
+      onClick={() => navigate("/manager/register")}
+      style={{
+        ...styles.sublink,
+        ...(isActive("/manager/register") &&
+          styles.activeSubLink),
+      }}
+    >
+      Register Employee
+    </button>
 
-        <button
-          onClick={() => navigate("/manager/edit")}
-          style={{
-            ...styles.sublink,
-            ...(isActive("/manager/edit") &&
-              styles.activeSubLink),
-          }}
-        >
-          Edit Employee
-        </button>
+    <button
+      onClick={() => navigate("/manager/edit")}
+      style={{
+        ...styles.sublink,
+        ...(isActive("/manger/edit") &&
+          styles.activeSubLink),
+      }}
+    >
+      Edit Employee
+    </button>
 
-        <button
-          onClick={() => navigate("/manager/employees")}
-          style={{
-            ...styles.sublink,
-            ...(isActive("/manager/employees") &&
-              styles.activeSubLink),
-          }}
-        >
-          Employee List
-        </button>
-      </div>
-    </div>
+    <button
+  onClick={() => navigate("/manager/employees")}
+  style={{
+    ...styles.sublink,
+    ...(isActive("/manager/employees") &&
+      styles.activeSubLink),
+  }}
+>
+  Employee List
+</button>
+  </div>
+</div>
+
 
     {/* LEAVE MANAGEMENT */}
     <div>
@@ -287,6 +288,16 @@ export default function Sidebar({ role }) {
         >
           Edit Maintenance Specialist
         </button>
+                <button
+  onClick={() => navigate("/hr/shift-settings")}
+  style={{
+    ...styles.sublink,
+    ...(isActive("/hr/shift-settings") &&
+      styles.activeSubLink),
+  }}
+>
+  Shift Settings
+</button>
       </div>
     </div>
   </>

@@ -16,6 +16,7 @@ import HRAuditTrail from "./pages/HRAuditTrail";
 import RegisterManager from "./pages/RegisterManager";
 import EditManager from "./pages/EditManager";
 import ManagerAttendanceTracker from "./pages/ManagerAttendanceTracker";
+import ShiftSettings from "./pages/ShiftSettings";
 
 export default function App() {
   return (
@@ -100,6 +101,14 @@ export default function App() {
     </ProtectedRoute>
   }
 />
+<Route
+  path="/hr/shift-settings"
+  element={
+    <ProtectedRoute role="hr">
+      <ShiftSettings />
+    </ProtectedRoute>
+  }
+/>
 
         {/* ================= EMPLOYEE ================= */}
 
@@ -159,7 +168,6 @@ export default function App() {
   path="/hr/edit-manager"
   element={<EditManager />}
 />
-
       </Routes>
     </BrowserRouter>
   );
