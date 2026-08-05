@@ -111,7 +111,7 @@ export default function ShiftSettings() {
           shift_name: formData.shift_name,
           time_in: formData.time_in,
           time_out: formData.time_out,
-          grace_minutes: formData.grace_minutes,
+          grace_minutes: 10,
           updated_at: new Date(),
         })
         .eq("id", editingShift.id);
@@ -130,7 +130,7 @@ export default function ShiftSettings() {
           shift_name: formData.shift_name,
           time_in: formData.time_in,
           time_out: formData.time_out,
-          grace_minutes: formData.grace_minutes,
+          grace_minutes: 10,
           is_active: true,
         });
 
@@ -145,28 +145,27 @@ export default function ShiftSettings() {
     setShowForm(false);
     loadShifts(selectedBranch);
   }
+  async function deleteShift(id) {
+  const confirmDelete = window.confirm(
+    "Delete this shift?"
+  );
 
-  async function deactivateShift(id) {
-    const confirmDelete = window.confirm(
-      "Deactivate this shift?"
-    );
+  if (!confirmDelete) return;
 
-    if (!confirmDelete) return;
+  const { error } = await supabase
+    .from("branch_shifts")
+    .delete()
+    .eq("id", id);
 
-    const { error } = await supabase
-      .from("branch_shifts")
-      .update({
-        is_active: false,
-      })
-      .eq("id", id);
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    loadShifts(selectedBranch);
+  if (error) {
+    alert(error.message);
+    return;
   }
+
+  alert("Shift deleted successfully.");
+
+  loadShifts(selectedBranch);
+}
 
   return (
     <HRLayout>
@@ -186,19 +185,10 @@ export default function ShiftSettings() {
           }}
         >
           <div>
-            <h2 style={{ margin: 0 }}>
-              Shift Settings
-            </h2>
-
-            <p
-              style={{
-                color: "#666",
-                marginTop: "8px",
-              }}
-            >
-              Configure shifts for every branch.
-            </p>
-          </div>
+  <h1 style={styles.pageTitle}>
+    Shift Settings
+  </h1>
+</div>
 
           <button
             onClick={openAddForm}
@@ -235,152 +225,167 @@ export default function ShiftSettings() {
           </label>
 
           <select
-            value={selectedBranch}
-            onChange={(e) => setSelectedBranch(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px",
-              borderRadius: "8px",
-              border: "1px solid #ccc",
-            }}
-          >
+  value={selectedBranch}
+  onChange={(e) => setSelectedBranch(e.target.value)}
+  style={{
+    width: "100%",
+    padding: "12px",
+    borderRadius: "8px",
+    border: "1px solid #ccc",
+    backgroundColor: "#fff",
+    color: "#111827",
+    fontSize: "15px",
+    appearance: "auto",
+    WebkitAppearance: "menulist",
+    MozAppearance: "menulist",
+  }}
+>
             {branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.branch_name}
-              </option>
+              <option
+  key={branch.id}
+  value={branch.id}
+  style={{
+    backgroundColor: "#fff",
+    color: "#111827",
+  }}
+>
+  {branch.branch_name}
+</option>
             ))}
           </select>
         </div>
 
-        <div
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(380px,1fr))",
+    gap: "25px",
+  }}
+>
+  {loading ? (
+    <h3>Loading...</h3>
+  ) : (
+    shifts.map((shift) => (
+      <div
+        key={shift.id}
+        style={{
+          background: "#fff",
+          borderRadius: "14px",
+          padding: "25px",
+          boxShadow: "0 3px 12px rgba(0,0,0,.08)",
+        }}
+      >
+        <h3
           style={{
-            background: "#fff",
-            borderRadius: "10px",
-            overflow: "hidden",
-            boxShadow: "0 2px 10px rgba(0,0,0,.08)",
+            marginTop: 0,
+            marginBottom: "25px",
+            color: "#222",
           }}
         >
-          <table
+          {shift.shift_name} Shift
+        </h3>
+
+        <div style={{ marginBottom: "18px" }}>
+          <label
             style={{
-              width: "100%",
-              borderCollapse: "collapse",
+              display: "block",
+              fontWeight: "600",
+              marginBottom: "8px",
             }}
           >
-            <thead
-              style={{
-                background: "#ff7a00",
-                color: "#fff",
-              }}
-            >
-              <tr>
-                <th style={{ padding: "14px" }}>Shift</th>
-                <th>Time In</th>
-                <th>Time Out</th>
-                <th>Grace (mins)</th>
-                <th>Status</th>
-                <th width="220">Actions</th>
-              </tr>
-            </thead>
+            Time In
+          </label>
 
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan="6"
-                    style={{
-                      textAlign: "center",
-                      padding: "30px",
-                    }}
-                  >
-                    Loading...
-                  </td>
-                </tr>
-              ) : shifts.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="6"
-                    style={{
-                      textAlign: "center",
-                      padding: "30px",
-                    }}
-                  >
-                    No shifts found.
-                  </td>
-                </tr>
-              ) : (
-                shifts.map((shift) => (
-                  <tr
-                    key={shift.id}
-                    style={{
-                      borderBottom: "1px solid #eee",
-                    }}
-                  >
-                    <td style={{ padding: "14px" }}>
-                      {shift.shift_name}
-                    </td>
-
-                    <td>{shift.time_in}</td>
-
-                    <td>{shift.time_out}</td>
-
-                    <td>{shift.grace_minutes}</td>
-
-                    <td>
-                      <span
-                        style={{
-                          background: shift.is_active
-                            ? "#4CAF50"
-                            : "#999",
-                          color: "#fff",
-                          padding: "5px 10px",
-                          borderRadius: "20px",
-                          fontSize: "13px",
-                        }}
-                      >
-                        {shift.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-
-                    <td>
-                      <button
-                        onClick={() => openEditForm(shift)}
-                        style={{
-                          background: "#1976D2",
-                          color: "#fff",
-                          border: "none",
-                          padding: "8px 14px",
-                          borderRadius: "6px",
-                          marginRight: "8px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Edit
-                      </button>
-
-                      {shift.is_active && (
-                        <button
-                          onClick={() =>
-                            deactivateShift(shift.id)
-                          }
-                          style={{
-                            background: "#d32f2f",
-                            color: "#fff",
-                            border: "none",
-                            padding: "8px 14px",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Deactivate
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <div
+            style={{
+              padding: "12px",
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+              background: "#fafafa",
+            }}
+          >
+            {new Date(
+              `1970-01-01T${shift.time_in}`
+            ).toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            })}
+          </div>
         </div>
+
+        <div style={{ marginBottom: "25px" }}>
+          <label
+            style={{
+              display: "block",
+              fontWeight: "600",
+              marginBottom: "8px",
+            }}
+          >
+            Time Out
+          </label>
+
+          <div
+            style={{
+              padding: "12px",
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+              background: "#fafafa",
+            }}
+          >
+            {new Date(
+              `1970-01-01T${shift.time_out}`
+            ).toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            })}
+          </div>
+        </div>
+
+        <div
+  style={{
+    display: "flex",
+    gap: "10px",
+    marginTop: "20px",
+  }}
+>
+  <button
+    onClick={() => openEditForm(shift)}
+    style={{
+      flex: 1,
+      background: "#ff7a00",
+      color: "#fff",
+      border: "none",
+      padding: "12px",
+      borderRadius: "8px",
+      cursor: "pointer",
+      fontWeight: "bold",
+    }}
+  >
+    Edit
+  </button>
+
+  <button
+    onClick={() => deleteShift(shift.id)}
+    style={{
+      flex: 1,
+      background: "#d32f2f",
+      color: "#fff",
+      border: "none",
+      padding: "12px",
+      borderRadius: "8px",
+      cursor: "pointer",
+      fontWeight: "bold",
+    }}
+  >
+    Delete
+  </button>
+</div>
+      </div>
+    ))
+  )}
+</div>
 
         {showForm && (
           <div
@@ -448,19 +453,6 @@ export default function ShiftSettings() {
                   style={inputStyle}
                 />
 
-                <label>Grace Minutes</label>
-
-                <input
-                  type="number"
-                  value={formData.grace_minutes}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      grace_minutes: Number(e.target.value),
-                    })
-                  }
-                  style={inputStyle}
-                />
                                 <div
                   style={{
                     display: "flex",
@@ -507,7 +499,17 @@ export default function ShiftSettings() {
     </HRLayout>
   );
 }
-
+const styles = {
+  pageTitle: {
+    fontSize: "25px",
+    fontWeight: "650",
+    color: "#111827",
+    margin: "0 0 20px 0",
+    padding: 0,
+    letterSpacing: "-0.3px",
+    lineHeight: "1.2",
+  },
+};
 const inputStyle = {
   width: "100%",
   padding: "10px 12px",

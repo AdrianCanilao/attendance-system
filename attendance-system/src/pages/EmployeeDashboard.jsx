@@ -32,6 +32,7 @@ export default function EmployeeDashboard({
     employee:
       "e4dbb928-7f0e-4da9-9eff-d7700d37b25a",
   };
+  const GRACE_MINUTES = 10;
 
   useEffect(() => {
     loadData();
@@ -185,14 +186,19 @@ export default function EmployeeDashboard({
       }
 
       const { data: profile, error } =
-        await supabase
-          .from("employee_profiles")
-          .select(
-            "id, full_name, role_id"
-          )
-          .eq("id", user.id)
-          .single();
-
+  await supabase
+    .from("employee_profiles")
+    .select(
+      `
+      id,
+      full_name,
+      role_id,
+      clock_in,
+      clock_out
+      `
+    )
+    .eq("id", user.id)
+    .single();
       console.log(
         "SCAN PROFILE:",
         profile
@@ -210,9 +216,19 @@ export default function EmployeeDashboard({
 
       const employeeId = profile.id;
 
-      const today = new Date()
-        .toISOString()
-        .split("T")[0];
+const today = new Date()
+  .toISOString()
+  .split("T")[0];
+
+const now = new Date();
+
+const scheduledClockIn = new Date(
+  `${today}T${profile.clock_in}`
+);
+
+const scheduledClockOut = new Date(
+  `${today}T${profile.clock_out}`
+);
 
       const { data: existing } =
         await supabase
@@ -344,21 +360,44 @@ export default function EmployeeDashboard({
       if (
         actionType === "time_in"
       ) {
+         const graceLimit = new Date(scheduledClockIn);
+
+  graceLimit.setMinutes(
+    graceLimit.getMinutes() + GRACE_MINUTES
+  );
+
+  let attendanceStatus = "Present";
+  let lateMinutes = 0;
+
+  if (now > graceLimit) {
+    attendanceStatus = "Late";
+
+    lateMinutes = Math.floor(
+      (now - graceLimit) / 60000
+    );
+  }
+
         await supabase
-          .from("attendance_logs")
-          .insert({
-            employee_id: employeeId,
+  .from("attendance_logs")
+  .insert({
+    employee_id: employeeId,
 
-            log_date: new Date()
-              .toISOString()
-              .split("T")[0],
+    log_date: today,
 
-            time_in:
-              new Date().toISOString(),
+    time_in: now.toISOString(),
 
-            time_in_face_url:
-              faceUrl,
-          });
+    scheduled_time_in: profile.clock_in,
+
+    scheduled_time_out: profile.clock_out,
+
+    late_minutes: lateMinutes,
+
+    overtime_minutes: 0,
+
+    status: attendanceStatus,
+
+    time_in_face_url: faceUrl,
+  });
 
         await logAudit({
           user_id: employeeId,
@@ -375,20 +414,28 @@ export default function EmployeeDashboard({
           description: `${profile.full_name} timed in`,
         });
       } else {
-        await supabase
-          .from("attendance_logs")
-          .update({
-            time_out:
-              new Date().toISOString(),
 
-            time_out_face_url:
-              faceUrl,
-          })
-          .eq(
-            "employee_id",
-            employeeId
-          )
-          .is("time_out", null);
+  let overtimeMinutes = 0;
+
+  if (now > scheduledClockOut) {
+    overtimeMinutes = Math.floor(
+      (now - scheduledClockOut) / 60000
+    );
+  }
+
+  await supabase
+  .from("attendance_logs")
+  .update({
+    time_out: now.toISOString(),
+
+    overtime_minutes: overtimeMinutes,
+
+    time_out_face_url: faceUrl,
+  })
+  .eq("employee_id", employeeId)
+  .eq("log_date", today)
+  .is("time_out", null);
+
 
         await logAudit({
           user_id: employeeId,

@@ -153,19 +153,38 @@ const fetchShifts = async (branchId) => {
 
       const userId = authData.user.id;
       const EMPLOYEE_ROLE_ID = "e4dbb928-7f0e-4da9-9eff-d7700d37b25a";
+      // GET SELECTED SHIFT DETAILS
+const { data: selectedShift } = await supabase
+  .from("branch_shifts")
+  .select("time_in, time_out, grace_minutes")
+  .eq("id", form.shift_id)
+  .single();
+
+if (!selectedShift) {
+  alert("Selected shift not found.");
+  return;
+}
 
       await supabase.from("employee_profiles").insert([
-        {
-          id: userId,
-          full_name: name,
-          email,
-          contact_number: contact,
-          position,
-          role_id: EMPLOYEE_ROLE_ID,
-          branch_id: form.branch_id,
-          shift_id: form.shift_id,
-        },
-      ]);
+{
+    id: userId,
+    full_name: name,
+    email,
+    contact_number: contact,
+    position,
+
+    role_id: EMPLOYEE_ROLE_ID,
+
+    branch_id: form.branch_id,
+
+    shift_id: form.shift_id,
+
+    // AUTO COPY SHIFT SCHEDULE
+    clock_in: selectedShift.time_in,
+    clock_out: selectedShift.time_out,
+    grace_minutes: selectedShift.grace_minutes,
+},
+]);
 
       // 🔥 UPLOAD MULTIPLE IMAGES
       for (let i = 0; i < capturedImages.length; i++) {
@@ -378,9 +397,24 @@ role: "maintenance",
     <option value="">Select Shift</option>
 
     {shifts.map((shift) => (
-      <option key={shift.id} value={shift.id}>
-        {shift.shift_name} ({shift.time_in} - {shift.time_out})
-      </option>
+      <option
+  key={shift.id}
+  value={shift.id}
+>
+  {shift.shift_name} (
+  {new Date(`1970-01-01T${shift.time_in}`).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  })}
+  {" - "}
+  {new Date(`1970-01-01T${shift.time_out}`).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  })}
+  )
+</option>
     ))}
   </select>
 </div>

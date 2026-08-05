@@ -10,6 +10,9 @@ export default function EditManager() {
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({});
   const [loading, setLoading] = useState(false);
+
+const [branches, setBranches] = useState([]);
+const [shifts, setShifts] = useState([]);
   const [hasFace, setHasFace] = useState(true);
   const [showCamera, setShowCamera] = useState(false);
   const [imageSrc, setImageSrc] = useState(null);
@@ -18,8 +21,32 @@ export default function EditManager() {
   const webcamRef = useRef(null);
 
   useEffect(() => {
-    fetchEmployees();
-  }, []);
+  fetchEmployees();
+  fetchBranches();
+}, []);
+const fetchBranches = async () => {
+  const { data } = await supabase
+    .from("branches")
+    .select("*")
+    .order("branch_name");
+
+  setBranches(data || []);
+};
+
+const fetchShifts = async (branchId) => {
+  if (!branchId) {
+    setShifts([]);
+    return;
+  }
+
+  const { data } = await supabase
+    .from("branch_shifts")
+    .select("*")
+    .eq("branch_id", branchId)
+    .order("time_in");
+
+  setShifts(data || []);
+};
 
   const fetchEmployees = async () => {
     const MANAGER_ROLE_ID = "b381a7a0-9595-4c69-abf1-5c15a827647a";
@@ -38,11 +65,16 @@ const { data } = await supabase
   const openModal = (emp) => {
     setSelected(emp);
     setForm({
-      name: emp.full_name,
-      email: emp.email,
-      contact: emp.contact_number,
-      position: emp.position,
-    });
+  name: emp.full_name,
+  email: emp.email,
+  contact: emp.contact_number,
+  position: emp.position,
+
+  branch_id: emp.branch_id || "",
+  shift_id: emp.shift_id || "",
+});
+
+fetchShifts(emp.branch_id);
 setImageSrc(emp.face_url || null);
     setHasFace(!!emp.face_url);
     setCapturedImages([]);
@@ -149,10 +181,11 @@ setImageSrc(emp.face_url || null);
       await supabase
         .from("employee_profiles")
         .update({
-          full_name: form.name,
-          contact_number: form.contact,
-          position: form.position,
-        })
+  full_name: form.name,
+  contact_number: form.contact,
+  position: form.position,
+  shift_id: form.shift_id,
+})
         .eq("id", selected.id);
 
       if (capturedImages.length === 3) {
@@ -319,6 +352,36 @@ setImageSrc(emp.face_url || null);
                   <input name="position" value={form.position} onChange={handleChange} style={styles.input} />
                 </div>
               </div>
+              <div>
+  <label style={styles.label}>Shift</label>
+
+  <select
+    name="shift_id"
+    value={form.shift_id || ""}
+    onChange={handleChange}
+    style={styles.input}
+  >
+    <option value="">Select Shift</option>
+
+    {shifts.map((shift) => (
+      <option key={shift.id} value={shift.id}>
+        {`${shift.shift_name} (${new Date(
+          `1970-01-01T${shift.time_in}`
+        ).toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })} - ${new Date(
+          `1970-01-01T${shift.time_out}`
+        ).toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })})`}
+      </option>
+    ))}
+  </select>
+</div>
 
               <div style={styles.actions}>
                 <button onClick={handleUpdate} style={styles.primary}>

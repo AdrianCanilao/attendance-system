@@ -8,15 +8,14 @@ export default function RegisterManager() {
   const webcamRef = useRef(null);
 
   const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    contact: "",
-    position: "",
-    clock_in: "",
-    clock_out: "",
-branch_id: "",
-  });
+  name: "",
+  email: "",
+  password: "",
+  contact: "",
+  position: "",
+  branch_id: "",
+  shift_id: "",
+});
 
   const [showCamera, setShowCamera] = useState(false);
   const [imageSrc, setImageSrc] = useState(null);
@@ -24,6 +23,7 @@ branch_id: "",
   const [capturedImages, setCapturedImages] = useState([]);
   const [step, setStep] = useState(0);
   const [branches, setBranches] = useState([]);
+  const [shifts, setShifts] = useState([]);
 
 useEffect(() => {
   fetchBranches();
@@ -39,12 +39,42 @@ const fetchBranches = async () => {
     setBranches(data || []);
   }
 };
+const fetchShifts = async (branchId) => {
+  if (!branchId) {
+    setShifts([]);
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("branch_shifts")
+    .select("*")
+    .eq("branch_id", branchId)
+    .order("time_in");
+
+  if (!error) {
+    setShifts(data || []);
+  }
+};
 
   const steps = ["Look straight", "Turn LEFT", "Turn RIGHT"];
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = async (e) => {
+  const { name, value } = e.target;
+
+  const updated = {
+    ...form,
+    [name]: value,
   };
+
+  setForm(updated);
+
+  if (name === "branch_id") {
+    updated.shift_id = "";
+    setForm(updated);
+
+    fetchShifts(value);
+  }
+};
 
   const openCamera = () => {
     setCapturedImages([]);
@@ -89,24 +119,21 @@ const fetchBranches = async () => {
       email,
       password,
       contact,
-      position,
-      clock_in,
-      clock_out,
+      position, 
     } = form;
 
     if (
-      !name ||
-      !email ||
-      !password ||
-      !contact ||
-      !position ||
-      !clock_in ||
-      !clock_out ||
-!form.branch_id
-    ) {
-      alert("Please fill all fields");
-      return;
-    }
+  !name ||
+  !email ||
+  !password ||
+  !contact ||
+  !position ||
+  !form.branch_id ||
+  !form.shift_id
+) {
+  alert("Please fill all fields");
+  return;
+}
 
     if (capturedImages.length < 3) {
       alert("Complete all face steps");
@@ -135,9 +162,8 @@ const fetchBranches = async () => {
           contact_number: contact,
           position,
           role_id: MANAGER_ROLE_ID,
-          clock_in,
-          clock_out,
 branch_id: form.branch_id,
+shift_id: form.shift_id,
         },
       ]);
 
@@ -188,9 +214,8 @@ action: "REGISTER_MAINTENANCE",
         password: "",
         contact: "",
         position: "",
-        clock_in: "",
-        clock_out: "",
         branch_id: "",
+shift_id: "",
       });
 
       setCapturedImages([]);
@@ -311,28 +336,6 @@ action: "REGISTER_MAINTENANCE",
             </div>
 
             <div>
-              <label style={styles.label}>Clock In</label>
-              <input
-                type="time"
-                name="clock_in"
-                value={form.clock_in}
-                onChange={handleChange}
-                style={styles.input}
-              />
-            </div>
-
-            <div>
-              <label style={styles.label}>Clock Out</label>
-              <input
-                type="time"
-                name="clock_out"
-                value={form.clock_out}
-                onChange={handleChange}
-                style={styles.input}
-              />
-            </div>
-
-            <div>
   <label style={styles.label}>Position</label>
 
   <input
@@ -358,6 +361,41 @@ action: "REGISTER_MAINTENANCE",
     {branches.map((branch) => (
       <option key={branch.id} value={branch.id}>
         {branch.branch_name} ({branch.branch_code})
+      </option>
+    ))}
+  </select>
+</div>
+<div>
+  <label style={styles.label}>Shift Assignment</label>
+
+  <select
+    name="shift_id"
+    value={form.shift_id}
+    onChange={handleChange}
+    style={styles.input}
+    disabled={!form.branch_id}
+  >
+    <option value="">
+      {form.branch_id
+        ? "Select Shift"
+        : "Select Branch First"}
+    </option>
+
+    {shifts.map((shift) => (
+      <option key={shift.id} value={shift.id}>
+        {`${shift.shift_name} (${new Date(
+          `1970-01-01T${shift.time_in}`
+        ).toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })} - ${new Date(
+          `1970-01-01T${shift.time_out}`
+        ).toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })})`}
       </option>
     ))}
   </select>
