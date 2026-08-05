@@ -35,3 +35,5 @@ http://localhost:5173
 * Make sure Supabase keys are correct
 * Use the same Supabase project for testing
 * Allow camera access for face recognition
+
+//git add . && git commit -m "update" && git push
