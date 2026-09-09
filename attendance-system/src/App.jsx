@@ -1,114 +1,173 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import Login from "./pages/Login";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+
 import LeaveRequest from "./pages/LeaveRequest";
 import ManagerLeave from "./pages/ManagerLeave";
 import MyLeave from "./pages/MyLeave";
+
 import RegisterEmployee from "./pages/RegisterEmployee";
 import EditEmployee from "./pages/EditEmployee";
 import Profile from "./pages/Profile";
 import LeaveCounts from "./pages/LeaveCounts";
 import EmployeeList from "./pages/EmployeeList";
+
 import HRDashboard from "./pages/HRDashboard";
 import HRAuditTrail from "./pages/HRAuditTrail";
 import RegisterManager from "./pages/RegisterManager";
 import EditManager from "./pages/EditManager";
+
 import ManagerAttendanceTracker from "./pages/ManagerAttendanceTracker";
 import ShiftSettings from "./pages/ShiftSettings";
+
+import Kiosk from "./pages/Kiosk";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
 
-        {/* LOGIN */}
+        {/* ================= LOGIN ================= */}
+
         <Route path="/" element={<Login />} />
 
-        {/* ================= MANAGER ================= */}
 
-<Route
-  path="/manager"
-  element={
-    <ProtectedRoute role="maintenance">
-      <ManagerAttendanceTracker />
-    </ProtectedRoute>
-  }
-/>
+        {/* ================= KIOSK ================= */}
 
-<Route
-  path="/manager/attendance"
-  element={
-    <ProtectedRoute role="maintenance">
-      <ManagerDashboard />
-    </ProtectedRoute>
-  }
-/>
+        {/* 
+          Public route.
+          Employees do NOT log in on the physical kiosk.
+        */}
 
-<Route path="/manager/employees" element={<EmployeeList />} />
+        <Route
+          path="/kiosk"
+          element={<Kiosk />}
+        />
 
-<Route
-  path="/manager/profile"
-  element={
-    <ProtectedRoute role="maintenance">
-      <Profile />
-    </ProtectedRoute>
-  }
-/>
 
-<Route
-  path="/manager/register"
-  element={
-    <ProtectedRoute role="maintenance">
-      <RegisterEmployee />
-    </ProtectedRoute>
-  }
-/>
+        {/* ================= MAINTENANCE SPECIALIST ================= */}
 
-<Route
-  path="/manager/edit"
-  element={
-    <ProtectedRoute role="maintenance">
-      <EditEmployee />
-    </ProtectedRoute>
-  }
-/>
+        <Route
+          path="/manager"
+          element={
+            <ProtectedRoute role="maintenance">
+              <ManagerAttendanceTracker />
+            </ProtectedRoute>
+          }
+        />
 
-<Route
-  path="/manager/leave"
-  element={
-    <ProtectedRoute role="maintenance">
-      <ManagerLeave />
-    </ProtectedRoute>
-  }
-/>
+        <Route
+          path="/manager/attendance"
+          element={
+            <ProtectedRoute role="maintenance">
+              <ManagerDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-<Route
-  path="/manager/leave-approval"
-  element={
-    <ProtectedRoute role="maintenance">
-      <ManagerLeave />
-    </ProtectedRoute>
-  }
-/>
+        <Route
+          path="/manager/employees"
+          element={
+            <ProtectedRoute role="maintenance">
+              <EmployeeList />
+            </ProtectedRoute>
+          }
+        />
 
-<Route
-  path="/manager/edit-leave-counts"
-  element={
-    <ProtectedRoute role="maintenance">
-      <LeaveCounts />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/hr/shift-settings"
-  element={
-    <ProtectedRoute role="hr">
-      <ShiftSettings />
-    </ProtectedRoute>
-  }
-/>
+        <Route
+          path="/manager/profile"
+          element={
+            <ProtectedRoute role="maintenance">
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/manager/register"
+          element={
+            <ProtectedRoute role="maintenance">
+              <RegisterEmployee />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/manager/edit"
+          element={
+            <ProtectedRoute role="maintenance">
+              <EditEmployee />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/manager/leave"
+          element={
+            <ProtectedRoute role="maintenance">
+              <ManagerLeave />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/manager/leave-approval"
+          element={
+            <ProtectedRoute role="maintenance">
+              <ManagerLeave />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/manager/edit-leave-counts"
+          element={
+            <ProtectedRoute role="maintenance">
+              <LeaveCounts />
+            </ProtectedRoute>
+          }
+        />
+
+
+        {/* ================= HR ================= */}
+
+        <Route
+          path="/hr"
+          element={<HRDashboard />}
+        />
+
+        <Route
+          path="/hr/audit-trail"
+          element={<HRAuditTrail />}
+        />
+
+        <Route
+          path="/hr/profile"
+          element={<HRAuditTrail />}
+        />
+
+        <Route
+          path="/hr/register-manager"
+          element={<RegisterManager />}
+        />
+
+        <Route
+          path="/hr/edit-manager"
+          element={<EditManager />}
+        />
+
+        <Route
+          path="/hr/shift-settings"
+          element={
+            <ProtectedRoute role="hr">
+              <ShiftSettings />
+            </ProtectedRoute>
+          }
+        />
+
 
         {/* ================= EMPLOYEE ================= */}
 
@@ -148,26 +207,6 @@ export default function App() {
           }
         />
 
-        <Route path="/hr" element={<HRDashboard />} />
-
-        <Route
-  path="/hr/audit-trail"
-  element={<HRAuditTrail />}
-/>
-<Route
-  path="/hr/profile"
-  element={<HRAuditTrail />}
-/>
-
-<Route
-  path="/hr/register-manager"
-  element={<RegisterManager />}
-/>
-
-<Route
-  path="/hr/edit-manager"
-  element={<EditManager />}
-/>
       </Routes>
     </BrowserRouter>
   );

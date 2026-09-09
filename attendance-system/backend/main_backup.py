@@ -1,0 +1,260 @@
+from fastapi import FastAPI, File, UploadFile, Form
+from fastapi.middleware.cors import CORSMiddleware
+from typing import List
+import cv2
+import numpy as np
+import requests
+from supabase import create_client
+from deepface import DeepFace
+import time
+from mediapipe.python.solutions import face_mesh as mp_face_mesh
+
+app = FastAPI()
+
+# ✅ CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 🔥 SUPABASE CONFIG
+SUPABASE_URL = "https://gncvkqqmreufoarakjmj.supabase.co"
+SUPABASE_SERVICE_KEY = "sb_publishable_o2igaNv9uPIf3iM6nmgN4w_b8DyuYtZ"
+
+supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+# 🔥 BLINK SETUP
+face_mesh = mp_face_mesh.FaceMesh()
+
+def normalize_name(name: str):
+    return name.strip().lower().replace(" ", "_")
+
+def eye_aspect_ratio(landmarks, eye_points):
+    p1 = np.array(landmarks[eye_points[0]])
+    p2 = np.array(landmarks[eye_points[1]])
+    p3 = np.array(landmarks[eye_points[2]])
+    p4 = np.array(landmarks[eye_points[3]])
+    p5 = np.array(landmarks[eye_points[4]])
+    p6 = np.array(landmarks[eye_points[5]])
+
+    vertical = np.linalg.norm(p2 - p6) + np.linalg.norm(p3 - p5)
+    horizontal = np.linalg.norm(p1 - p4)
+
+    return vertical / (2.0 * horizontal)
+
+
+@app.get("/")
+def home():
+    return {"message": "Face Recognition API is running"}
+
+
+# 🔥 UPLOAD FACE
+@app.post("/upload-face")
+async def upload_face(
+    file: UploadFile = File(...),
+    user_id: str = Form(...),
+    full_name: str = Form(...)
+):
+    try:
+        contents = await file.read()
+
+        safe_name = normalize_name(full_name)
+        file_name = f"employees/{safe_name}/face_{int(time.time() * 1000)}.jpg"
+
+        supabase.storage.from_("faces").upload(
+            file_name,
+            contents,
+            {"content-type": "image/jpeg", "upsert": "true"}
+        )
+
+        public_url = supabase.storage.from_("faces").get_public_url(file_name)
+
+        return {
+            "status": "Uploaded",
+            "file": file_name,
+            "url": public_url
+        }
+
+    except Exception as e:
+        return {"status": "Error", "message": str(e)}
+
+
+# 🔥 VERIFY FACE
+@app.post("/verify-face")
+async def verify_face(
+    files: List[UploadFile] = File(...),
+    user_id: str = Form(...),
+    full_name: str = Form(...)
+):
+    print("🔥 VERIFY STARTED", flush=True)
+
+    try:
+        frames = []
+
+        # =========================
+        # LOAD FRAMES (FASTER)
+        # =========================
+        for file in files[:5]:  # 🔥 only use first 5 frames
+            contents = await file.read()
+
+            npimg = np.frombuffer(contents, np.uint8)
+            img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+
+            if img is None:
+                continue
+
+            # 🔥 smaller image = faster
+            img = cv2.resize(img, (320, 240))
+
+            frames.append(img)
+
+        if len(frames) < 2:
+            return {"status": "Error", "message": "Not enough frames"}
+
+        print("📸 Frames:", len(frames), flush=True)
+
+        # =========================
+        # 🔥 BLINK DETECTION
+        # =========================
+        ear_values = []
+
+        for img in frames:
+            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+            result = face_mesh.process(rgb)
+
+            if result.multi_face_landmarks:
+                landmarks = result.multi_face_landmarks[0].landmark
+                h, w, _ = img.shape
+
+                points = [(int(l.x * w), int(l.y * h)) for l in landmarks]
+
+                left_eye = [33, 160, 158, 133, 153, 144]
+
+                ear = eye_aspect_ratio(points, left_eye)
+                ear_values.append(ear)
+
+        if len(ear_values) < 2:
+            return {"status": "Fake", "message": "Face not detected properly"}
+
+        closed = any(e < 0.18 for e in ear_values)
+        open_eye = any(e > 0.22 for e in ear_values)
+
+        if not (closed and open_eye):
+            return {"status": "Fake", "message": "No real blink detected"}
+
+        print("👁️ Blink detected", flush=True)
+
+        # =========================
+        # FACE DETECTION
+        # =========================
+        valid_frames = []
+
+        for img in frames:
+            try:
+                faces = DeepFace.extract_faces(
+                    img_path=img,
+                    detector_backend="opencv",
+                    enforce_detection=True
+                )
+
+                if faces:
+                    valid_frames.append(img)
+
+            except:
+                pass
+
+        if len(valid_frames) < 1:
+            return {"status": "No Face"}
+
+        # =========================
+        # LOAD STORED FACES
+        # =========================
+        safe_name = normalize_name(full_name)
+        folder_path = f"employees/{safe_name}"
+
+        files_list = supabase.storage.from_("faces").list(folder_path) or []
+
+        print("📁 USER FOLDER:", folder_path, flush=True)
+
+        if not files_list:
+            return {"status": "Error", "message": "No registered faces"}
+
+        best_distance = 1.0
+        matched = False
+
+        # =========================
+        # MATCH (OPTIMIZED)
+        # =========================
+        for f in files_list:
+
+            file_path = f"{folder_path}/{f['name']}"
+
+            url = f"{SUPABASE_URL}/storage/v1/object/public/faces/{file_path}"
+
+            response = requests.get(url)
+
+            if response.status_code != 200:
+                continue
+
+            stored_img = cv2.imdecode(
+                np.asarray(bytearray(response.content), dtype=np.uint8),
+                cv2.IMREAD_COLOR
+            )
+
+            if stored_img is None:
+                continue
+
+            # 🔥 smaller image = faster
+            stored_img = cv2.resize(stored_img, (112, 112))
+
+            for img in valid_frames:
+
+                img_resized = cv2.resize(img, (112, 112))
+
+                try:
+                    result = DeepFace.verify(
+                        img1_path=img_resized,
+                        img2_path=stored_img,
+                        model_name="ArcFace",
+                        detector_backend="opencv",
+                        enforce_detection=True
+                    )
+
+                    distance = result.get("distance", 1)
+
+                    print("📏 Distance:", distance, flush=True)
+
+                    if distance < best_distance:
+                        best_distance = distance
+
+                    # 🔥 EARLY STOP FOR SPEED
+                    if distance < 0.30:
+                        matched = True
+                        break
+
+                except Exception as e:
+                    print("VERIFY ERROR:", str(e), flush=True)
+
+            if matched:
+                break
+
+        print("🔥 BEST DISTANCE:", best_distance, flush=True)
+
+        # =========================
+        # FINAL DECISION
+        # =========================
+        if matched or best_distance < 0.35:
+            return {"status": "Match"}
+        else:
+            return {"status": "No Match"}
+
+    except Exception as e:
+        print("❌ ERROR:", str(e), flush=True)
+        return {"status": "Error", "message": str(e)}
+
+
+    
