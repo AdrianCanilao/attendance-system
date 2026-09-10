@@ -9,6 +9,7 @@ from deepface import DeepFace
 import time
 from mediapipe.python.solutions import face_mesh as mp_face_mesh
 from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
 
 app = FastAPI()
 
@@ -255,7 +256,6 @@ async def upload_face(
     except Exception as e:
         return {"status": "Error", "message": str(e)}
 
-
 # 🔥 VERIFY FACE
 @app.post("/verify-face")
 async def verify_face(
@@ -266,69 +266,132 @@ async def verify_face(
     print("🔥 VERIFY STARTED", flush=True)
 
     try:
+        # =====================================================
+        # LOAD CAPTURED FRAMES
+        # =====================================================
+
         frames = []
 
-        # =========================
-        # LOAD FRAMES (FASTER)
-        # =========================
-        for file in files[:6]:  # 🔥 only use first 5 frames
+        for file in files[:6]:
             contents = await file.read()
 
-            npimg = np.frombuffer(contents, np.uint8)
-            img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+            npimg = np.frombuffer(
+                contents,
+                np.uint8
+            )
+
+            img = cv2.imdecode(
+                npimg,
+                cv2.IMREAD_COLOR
+            )
 
             if img is None:
                 continue
 
-            # 🔥 smaller image = faster
-            img = cv2.resize(img, (320, 240))
+            # Smaller image = faster processing
+            img = cv2.resize(
+                img,
+                (320, 240)
+            )
 
             frames.append(img)
 
         if len(frames) < 2:
-            return {"status": "Error", "message": "Not enough frames"}
+            return {
+                "status": "Error",
+                "message": "Not enough frames"
+            }
 
-        print("📸 Frames:", len(frames), flush=True)
+        print(
+            "📸 WEB FRAMES:",
+            len(frames),
+            flush=True
+        )
 
-        # =========================
-        # 🔥 BLINK DETECTION
-        # =========================
+        # =====================================================
+        # BLINK / LIVENESS DETECTION
+        # =====================================================
+
         ear_values = []
 
         for img in frames:
-            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+            rgb = cv2.cvtColor(
+                img,
+                cv2.COLOR_BGR2RGB
+            )
 
             result = face_mesh.process(rgb)
 
             if result.multi_face_landmarks:
-                landmarks = result.multi_face_landmarks[0].landmark
+
+                landmarks = (
+                    result.multi_face_landmarks[0].landmark
+                )
+
                 h, w, _ = img.shape
 
-                points = [(int(l.x * w), int(l.y * h)) for l in landmarks]
+                points = [
+                    (
+                        int(l.x * w),
+                        int(l.y * h)
+                    )
+                    for l in landmarks
+                ]
 
-                left_eye = [33, 160, 158, 133, 153, 144]
+                left_eye = [
+                    33,
+                    160,
+                    158,
+                    133,
+                    153,
+                    144
+                ]
 
-                ear = eye_aspect_ratio(points, left_eye)
+                ear = eye_aspect_ratio(
+                    points,
+                    left_eye
+                )
+
                 ear_values.append(ear)
 
         if len(ear_values) < 2:
-            return {"status": "Fake", "message": "Face not detected properly"}
+            return {
+                "status": "Fake",
+                "message": "Face not detected properly"
+            }
 
-        closed = any(e < 0.18 for e in ear_values)
-        open_eye = any(e > 0.22 for e in ear_values)
+        closed = any(
+            e < 0.18
+            for e in ear_values
+        )
+
+        open_eye = any(
+            e > 0.22
+            for e in ear_values
+        )
 
         if not (closed and open_eye):
-            return {"status": "Fake", "message": "No real blink detected"}
+            return {
+                "status": "Fake",
+                "message": "No real blink detected"
+            }
 
-        print("👁️ Blink detected", flush=True)
+        print(
+            "👁️ WEB BLINK DETECTED",
+            flush=True
+        )
 
-        # =========================
+        # =====================================================
         # FACE DETECTION
-        # =========================
+        # =====================================================
+
         valid_frames = []
 
         for img in frames:
+
             try:
+
                 faces = DeepFace.extract_faces(
                     img_path=img,
                     detector_backend="opencv",
@@ -338,98 +401,201 @@ async def verify_face(
                 if faces:
                     valid_frames.append(img)
 
-            except:
+            except Exception:
                 pass
 
         if len(valid_frames) < 1:
-            return {"status": "No Face"}
+            return {
+                "status": "No Face",
+                "message": "No face detected."
+            }
 
-        # =========================
-        # LOAD STORED FACES
-        # =========================
-        safe_name = normalize_name(full_name)
-        folder_path = f"employees/{safe_name}"
+        print(
+            "👤 VALID WEB FRAMES:",
+            len(valid_frames),
+            flush=True
+        )
 
-        files_list = supabase.storage.from_("faces").list(folder_path) or []
+        # =====================================================
+        # FIND THIS EMPLOYEE IN THE CACHE
+        # =====================================================
 
-        print("📁 USER FOLDER:", folder_path, flush=True)
+        employee_cache = []
 
-        if not files_list:
-            return {"status": "Error", "message": "No registered faces"}
+        for cached_face in kiosk_face_cache:
 
-        best_distance = 1.0
-        matched = False
+            cached_employee = cached_face["employee"]
 
-        # =========================
-        # MATCH (OPTIMIZED)
-        # =========================
-        for f in files_list:
-
-            file_path = f"{folder_path}/{f['name']}"
-
-            url = f"{SUPABASE_URL}/storage/v1/object/public/faces/{file_path}"
-
-            response = requests.get(url)
-
-            if response.status_code != 200:
-                continue
-
-            stored_img = cv2.imdecode(
-                np.asarray(bytearray(response.content), dtype=np.uint8),
-                cv2.IMREAD_COLOR
+            cached_id = str(
+                cached_employee.get("id")
             )
 
-            if stored_img is None:
-                continue
+            cached_name = (
+                cached_employee.get("full_name") or ""
+            ).strip().lower()
 
-            # 🔥 smaller image = faster
-            stored_img = cv2.resize(stored_img, (112, 112))
+            requested_id = str(user_id)
 
-            for img in valid_frames:
+            requested_name = (
+                full_name or ""
+            ).strip().lower()
 
-                img_resized = cv2.resize(img, (112, 112))
+            if (
+                cached_id == requested_id
+                or cached_name == requested_name
+            ):
+                employee_cache.append(
+                    cached_face
+                )
 
-                try:
-                    result = DeepFace.verify(
-                        img1_path=img_resized,
-                        img2_path=stored_img,
-                        model_name="ArcFace",
-                        detector_backend="opencv",
-                        enforce_detection=True
-                    )
+        print(
+            "👤 WEB CACHED FACES:",
+            len(employee_cache),
+            flush=True
+        )
 
-                    distance = result.get("distance", 1)
+        if not employee_cache:
+            return {
+                "status": "Error",
+                "message": (
+                    "No cached face found for this employee. "
+                    "Please restart the FastAPI server "
+                    "after registering the employee face."
+                )
+            }
 
-                    print("📏 Distance:", distance, flush=True)
+        # =====================================================
+        # CREATE ONE ARCFACE EMBEDDING
+        # =====================================================
 
-                    if distance < best_distance:
-                        best_distance = distance
+        img = valid_frames[-1]
 
-                    # 🔥 EARLY STOP FOR SPEED
-                    if distance < 0.30:
-                        matched = True
-                        break
+        img_resized = cv2.resize(
+            img,
+            (112, 112)
+        )
 
-                except Exception as e:
-                    print("VERIFY ERROR:", str(e), flush=True)
+        print(
+            "⚡ Creating web face embedding...",
+            flush=True
+        )
 
-            if matched:
+        captured_result = DeepFace.represent(
+            img_path=img_resized,
+            model_name="ArcFace",
+            detector_backend="skip",
+            enforce_detection=False
+        )
+
+        if not captured_result:
+            return {
+                "status": "No Face",
+                "message": (
+                    "Unable to create face embedding."
+                )
+            }
+
+        captured_embedding = (
+            captured_result[0]["embedding"]
+        )
+
+        # =====================================================
+        # COMPARE AGAINST EMPLOYEE'S CACHED EMBEDDINGS
+        # =====================================================
+
+        best_distance = 1.0
+        best_employee = None
+
+        for cached_face in employee_cache:
+
+            employee = cached_face["employee"]
+
+            stored_embedding = (
+                cached_face["embedding"]
+            )
+
+            distance = cosine_distance(
+                captured_embedding,
+                stored_embedding
+            )
+
+            print(
+                f"📏 WEB DISTANCE "
+                f"{employee.get('full_name')}: "
+                f"{distance}",
+                flush=True
+            )
+
+            if distance < best_distance:
+
+                best_distance = distance
+                best_employee = employee
+
+            # Very strong match
+            if distance < 0.30:
+
+                print(
+                    "🎯 WEB STRONG MATCH:",
+                    employee.get("full_name"),
+                    flush=True
+                )
+
                 break
 
-        print("🔥 BEST DISTANCE:", best_distance, flush=True)
-
-        # =========================
+        # =====================================================
         # FINAL DECISION
-        # =========================
-        if matched or best_distance < 0.35:
-            return {"status": "Match"}
-        else:
-            return {"status": "No Match"}
+        # =====================================================
+
+        print(
+            "🔥 WEB BEST DISTANCE:",
+            best_distance,
+            flush=True
+        )
+
+        if (
+            best_employee is not None
+            and best_distance < 0.35
+        ):
+
+            print(
+                "✅ WEB FACE MATCH:",
+                best_employee["full_name"],
+                flush=True
+            )
+
+            return {
+                "status": "Match",
+                "distance": best_distance,
+                "employee": {
+                    "id": best_employee["id"],
+                    "full_name": best_employee["full_name"],
+                    "branch_id": best_employee["branch_id"],
+                    "shift_id": best_employee["shift_id"]
+                }
+            }
+
+        print(
+            "❌ WEB FACE NO MATCH",
+            flush=True
+        )
+
+        return {
+            "status": "No Match",
+            "distance": best_distance
+        }
 
     except Exception as e:
-        print("❌ ERROR:", str(e), flush=True)
-        return {"status": "Error", "message": str(e)}
 
+        print(
+            "❌ WEB VERIFY ERROR:",
+            str(e),
+            flush=True
+        )
+
+        return {
+            "status": "Error",
+            "message": str(e)
+        }
 
     # ============================================================
 # KIOSK FACE IDENTIFICATION
@@ -448,17 +614,18 @@ def parse_shift_time(value):
     return value
 
 
-async def record_kiosk_attendance(employee, action):
+async def record_kiosk_attendance(employee, action, face_url=None):
     try:
         employee_id = employee["id"]
         shift_id = employee.get("shift_id")
 
         action = action.strip().upper()
 
-        now = datetime.now()
+        MANILA_TZ = ZoneInfo("Asia/Manila")
+
+        now = datetime.now(MANILA_TZ)
         today = now.date()
         yesterday = today - timedelta(days=1)
-
         print(
             "🕒 ATTENDANCE:",
             action,
@@ -542,7 +709,8 @@ async def record_kiosk_attendance(employee, action):
 
                 scheduled_in_datetime = datetime.combine(
                     today,
-                    scheduled_in_time
+                    scheduled_in_time,
+                    tzinfo=MANILA_TZ
                 )
 
                 grace_datetime = (
@@ -577,6 +745,10 @@ async def record_kiosk_attendance(employee, action):
                 "late_minutes": late_minutes,
                 "overtime_minutes": 0
             }
+
+            # Save the kiosk face photo URL
+            if face_url:
+                attendance_data["time_in_face_url"] = face_url
 
             inserted_result = (
                 supabase
@@ -734,7 +906,8 @@ async def record_kiosk_attendance(employee, action):
 
                 scheduled_out_datetime = datetime.combine(
                     record_date,
-                    scheduled_out_time
+                    scheduled_out_time,
+                    tzinfo=MANILA_TZ
                 )
 
                 # ---------------------------------------------
@@ -769,15 +942,21 @@ async def record_kiosk_attendance(employee, action):
                 flush=True
             )
 
+            update_data = {
+                "time_out": now.isoformat(),
+                "overtime_minutes": overtime_minutes,
+                "updated_at": now.isoformat(),
+                "source": "kiosk"
+            }
+
+            # Save the kiosk Time Out face photo URL
+            if face_url:
+                update_data["time_out_face_url"] = face_url
+
             updated_result = (
                 supabase
                 .table("attendance_logs")
-                .update({
-                    "time_out": now.isoformat(),
-                    "overtime_minutes": overtime_minutes,
-                    "updated_at": now.isoformat(),
-                    "source": "kiosk"
-                })
+                .update(update_data)
                 .eq("id", attendance_id)
                 .execute()
             )
@@ -833,20 +1012,6 @@ async def record_kiosk_attendance(employee, action):
                 "attendance": verified_record
             }
                             
-            return {
-                "status": "Time Out Recorded",
-                "message": (
-                    "Time Out recorded successfully."
-                    if overtime_minutes == 0
-                    else (
-                        f"Time Out recorded. "
-                        f"{overtime_minutes} "
-                        f"minutes overtime."
-                    )
-                ),
-                "attendance": updated_records[0]
-            }
-
         # =====================================================
         # INVALID ACTION
         # =====================================================
@@ -1148,6 +1313,76 @@ async def kiosk_verify(
                 "branch_id": best_employee["branch_id"],
                 "shift_id": best_employee["shift_id"]
             }
+            # =====================================================
+            # 📸 SAVE SUCCESSFUL KIOSK FACE IMAGE
+            # =====================================================
+
+            face_url = None
+
+            try:
+
+                # Use the same valid frame that was used for recognition
+                face_frame = valid_frames[-1]
+
+                success, encoded_image = cv2.imencode(
+                    ".jpg",
+                    face_frame
+                )
+
+                if success:
+
+                    face_bytes = encoded_image.tobytes()
+
+                    safe_name = normalize_name(
+                        best_employee["full_name"]
+                    )
+
+                    action_folder = action.strip().lower()
+
+                    file_name = (
+                        f"attendance/"
+                        f"{safe_name}/"
+                        f"{action_folder}/"
+                        f"{int(time.time() * 1000)}.jpg"
+                    )
+
+                    print(
+                        "📸 Uploading kiosk attendance photo:",
+                        file_name,
+                        flush=True
+                    )
+
+                    supabase.storage.from_("faces").upload(
+                        file_name,
+                        face_bytes,
+                        {
+                            "content-type": "image/jpeg",
+                            "upsert": "true"
+                        }
+                    )
+
+                    face_url = (
+                        supabase
+                        .storage
+                        .from_("faces")
+                        .get_public_url(file_name)
+                    )
+
+                    print(
+                        "✅ KIOSK FACE PHOTO SAVED:",
+                        face_url,
+                        flush=True
+                    )
+
+            except Exception as e:
+
+                print(
+                    "⚠️ KIOSK PHOTO UPLOAD FAILED:",
+                    str(e),
+                    flush=True
+                )
+
+                # Recognition and attendance should still continue
 
 
             # =================================================
@@ -1156,7 +1391,8 @@ async def kiosk_verify(
 
             attendance_result = await record_kiosk_attendance(
                 employee_result,
-                action
+                action,
+                face_url
             )
 
             return {
