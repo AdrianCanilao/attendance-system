@@ -62,27 +62,27 @@ export default function Kiosk() {
 formData.append("action", selectedAction);
 
 // Capture 5 frames
-for (let i = 0; i < 5; i++) {
-        const imageSrc =
-          webcamRef.current.getScreenshot();
+// Capture 6 frames for reliable blink detection
+for (let i = 0; i < 6; i++) {
+  const imageSrc =
+    webcamRef.current.getScreenshot();
 
-        if (!imageSrc) {
-          continue;
-        }
+  if (!imageSrc) {
+    continue;
+  }
 
-        const file = dataURLtoFile(
-          imageSrc,
-          `kiosk_frame_${i + 1}.jpg`
-        );
+  const file = dataURLtoFile(
+    imageSrc,
+    `kiosk_frame_${i + 1}.jpg`
+  );
 
-        formData.append("files", file);
+  formData.append("files", file);
 
-        // Small delay between frames
-        await new Promise((resolve) =>
-          setTimeout(resolve, 350)
-        );
-      }
-
+  // Short delay between frames
+  await new Promise((resolve) =>
+    setTimeout(resolve, 180)
+  );
+}
       const response = await fetch(
         "http://127.0.0.1:8000/kiosk-verify",
         {

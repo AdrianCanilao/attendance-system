@@ -30,6 +30,11 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 # 🔥 BLINK SETUP
 face_mesh = mp_face_mesh.FaceMesh()
 
+# 🔥 PRELOAD ARCFACE MODEL
+print("🔥 Loading ArcFace model...", flush=True)
+DeepFace.build_model("ArcFace")
+print("✅ ArcFace model ready", flush=True)
+
 def normalize_name(name: str):
     return name.strip().lower().replace(" ", "_")
 
@@ -45,6 +50,174 @@ def eye_aspect_ratio(landmarks, eye_points):
     horizontal = np.linalg.norm(p1 - p4)
 
     return vertical / (2.0 * horizontal)
+
+    # ============================================================
+# 🚀 KIOSK FACE EMBEDDING CACHE
+# ============================================================
+
+kiosk_face_cache = []
+
+
+def cosine_distance(a, b):
+    a = np.asarray(a, dtype=np.float32)
+    b = np.asarray(b, dtype=np.float32)
+
+    denominator = (
+        np.linalg.norm(a) *
+        np.linalg.norm(b)
+    )
+
+    if denominator == 0:
+        return 1.0
+
+    similarity = np.dot(a, b) / denominator
+
+    return float(1.0 - similarity)
+
+
+def load_kiosk_face_cache():
+    global kiosk_face_cache
+
+    print(
+        "🚀 Loading kiosk face embeddings...",
+        flush=True
+    )
+
+    kiosk_face_cache = []
+
+    EMPLOYEE_ROLE_ID = (
+        "e4dbb928-7f0e-4da9-9eff-d7700d37b25a"
+    )
+
+    employees_response = (
+        supabase
+        .from_("employee_profiles")
+        .select(
+            "id, full_name, branch_id, shift_id"
+        )
+        .eq("role_id", EMPLOYEE_ROLE_ID)
+        .execute()
+    )
+
+    employees = employees_response.data or []
+
+    print(
+        f"👥 KIOSK EMPLOYEES: {len(employees)}",
+        flush=True
+    )
+
+    for employee in employees:
+
+        employee_name = (
+            employee.get("full_name") or ""
+        )
+
+        if not employee_name:
+            continue
+
+        safe_name = normalize_name(employee_name)
+
+        folder_path = (
+            f"employees/{safe_name}"
+        )
+
+        try:
+            files_list = (
+                supabase
+                .storage
+                .from_("faces")
+                .list(folder_path)
+                or []
+            )
+
+        except Exception as e:
+            print(
+                f"❌ CACHE STORAGE ERROR: "
+                f"{employee_name}: {e}",
+                flush=True
+            )
+            continue
+
+        for stored_file in files_list:
+
+            file_path = (
+                f"{folder_path}/"
+                f"{stored_file['name']}"
+            )
+
+            url = (
+                f"{SUPABASE_URL}"
+                f"/storage/v1/object/public/"
+                f"faces/{file_path}"
+            )
+
+            try:
+
+                response = requests.get(
+                    url,
+                    timeout=5
+                )
+
+                if response.status_code != 200:
+                    continue
+
+                stored_img = cv2.imdecode(
+                    np.asarray(
+                        bytearray(response.content),
+                        dtype=np.uint8
+                    ),
+                    cv2.IMREAD_COLOR
+                )
+
+                if stored_img is None:
+                    continue
+
+                stored_img = cv2.resize(
+                    stored_img,
+                    (112, 112)
+                )
+
+                embedding_result = DeepFace.represent(
+                    img_path=stored_img,
+                    model_name="ArcFace",
+                    detector_backend="skip",
+                    enforce_detection=False
+                )
+
+                if not embedding_result:
+                    continue
+
+                embedding = (
+                    embedding_result[0]["embedding"]
+                )
+
+                kiosk_face_cache.append({
+                    "employee": employee,
+                    "embedding": embedding
+                })
+
+                print(
+                    f"✅ Cached: {employee_name}",
+                    flush=True
+                )
+
+            except Exception as e:
+
+                print(
+                    f"❌ CACHE ERROR: "
+                    f"{employee_name}: {e}",
+                    flush=True
+                )
+
+    print(
+        f"🎯 KIOSK CACHE READY: "
+        f"{len(kiosk_face_cache)} face embeddings",
+        flush=True
+    )
+
+
+# Load employee face embeddings when backend starts
+load_kiosk_face_cache()
 
 
 @app.get("/")
@@ -98,7 +271,7 @@ async def verify_face(
         # =========================
         # LOAD FRAMES (FASTER)
         # =========================
-        for file in files[:5]:  # 🔥 only use first 5 frames
+        for file in files[:6]:  # 🔥 only use first 5 frames
             contents = await file.read()
 
             npimg = np.frombuffer(contents, np.uint8)
@@ -709,7 +882,7 @@ async def kiosk_verify(
 
         frames = []
 
-        for file in files[:5]:
+        for file in files[:6]:
             contents = await file.read()
 
             npimg = np.frombuffer(contents, np.uint8)
@@ -844,187 +1017,109 @@ async def kiosk_verify(
         )
 
         # =====================================================
-        # LOAD EMPLOYEES
+        # 🚀 FAST KIOSK IDENTIFICATION
         # =====================================================
 
-        EMPLOYEE_ROLE_ID = (
-            "e4dbb928-7f0e-4da9-9eff-d7700d37b25a"
-        )
-
-        employees_response = (
-            supabase
-            .from_("employee_profiles")
-            .select(
-                "id, full_name, branch_id, shift_id"
-            )
-            .eq(
-                "role_id",
-                EMPLOYEE_ROLE_ID
-            )
-            .execute()
-        )
-
-        employees = (
-            employees_response.data
-            or []
-        )
-
-        print(
-            "👥 EMPLOYEES TO CHECK:",
-            len(employees),
-            flush=True
-        )
-
-        if not employees:
+        if not kiosk_face_cache:
             return {
                 "status": "Error",
-                "message": "No employees found"
+                "message": "Kiosk face database is empty."
             }
 
+
         # =====================================================
-        # IDENTIFY EMPLOYEE
+        # CREATE ONE EMBEDDING FROM THE CAPTURED FACE
+        # =====================================================
+
+        img = valid_frames[-1]
+
+        img_resized = cv2.resize(
+            img,
+            (112, 112)
+        )
+
+        try:
+
+            print(
+                "⚡ Creating kiosk face embedding...",
+                flush=True
+            )
+
+            captured_result = DeepFace.represent(
+                img_path=img_resized,
+                model_name="ArcFace",
+                detector_backend="skip",
+                enforce_detection=False
+            )
+
+            if not captured_result:
+                return {
+                    "status": "No Face",
+                    "message": "Unable to create face embedding."
+                }
+
+            captured_embedding = (
+                captured_result[0]["embedding"]
+            )
+
+        except Exception as e:
+
+            print(
+                "❌ EMBEDDING ERROR:",
+                str(e),
+                flush=True
+            )
+
+            return {
+                "status": "Error",
+                "message": "Unable to process face."
+            }
+
+
+        # =====================================================
+        # COMPARE AGAINST CACHED EMPLOYEE EMBEDDINGS
         # =====================================================
 
         best_distance = 1.0
         best_employee = None
 
-        for employee in employees:
+        for cached_face in kiosk_face_cache:
+
+            employee = cached_face["employee"]
+
+            stored_embedding = (
+                cached_face["embedding"]
+            )
+
+            distance = cosine_distance(
+                captured_embedding,
+                stored_embedding
+            )
 
             employee_name = (
-                employee.get("full_name")
-                or ""
+                employee.get("full_name") or ""
             )
-
-            if not employee_name:
-                continue
-
-            safe_name = normalize_name(
-                employee_name
-            )
-
-            folder_path = (
-                f"employees/{safe_name}"
-            )
-
-            try:
-
-                files_list = (
-                    supabase
-                    .storage
-                    .from_("faces")
-                    .list(folder_path)
-                    or []
-                )
-
-            except Exception as e:
-
-                print(
-                    "STORAGE ERROR:",
-                    employee_name,
-                    str(e),
-                    flush=True
-                )
-
-                continue
-
-            if not files_list:
-                continue
 
             print(
-                "🔎 CHECKING:",
-                employee_name,
+                f"📏 {employee_name}: {distance}",
                 flush=True
             )
 
-            for stored_file in files_list:
+            if distance < best_distance:
 
-                file_path = (
-                    f"{folder_path}/"
-                    f"{stored_file['name']}"
+                best_distance = distance
+                best_employee = employee
+
+            # Very strong ArcFace match
+            if distance < 0.30:
+
+                print(
+                    f"🎯 STRONG MATCH: {employee_name}",
+                    flush=True
                 )
 
-                url = (
-                    f"{SUPABASE_URL}"
-                    f"/storage/v1/object/public/"
-                    f"faces/{file_path}"
-                )
+                break
 
-                try:
-
-                    response = requests.get(
-                        url,
-                        timeout=10
-                    )
-
-                except Exception as e:
-
-                    print(
-                        "DOWNLOAD ERROR:",
-                        str(e),
-                        flush=True
-                    )
-
-                    continue
-
-                if response.status_code != 200:
-                    continue
-
-                stored_img = cv2.imdecode(
-                    np.asarray(
-                        bytearray(response.content),
-                        dtype=np.uint8
-                    ),
-                    cv2.IMREAD_COLOR
-                )
-
-                if stored_img is None:
-                    continue
-
-                stored_img = cv2.resize(
-                    stored_img,
-                    (112, 112)
-                )
-
-                for img in valid_frames:
-
-                    img_resized = cv2.resize(
-                        img,
-                        (112, 112)
-                    )
-
-                    try:
-
-                        result = DeepFace.verify(
-                            img1_path=img_resized,
-                            img2_path=stored_img,
-                            model_name="ArcFace",
-                            detector_backend="opencv",
-                            enforce_detection=True
-                        )
-
-                        distance = result.get(
-                            "distance",
-                            1
-                        )
-
-                        print(
-                            f"📏 {employee_name}: "
-                            f"{distance}",
-                            flush=True
-                        )
-
-                        if distance < best_distance:
-
-                            best_distance = distance
-                            best_employee = employee
-
-                    except Exception as e:
-
-                        print(
-                            "VERIFY ERROR:",
-                            str(e),
-                            flush=True
-                        )
 
         # =====================================================
         # FINAL DECISION
@@ -1037,8 +1132,8 @@ async def kiosk_verify(
         )
 
         if (
-    best_employee is not None
-    and best_distance < 0.35
+            best_employee is not None
+            and best_distance < 0.35
         ):
 
             print(
@@ -1054,9 +1149,10 @@ async def kiosk_verify(
                 "shift_id": best_employee["shift_id"]
             }
 
-    # =====================================================
-    # RECORD ATTENDANCE
-    # =====================================================
+
+            # =================================================
+            # RECORD ATTENDANCE
+            # =================================================
 
             attendance_result = await record_kiosk_attendance(
                 employee_result,
@@ -1070,6 +1166,7 @@ async def kiosk_verify(
                 "attendance": attendance_result
             }
 
+
         print(
             "❌ KIOSK NO MATCH",
             flush=True
@@ -1078,7 +1175,6 @@ async def kiosk_verify(
         return {
             "status": "No Match"
         }
-
     except Exception as e:
 
         print(
