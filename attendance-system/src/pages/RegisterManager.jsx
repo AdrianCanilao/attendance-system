@@ -25,7 +25,14 @@ export default function RegisterManager() {
   const [branches, setBranches] = useState([]);
   const [shifts, setShifts] = useState([]);
 
-useEffect(() => {
+  const [faceStatus, setFaceStatus] = useState({
+    valid: false,
+    message: "Position your face inside the box.",
+    box: null,
+  });
+
+  const [checkingFace, setCheckingFace] = useState(false);
+  useEffect(() => {
   fetchBranches();
 }, []);
 
@@ -76,43 +83,134 @@ const fetchShifts = async (branchId) => {
   }
 };
 
-  const openCamera = () => {
-    setCapturedImages([]);
-    setStep(0);
-    setShowCamera(true);
+const openCamera = () => {
+  setCapturedImages([]);
+  setStep(0);
+
+  setFaceStatus({
+    valid: false,
+    message: "Position your face inside the box.",
+    box: null,
+  });
+
+  setShowCamera(true);
+};
+
+const validateLiveFace = async () => {
+  if (!webcamRef.current) return;
+
+  const image = webcamRef.current.getScreenshot();
+
+  if (!image) return;
+
+  try {
+    setCheckingFace(true);
+
+    const blob = await fetch(image).then((r) => r.blob());
+
+    const formData = new FormData();
+
+    formData.append(
+      "file",
+      blob,
+      "live-face.jpg"
+    );
+
+    const response = await fetch(
+      "http://127.0.0.1:8000/validate-face",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const data = await response.json();
+
+    setFaceStatus(data);
+
+  } catch (error) {
+    console.error(
+      "Live face validation error:",
+      error
+    );
+
+    setFaceStatus({
+      valid: false,
+      message: "Camera validation unavailable.",
+      box: null,
+    });
+
+  } finally {
+    setCheckingFace(false);
+  }
+};
+
+
+// 🔥 LIVE CAMERA VALIDATION
+useEffect(() => {
+  if (!showCamera) {
+    return;
+  }
+
+  const interval = setInterval(() => {
+    validateLiveFace();
+  }, 700);
+
+  return () => {
+    clearInterval(interval);
   };
+}, [showCamera, step]);
 
-  const captureFrames = async () => {
-    const frames = [];
 
-    for (let i = 0; i < 5; i++) {
-      const image = webcamRef.current.getScreenshot();
-      const blob = await fetch(image).then(r => r.blob());
+const captureFace = () => {
 
-      frames.push(blob);
-      await new Promise(res => setTimeout(res, 300));
-    }
+  if (!faceStatus.valid) {
+    alert(faceStatus.message);
+    return;
+  }
 
-    return frames;
-  };
+  const image = webcamRef.current?.getScreenshot();
 
-  const captureFace = () => {
-    const image = webcamRef.current.getScreenshot();
+  if (!image) {
+    alert("Unable to capture camera image.");
+    return;
+  }
 
-    const newImages = [...capturedImages, image];
-    setCapturedImages(newImages);
+  const newImages = [
+    ...capturedImages,
+    image
+  ];
 
-    if (step === 0) {
-      setImageSrc(image);
-    }
+  setCapturedImages(newImages);
 
-    if (step < steps.length - 1) {
-      setStep(step + 1);
-    } else {
-      setShowCamera(false);
-    }
-  };
+  if (step === 0) {
+    setImageSrc(image);
+  }
 
+  if (step < 2) {
+
+    setStep(step + 1);
+
+    setFaceStatus({
+      valid: false,
+      message:
+        step === 0
+          ? "Now turn your face slightly LEFT."
+          : "Now turn your face slightly RIGHT.",
+      box: null,
+    });
+
+  } else {
+
+    setShowCamera(false);
+
+    setFaceStatus({
+      valid: false,
+      message: "Face registration completed.",
+      box: null,
+    });
+  }
+};
   const handleRegister = async () => {
     const {
       name,
@@ -263,24 +361,115 @@ shift_id: "",
                     Step {step + 1}/3: {steps[step]}
                   </p>
 
-                  <Webcam
-                    ref={webcamRef}
-                    screenshotFormat="image/jpeg"
-                    videoConstraints={{
-                      width: 300,
-                      height: 300,
-                      facingMode: "user",
-                    }}
+                  <div
                     style={{
-                      width: "260px",
-                      height: "182px",
+                      position: "relative",
+                      width: "320px",
+                      height: "240px",
                       borderRadius: "12px",
-                      objectFit: "cover",
+                      overflow: "hidden",
+                      background: "#111827",
                     }}
-                  />
+                  >
+                    <Webcam
+                      ref={webcamRef}
+                      screenshotFormat="image/jpeg"
+                      videoConstraints={{
+                        width: 320,
+                        height: 240,
+                        facingMode: "user",
+                      }}
+                      style={{
+                        width: "320px",
+                        height: "240px",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
 
-                  <button onClick={captureFace} style={styles.captureBtn}>
-                    Capture
+                    {/* FACE BOX */}
+                    <div
+                      style={{
+                        position: "absolute",
+
+                        left: faceStatus.box
+                          ? `${(faceStatus.box.x / 320) * 100}%`
+                          : "25%",
+
+                        top: faceStatus.box
+                          ? `${(faceStatus.box.y / 240) * 100}%`
+                          : "20%",
+
+                        width: faceStatus.box
+                          ? `${(faceStatus.box.w / 320) * 100}%`
+                          : "50%",
+
+                        height: faceStatus.box
+                          ? `${(faceStatus.box.h / 240) * 100}%`
+                          : "60%",
+
+                        border: faceStatus.valid
+                          ? "3px solid #22c55e"
+                          : "3px solid #ef4444",
+
+                        borderRadius: "12px",
+                        boxSizing: "border-box",
+                        pointerEvents: "none",
+                        transition: "all 0.2s ease",
+                      }}
+                    />
+                  </div>
+
+                  {/* FACE STATUS */}
+                  <div
+                    style={{
+                      marginTop: "10px",
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+
+                      background: faceStatus.valid
+                        ? "#dcfce7"
+                        : "#fee2e2",
+
+                      color: faceStatus.valid
+                        ? "#166534"
+                        : "#991b1b",
+
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      textAlign: "center",
+                    }}
+                  >
+                    {faceStatus.valid
+                      ? "🟢 " + faceStatus.message
+                      : "🔴 " + faceStatus.message}
+                  </div>
+
+                  {/* CAPTURE BUTTON */}
+                  <button
+                    onClick={captureFace}
+                    disabled={!faceStatus.valid || checkingFace}
+                    style={{
+                      ...styles.captureBtn,
+
+                      background: faceStatus.valid
+                        ? "#16a34a"
+                        : "#9ca3af",
+
+                      cursor: faceStatus.valid
+                        ? "pointer"
+                        : "not-allowed",
+
+                      opacity: faceStatus.valid
+                        ? 1
+                        : 0.7,
+                    }}
+                  >
+                    {checkingFace
+                      ? "Checking..."
+                      : faceStatus.valid
+                        ? "Capture"
+                        : "Waiting for Face..."}
                   </button>
                 </>
               ) : (

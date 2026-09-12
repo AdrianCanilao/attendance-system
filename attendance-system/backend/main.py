@@ -87,16 +87,26 @@ def load_kiosk_face_cache():
     kiosk_face_cache = []
 
     EMPLOYEE_ROLE_ID = (
-        "e4dbb928-7f0e-4da9-9eff-d7700d37b25a"
+    "e4dbb928-7f0e-4da9-9eff-d7700d37b25a"
+    )
+
+    MAINTENANCE_ROLE_ID = (
+        "b381a7a0-9595-4c69-abf1-5c15a827647a"
     )
 
     employees_response = (
         supabase
         .from_("employee_profiles")
         .select(
-            "id, full_name, branch_id, shift_id"
+            "id, full_name, branch_id, shift_id, role_id"
         )
-        .eq("role_id", EMPLOYEE_ROLE_ID)
+        .in_(
+            "role_id",
+            [
+                EMPLOYEE_ROLE_ID,
+                MAINTENANCE_ROLE_ID
+            ]
+        )
         .execute()
     )
 
@@ -173,13 +183,51 @@ def load_kiosk_face_cache():
                 if stored_img is None:
                     continue
 
-                stored_img = cv2.resize(
-                    stored_img,
-                    (112, 112)
+                # Create ArcFace embedding directly from stored image
+                # Detect and extract the actual face first
+                detected_faces = DeepFace.extract_faces(
+                    img_path=stored_img,
+                    detector_backend="opencv",
+                    enforce_detection=False,
+                    align=True
                 )
 
+                if not detected_faces:
+                    print(
+                        f"❌ NO FACE DETECTED: "
+                        f"{employee_name} | "
+                        f"FILE: {stored_file['name']}",
+                        flush=True
+                    )
+                    continue
+
+                print(
+                    f"🔍 FACE DETECTED: "
+                    f"{employee_name} | "
+                    f"FILE: {stored_file['name']} | "
+                    f"CONFIDENCE: {detected_faces[0].get('confidence')} | "
+                    f"AREA: {detected_faces[0].get('facial_area')}",
+                    flush=True
+                )
+
+                # Get the face crop
+                face_crop = detected_faces[0]["face"]
+
+                # Convert normalized image to uint8
+                face_crop = np.asarray(
+                    face_crop * 255,
+                    dtype=np.uint8
+                )
+
+                # Convert RGB to BGR
+                face_crop = cv2.cvtColor(
+                    face_crop,
+                    cv2.COLOR_RGB2BGR
+                )
+
+                # Create ArcFace embedding from the face crop
                 embedding_result = DeepFace.represent(
-                    img_path=stored_img,
+                    img_path=face_crop,
                     model_name="ArcFace",
                     detector_backend="skip",
                     enforce_detection=False
@@ -206,7 +254,7 @@ def load_kiosk_face_cache():
 
                 print(
                     f"❌ CACHE ERROR: "
-                    f"{employee_name}: {e}",
+                    f"{employee_name} | FILE: {stored_file['name']} | ERROR: {e}",
                     flush=True
                 )
 
@@ -255,7 +303,224 @@ async def upload_face(
 
     except Exception as e:
         return {"status": "Error", "message": str(e)}
+# ============================================================
+# 🔥 LIVE REGISTRATION FACE VALIDATION
+# ============================================================
 
+@app.post("/validate-face")
+async def validate_face(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+
+        npimg = np.frombuffer(contents, np.uint8)
+
+        img = cv2.imdecode(
+            npimg,
+            cv2.IMREAD_COLOR
+        )
+
+        if img is None:
+            return {
+                "valid": False,
+                "message": "Unable to read camera frame."
+            }
+
+        # ---------------------------------------------
+        # RESIZE FOR FAST LIVE DETECTION
+        # ---------------------------------------------
+
+        img = cv2.resize(img, (320, 240))
+
+        gray = cv2.cvtColor(
+            img,
+            cv2.COLOR_BGR2GRAY
+        )
+
+        # ---------------------------------------------
+        # LOAD OPENCV FRONTAL FACE DETECTOR
+        # ---------------------------------------------
+
+        face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades +
+            "haarcascade_frontalface_default.xml"
+        )
+
+        faces = face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.1,
+            minNeighbors=5,
+            minSize=(60, 60)
+        )
+
+        # ---------------------------------------------
+        # NO FACE
+        # ---------------------------------------------
+
+        if len(faces) == 0:
+            return {
+                "valid": False,
+                "message": "No face detected.",
+                "box": None
+            }
+
+        # ---------------------------------------------
+        # MORE THAN ONE FACE
+        # ---------------------------------------------
+
+        if len(faces) > 1:
+            return {
+                "valid": False,
+                "message": "Multiple faces detected. Only one person should be in the camera.",
+                "box": None
+            }
+
+        # ---------------------------------------------
+        # GET FACE BOX
+        # ---------------------------------------------
+
+        x, y, w, h = faces[0]
+
+        frame_h, frame_w = gray.shape
+
+        # ---------------------------------------------
+        # FACE SIZE CHECK
+        # ---------------------------------------------
+
+        face_area = w * h
+        frame_area = frame_w * frame_h
+
+        face_ratio = face_area / frame_area
+
+        if face_ratio < 0.08:
+            return {
+                "valid": False,
+                "message": "Move closer to the camera.",
+                "box": {
+                    "x": int(x),
+                    "y": int(y),
+                    "w": int(w),
+                    "h": int(h)
+                }
+            }
+
+        if face_ratio > 0.70:
+            return {
+                "valid": False,
+                "message": "Move slightly farther from the camera.",
+                "box": {
+                    "x": int(x),
+                    "y": int(y),
+                    "w": int(w),
+                    "h": int(h)
+                }
+            }
+
+        # ---------------------------------------------
+        # FACE CENTER CHECK
+        # ---------------------------------------------
+
+        face_center_x = x + (w / 2)
+        face_center_y = y + (h / 2)
+
+        frame_center_x = frame_w / 2
+        frame_center_y = frame_h / 2
+
+        horizontal_offset = abs(
+            face_center_x - frame_center_x
+        ) / frame_w
+
+        vertical_offset = abs(
+            face_center_y - frame_center_y
+        ) / frame_h
+
+        if horizontal_offset > 0.25:
+            return {
+                "valid": False,
+                "message": "Move your face to the center.",
+                "box": {
+                    "x": int(x),
+                    "y": int(y),
+                    "w": int(w),
+                    "h": int(h)
+                }
+            }
+
+        if vertical_offset > 0.25:
+            return {
+                "valid": False,
+                "message": "Move your face to the center.",
+                "box": {
+                    "x": int(x),
+                    "y": int(y),
+                    "w": int(w),
+                    "h": int(h)
+                }
+            }
+
+        # ---------------------------------------------
+        # BRIGHTNESS CHECK
+        # ---------------------------------------------
+
+        brightness = float(np.mean(gray))
+
+        if brightness < 45:
+            return {
+                "valid": False,
+                "message": "Lighting is too dark.",
+                "box": {
+                    "x": int(x),
+                    "y": int(y),
+                    "w": int(w),
+                    "h": int(h)
+                }
+            }
+
+        if brightness > 235:
+            return {
+                "valid": False,
+                "message": "Lighting is too bright.",
+                "box": {
+                    "x": int(x),
+                    "y": int(y),
+                    "w": int(w),
+                    "h": int(h)
+                }
+            }
+
+        # ---------------------------------------------
+        # FACE IS GOOD
+        # ---------------------------------------------
+
+        print(
+            "🟢 LIVE REGISTRATION FACE READY",
+            f"BOX=({x},{y},{w},{h})",
+            flush=True
+        )
+
+        return {
+            "valid": True,
+            "message": "Face detected. Ready to capture.",
+            "box": {
+                "x": int(x),
+                "y": int(y),
+                "w": int(w),
+                "h": int(h)
+            }
+        }
+
+    except Exception as e:
+
+        print(
+            "❌ LIVE FACE VALIDATION ERROR:",
+            str(e),
+            flush=True
+        )
+
+        return {
+            "valid": False,
+            "message": "Unable to validate face."
+        }
+        
 # 🔥 VERIFY FACE
 @app.post("/verify-face")
 async def verify_face(
@@ -272,7 +537,7 @@ async def verify_face(
 
         frames = []
 
-        for file in files[:6]:
+        for file in files[:8]:
             contents = await file.read()
 
             npimg = np.frombuffer(
@@ -355,26 +620,64 @@ async def verify_face(
 
                 ear_values.append(ear)
 
+        # Make sure MediaPipe detected the face
         if len(ear_values) < 2:
+
             return {
                 "status": "Fake",
                 "message": "Face not detected properly"
             }
 
-        closed = any(
-            e < 0.18
-            for e in ear_values
+        # Show the actual EAR values
+        print(
+            "👁️ EAR VALUES:",
+            [round(e, 3) for e in ear_values],
+            flush=True
         )
 
-        open_eye = any(
-            e > 0.22
-            for e in ear_values
+                # =====================================================
+        # REAL BLINK / LIVENESS DETECTION
+        # OPEN → CLOSED → OPEN
+        # =====================================================
+
+        OPEN_THRESHOLD = 0.23
+        CLOSED_THRESHOLD = 0.22
+
+        blink_detected = False
+        open_before = False
+        closed_during = False
+
+        for ear in ear_values:
+
+            # Step 1: Eyes must start open
+            if not open_before:
+                if ear > OPEN_THRESHOLD:
+                    open_before = True
+
+            # Step 2: Eyes must close
+            elif not closed_during:
+                if ear < CLOSED_THRESHOLD:
+                    closed_during = True
+
+            # Step 3: Eyes must open again
+            else:
+                if ear > OPEN_THRESHOLD:
+                    blink_detected = True
+                    break
+
+        print(
+            "👁️ BLINK CHECK:",
+            f"OPEN_BEFORE={open_before}",
+            f"CLOSED={closed_during}",
+            f"OPEN_AFTER={blink_detected}",
+            flush=True
         )
 
-        if not (closed and open_eye):
+        if not blink_detected:
+
             return {
                 "status": "Fake",
-                "message": "No real blink detected"
+                "message": "Please blink once naturally during scanning."
             }
 
         print(
@@ -382,6 +685,11 @@ async def verify_face(
             flush=True
         )
 
+        # =====================================================
+        # FACE DETECTION
+        # =====================================================
+
+        valid_frames = []
         # =====================================================
         # FACE DETECTION
         # =====================================================
@@ -419,40 +727,19 @@ async def verify_face(
         # =====================================================
         # FIND THIS EMPLOYEE IN THE CACHE
         # =====================================================
-
-        employee_cache = []
-
-        for cached_face in kiosk_face_cache:
-
-            cached_employee = cached_face["employee"]
-
-            cached_id = str(
-                cached_employee.get("id")
-            )
-
-            cached_name = (
-                cached_employee.get("full_name") or ""
-            ).strip().lower()
-
-            requested_id = str(user_id)
-
-            requested_name = (
-                full_name or ""
-            ).strip().lower()
-
-            if (
-                cached_id == requested_id
-                or cached_name == requested_name
-            ):
-                employee_cache.append(
-                    cached_face
-                )
+        employee_cache = kiosk_face_cache.copy()
 
         print(
             "👤 WEB CACHED FACES:",
             len(employee_cache),
             flush=True
         )
+
+        if not employee_cache:
+            return {
+                "status": "Error",
+                "message": "No cached faces available."
+            }
 
         if not employee_cache:
             return {
@@ -470,41 +757,77 @@ async def verify_face(
 
         img = valid_frames[-1]
 
-        img_resized = cv2.resize(
-            img,
-            (112, 112)
-        )
-
         print(
             "⚡ Creating web face embedding...",
             flush=True
         )
 
-        captured_result = DeepFace.represent(
-            img_path=img_resized,
-            model_name="ArcFace",
-            detector_backend="skip",
-            enforce_detection=False
-        )
+        try:
 
-        if not captured_result:
+            # Detect and extract the actual face first
+            detected_faces = DeepFace.extract_faces(
+                img_path=img,
+                detector_backend="opencv",
+                enforce_detection=True,
+                align=True
+            )
+
+            if not detected_faces:
+                return {
+                    "status": "No Face",
+                    "message": "Unable to detect face for recognition."
+                }
+
+            # Use the detected face crop
+            face_crop = detected_faces[0]["face"]
+
+            # Convert DeepFace face image to uint8 BGR
+            face_crop = np.asarray(face_crop * 255, dtype=np.uint8)
+
+            face_crop = cv2.cvtColor(
+                face_crop,
+                cv2.COLOR_RGB2BGR
+            )
+
+            # Create ArcFace embedding from the actual face crop
+            captured_result = DeepFace.represent(
+                img_path=face_crop,
+                model_name="ArcFace",
+                detector_backend="skip",
+                enforce_detection=False
+            )
+
+            if not captured_result:
+                return {
+                    "status": "No Face",
+                    "message": "Unable to create face embedding."
+                }
+
+            captured_embedding = captured_result[0]["embedding"]
+
+            print(
+                "✅ Web ArcFace embedding created",
+                flush=True
+            )
+
+        except Exception as e:
+
+            print(
+                "❌ WEB EMBEDDING ERROR:",
+                str(e),
+                flush=True
+            )
+
             return {
-                "status": "No Face",
-                "message": (
-                    "Unable to create face embedding."
-                )
+                "status": "Error",
+                "message": "Unable to process face for recognition."
             }
-
-        captured_embedding = (
-            captured_result[0]["embedding"]
-        )
-
         # =====================================================
         # COMPARE AGAINST EMPLOYEE'S CACHED EMBEDDINGS
+        # USE ALL REGISTERED FACE IMAGES PER EMPLOYEE
         # =====================================================
 
-        best_distance = 1.0
-        best_employee = None
+        employee_distances = {}
 
         for cached_face in employee_cache:
 
@@ -519,32 +842,112 @@ async def verify_face(
                 stored_embedding
             )
 
+            employee_id = str(employee.get("id"))
+            employee_name = employee.get("full_name")
+
             print(
                 f"📏 WEB DISTANCE "
-                f"{employee.get('full_name')}: "
+                f"{employee_name}: "
                 f"{distance}",
                 flush=True
             )
 
-            if distance < best_distance:
+            if employee_id not in employee_distances:
+                employee_distances[employee_id] = {
+                    "employee": employee,
+                    "distances": []
+                }
 
-                best_distance = distance
+            employee_distances[employee_id]["distances"].append(
+                distance
+            )
+
+
+        # =====================================================
+        # CALCULATE MEDIAN DISTANCE PER EMPLOYEE
+        # =====================================================
+
+        best_distance = 1.0
+        best_employee = None
+
+        for employee_id, data in employee_distances.items():
+
+            distances = data["distances"]
+            employee = data["employee"]
+
+            median_distance = float(
+                np.median(distances)
+            )
+
+            print(
+                f"📊 WEB MEDIAN "
+                f"{employee.get('full_name')}: "
+                f"{median_distance} "
+                f"FROM {len(distances)} FACE(S)",
+                flush=True
+            )
+
+            if median_distance < best_distance:
+
+                best_distance = median_distance
                 best_employee = employee
 
-            # Very strong match
-            if distance < 0.30:
 
-                print(
-                    "🎯 WEB STRONG MATCH:",
-                    employee.get("full_name"),
-                    flush=True
-                )
+        print(
+            "🏆 WEB BEST EMPLOYEE:",
+            best_employee.get("full_name")
+            if best_employee
+            else None,
+            flush=True
+        )
 
-                break
+        print(
+            "🔥 WEB BEST MEDIAN DISTANCE:",
+            best_distance,
+            flush=True
+        )
+
 
         # =====================================================
-        # FINAL DECISION
+        # FINAL DECISION WITH CONFIDENCE MARGIN
         # =====================================================
+
+        requested_id = str(user_id)
+
+        # Sort all employees by their median distance
+        ranked_employees = sorted(
+            employee_distances.values(),
+            key=lambda item: float(np.median(item["distances"]))
+        )
+
+        best_employee = (
+            ranked_employees[0]["employee"]
+            if len(ranked_employees) >= 1
+            else None
+        )
+
+        best_distance = (
+            float(np.median(ranked_employees[0]["distances"]))
+            if len(ranked_employees) >= 1
+            else 1.0
+        )
+
+        second_distance = (
+            float(np.median(ranked_employees[1]["distances"]))
+            if len(ranked_employees) >= 2
+            else 1.0
+        )
+
+        # Difference between the best and second-best employee
+        margin = second_distance - best_distance
+
+        print(
+            "🏆 WEB BEST EMPLOYEE:",
+            best_employee.get("full_name")
+            if best_employee
+            else None,
+            flush=True
+        )
 
         print(
             "🔥 WEB BEST DISTANCE:",
@@ -552,27 +955,101 @@ async def verify_face(
             flush=True
         )
 
+        print(
+            "🥈 WEB SECOND-BEST DISTANCE:",
+            second_distance,
+            flush=True
+        )
+
+        print(
+            "📐 WEB CONFIDENCE MARGIN:",
+            margin,
+            flush=True
+        )
+
+
+        # =====================================================
+        # REQUIRE A CLEAR DIFFERENCE BETWEEN EMPLOYEES
+        # =====================================================
+
+        MIN_MARGIN = 0.05
+
         if (
             best_employee is not None
             and best_distance < 0.35
+            and margin >= MIN_MARGIN
         ):
 
+            matched_id = str(best_employee.get("id"))
+
+            # =================================================
+            # CORRECT LOGGED-IN EMPLOYEE
+            # =================================================
+
+            if matched_id == requested_id:
+
+                print(
+                    "✅ WEB FACE MATCH:",
+                    best_employee["full_name"],
+                    flush=True
+                )
+
+                return {
+                    "status": "Match",
+                    "distance": best_distance,
+                    "employee": {
+                        "id": best_employee["id"],
+                        "full_name": best_employee["full_name"],
+                        "branch_id": best_employee["branch_id"],
+                        "shift_id": best_employee["shift_id"]
+                    }
+                }
+
+            # =================================================
+            # FACE BELONGS TO ANOTHER EMPLOYEE
+            # =================================================
+
             print(
-                "✅ WEB FACE MATCH:",
+                "🚨 WRONG EMPLOYEE:",
                 best_employee["full_name"],
+                "LOGGED-IN:",
+                full_name,
                 flush=True
             )
 
             return {
-                "status": "Match",
-                "distance": best_distance,
-                "employee": {
-                    "id": best_employee["id"],
-                    "full_name": best_employee["full_name"],
-                    "branch_id": best_employee["branch_id"],
-                    "shift_id": best_employee["shift_id"]
-                }
+                "status": "No Match",
+                "message": "Face does not belong to the logged-in employee."
             }
+
+
+        # =====================================================
+        # FACE MATCH IS TOO CLOSE / UNCERTAIN
+        # =====================================================
+
+        if (
+            best_employee is not None
+            and best_distance < 0.35
+            and margin < MIN_MARGIN
+        ):
+
+            print(
+                "⚠️ UNCERTAIN FACE MATCH:",
+                best_employee["full_name"],
+                "MARGIN:",
+                margin,
+                flush=True
+            )
+
+            return {
+                "status": "No Match",
+                "message": "Face recognition was not confident enough. Please try again."
+            }
+
+
+        # =====================================================
+        # NO MATCH
+        # =====================================================
 
         print(
             "❌ WEB FACE NO MATCH",
@@ -1127,6 +1604,12 @@ async def kiosk_verify(
                 "message": "Face not detected properly"
             }
 
+            print(
+    "👁️ EAR VALUES:",
+    [round(e, 3) for e in ear_values],
+    flush=True
+)
+
         closed = any(
             e < 0.18
             for e in ear_values
@@ -1198,11 +1681,6 @@ async def kiosk_verify(
 
         img = valid_frames[-1]
 
-        img_resized = cv2.resize(
-            img,
-            (112, 112)
-        )
-
         try:
 
             print(
@@ -1210,8 +1688,38 @@ async def kiosk_verify(
                 flush=True
             )
 
+            # Detect and extract the actual face first
+            detected_faces = DeepFace.extract_faces(
+                img_path=img,
+                detector_backend="opencv",
+                enforce_detection=True,
+                align=True
+            )
+
+            if not detected_faces:
+                return {
+                    "status": "No Face",
+                    "message": "Unable to detect face for recognition."
+                }
+
+            # Get the detected face crop
+            face_crop = detected_faces[0]["face"]
+
+            # Convert normalized face image to uint8
+            face_crop = np.asarray(
+                face_crop * 255,
+                dtype=np.uint8
+            )
+
+            # Convert RGB to BGR
+            face_crop = cv2.cvtColor(
+                face_crop,
+                cv2.COLOR_RGB2BGR
+            )
+
+            # Create ArcFace embedding from the face crop
             captured_result = DeepFace.represent(
-                img_path=img_resized,
+                img_path=face_crop,
                 model_name="ArcFace",
                 detector_backend="skip",
                 enforce_detection=False
@@ -1239,14 +1747,16 @@ async def kiosk_verify(
                 "status": "Error",
                 "message": "Unable to process face."
             }
-
-
         # =====================================================
         # COMPARE AGAINST CACHED EMPLOYEE EMBEDDINGS
         # =====================================================
 
-        best_distance = 1.0
-        best_employee = None
+# =====================================================
+# COMPARE AGAINST CACHED EMPLOYEE EMBEDDINGS
+# USE ALL REGISTERED FACE IMAGES PER EMPLOYEE
+# =====================================================
+
+        employee_distances = {}
 
         for cached_face in kiosk_face_cache:
 
@@ -1261,6 +1771,7 @@ async def kiosk_verify(
                 stored_embedding
             )
 
+            employee_id = str(employee.get("id"))
             employee_name = (
                 employee.get("full_name") or ""
             )
@@ -1270,25 +1781,100 @@ async def kiosk_verify(
                 flush=True
             )
 
-            if distance < best_distance:
+            if employee_id not in employee_distances:
+                employee_distances[employee_id] = {
+                    "employee": employee,
+                    "distances": []
+                }
 
-                best_distance = distance
+            employee_distances[employee_id]["distances"].append(
+                distance
+            )
+
+
+# =====================================================
+# CALCULATE MEDIAN DISTANCE PER EMPLOYEE
+# =====================================================
+
+        best_distance = 1.0
+        best_employee = None
+
+        for employee_id, data in employee_distances.items():
+
+            distances = data["distances"]
+            employee = data["employee"]
+
+            median_distance = float(
+                np.median(distances)
+            )
+
+            print(
+                f"📊 KIOSK MEDIAN "
+                f"{employee.get('full_name')}: "
+                f"{median_distance} "
+                f"FROM {len(distances)} FACE(S)",
+                flush=True
+            )
+
+            if median_distance < best_distance:
+
+                best_distance = median_distance
                 best_employee = employee
 
-            # Very strong ArcFace match
-            if distance < 0.30:
 
-                print(
-                    f"🎯 STRONG MATCH: {employee_name}",
-                    flush=True
-                )
+        print(
+            "🏆 KIOSK BEST EMPLOYEE:",
+            best_employee.get("full_name")
+            if best_employee
+            else None,
+            flush=True
+        )
 
-                break
-
-
+        print(
+            "🔥 KIOSK BEST MEDIAN DISTANCE:",
+            best_distance,
+            flush=True
+        )
         # =====================================================
         # FINAL DECISION
         # =====================================================
+
+# =====================================================
+# FINAL DECISION WITH CONFIDENCE MARGIN
+# =====================================================
+
+        ranked_employees = sorted(
+            employee_distances.values(),
+            key=lambda item: float(np.median(item["distances"]))
+        )
+
+        best_employee = (
+            ranked_employees[0]["employee"]
+            if len(ranked_employees) >= 1
+            else None
+        )
+
+        best_distance = (
+            float(np.median(ranked_employees[0]["distances"]))
+            if len(ranked_employees) >= 1
+            else 1.0
+        )
+
+        second_distance = (
+            float(np.median(ranked_employees[1]["distances"]))
+            if len(ranked_employees) >= 2
+            else 1.0
+        )
+
+        margin = second_distance - best_distance
+
+        print(
+            "🏆 KIOSK BEST EMPLOYEE:",
+            best_employee.get("full_name")
+            if best_employee
+            else None,
+            flush=True
+        )
 
         print(
             "🔥 KIOSK BEST DISTANCE:",
@@ -1296,9 +1882,29 @@ async def kiosk_verify(
             flush=True
         )
 
+        print(
+            "🥈 KIOSK SECOND-BEST DISTANCE:",
+            second_distance,
+            flush=True
+        )
+
+        print(
+            "📐 KIOSK CONFIDENCE MARGIN:",
+            margin,
+            flush=True
+        )
+
+
+        # =====================================================
+        # REQUIRE A CLEAR DIFFERENCE
+        # =====================================================
+
+        MIN_MARGIN = 0.05
+
         if (
             best_employee is not None
             and best_distance < 0.35
+            and margin >= MIN_MARGIN
         ):
 
             print(
@@ -1313,15 +1919,15 @@ async def kiosk_verify(
                 "branch_id": best_employee["branch_id"],
                 "shift_id": best_employee["shift_id"]
             }
-            # =====================================================
+
+            # =================================================
             # 📸 SAVE SUCCESSFUL KIOSK FACE IMAGE
-            # =====================================================
+            # =================================================
 
             face_url = None
 
             try:
 
-                # Use the same valid frame that was used for recognition
                 face_frame = valid_frames[-1]
 
                 success, encoded_image = cv2.imencode(
@@ -1382,8 +1988,6 @@ async def kiosk_verify(
                     flush=True
                 )
 
-                # Recognition and attendance should still continue
-
 
             # =================================================
             # RECORD ATTENDANCE
@@ -1402,6 +2006,34 @@ async def kiosk_verify(
                 "attendance": attendance_result
             }
 
+
+        # =====================================================
+        # UNCERTAIN MATCH
+        # =====================================================
+
+        if (
+            best_employee is not None
+            and best_distance < 0.35
+            and margin < MIN_MARGIN
+        ):
+
+            print(
+                "⚠️ KIOSK UNCERTAIN FACE MATCH:",
+                best_employee["full_name"],
+                "MARGIN:",
+                margin,
+                flush=True
+            )
+
+            return {
+                "status": "No Match",
+                "message": "Face recognition was not confident enough. Please try again."
+            }
+
+
+        # =====================================================
+        # NO MATCH
+        # =====================================================
 
         print(
             "❌ KIOSK NO MATCH",

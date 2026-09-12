@@ -139,30 +139,30 @@ export default function EmployeeDashboard({
     );
   };
 
-  const captureFrames = async () => {
-    const frames = [];
+ const captureFrames = async () => {
+  const frames = [];
 
-    await new Promise((res) =>
-      setTimeout(res, 2000)
-    );
+  // Give the camera 2 seconds to stabilize
+  await new Promise((res) => setTimeout(res, 2000));
 
-    for (let i = 0; i < 5; i++) {
-      const image =
-        webcamRef.current.getScreenshot();
+  // Capture more frames so a quick blink is less likely to be missed
+  for (let i = 0; i < 8; i++) {
+    const image = webcamRef.current.getScreenshot();
 
-      const blob = await fetch(image).then(
-        (res) => res.blob()
-      );
-
-      frames.push(blob);
-
-      await new Promise((res) =>
-        setTimeout(res, 600)
-      );
+    if (!image) {
+      continue;
     }
 
-    return frames;
-  };
+    const blob = await fetch(image).then((res) => res.blob());
+
+    frames.push(blob);
+
+    // Capture every 350 ms
+    await new Promise((res) => setTimeout(res, 350));
+  }
+
+  return frames;
+};
 
   const handleScan = async (
     actionType
