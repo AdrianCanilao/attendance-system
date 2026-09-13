@@ -14,10 +14,18 @@ export default function EmployeeDashboard({
   const [timeOut, setTimeOut] = useState("-");
   const [profileClockIn, setProfileClockIn] = useState("-");
   const [profileClockOut, setProfileClockOut] = useState("-");
-  const [loading, setLoading] = useState(false);
+ const [loading, setLoading] = useState(false);
 
-  const webcamRef = useRef(null);
+const webcamRef = useRef(null);
 
+const [showCamera, setShowCamera] = useState(false);
+const [scanAction, setScanAction] = useState(null);
+const [faceStatus, setFaceStatus] = useState({
+  valid: false,
+  message: "Position your face inside the camera.",
+  box: null,
+});
+const [checkingFace, setCheckingFace] = useState(false);
   const location = window.location.pathname;
 
   const managerMode =
@@ -163,6 +171,82 @@ export default function EmployeeDashboard({
 
   return frames;
 };
+const validateLiveFace = async () => {
+  if (!webcamRef.current) return;
+
+  const image = webcamRef.current.getScreenshot();
+
+  if (!image) return;
+
+  try {
+    setCheckingFace(true);
+
+    const blob = await fetch(image).then((res) =>
+      res.blob()
+    );
+
+    const formData = new FormData();
+
+    formData.append(
+      "file",
+      blob,
+      "live-face.jpg"
+    );
+
+    const response = await fetch(
+      "http://localhost:8000/validate-face",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const data = await response.json();
+
+    setFaceStatus(data);
+
+  } catch (error) {
+    console.error(
+      "Live face validation error:",
+      error
+    );
+
+    setFaceStatus({
+      valid: false,
+      message: "Camera validation unavailable.",
+      box: null,
+    });
+
+  } finally {
+    setCheckingFace(false);
+  }
+};
+useEffect(() => {
+  if (!showCamera) {
+    return;
+  }
+
+  const interval = setInterval(() => {
+    validateLiveFace();
+  }, 700);
+
+  return () => {
+    clearInterval(interval);
+  };
+}, [showCamera]);
+const openAttendanceCamera = (actionType) => {
+  if (loading) return;
+
+  setScanAction(actionType);
+
+  setFaceStatus({
+    valid: false,
+    message: "Position your face inside the box.",
+    box: null,
+  });
+
+  setShowCamera(true);
+};
 
   const handleScan = async (
     actionType
@@ -174,6 +258,10 @@ export default function EmployeeDashboard({
 
       const frames =
         await captureFrames();
+        if (frames.length < 2) {
+  alert("Unable to capture enough frames.");
+  return;
+}
 
       const { data: userData } =
         await supabase.auth.getUser();
@@ -453,6 +541,14 @@ const scheduledClockOut = new Date(
         });
       }
 
+      setShowCamera(false);
+      setScanAction(null);
+      setFaceStatus({
+        valid: false,
+        message: "Position your face inside the camera.",
+        box: null,
+      });
+
       alert(
         "Attendance recorded"
       );
@@ -523,44 +619,126 @@ const scheduledClockOut = new Date(
         </div>
       </div>
 
-      <div style={styles.cameraCard}>
-        <p>
-          Please blink your eyes
-          during scanning
-        </p>
-
-        <Webcam
-          ref={webcamRef}
-          screenshotFormat="image/jpeg"
-          style={styles.camera}
-        />
-
-        <div style={styles.actions}>
+        <div style={styles.attendanceButtons}>
           <button
             style={styles.primaryBtn}
             onClick={() =>
-              handleScan("time_in")
+              openAttendanceCamera("time_in")
             }
             disabled={loading}
           >
-            {loading
-              ? "Processing..."
-              : "Time In"}
+            Time In
           </button>
 
           <button
             style={styles.secondaryBtn}
             onClick={() =>
-              handleScan("time_out")
+              openAttendanceCamera("time_out")
             }
             disabled={loading}
           >
-            {loading
-              ? "Processing..."
-              : "Time Out"}
+            Time Out
           </button>
-        </div>
+
       </div>
+
+      {showCamera && (
+        <div style={styles.cameraOverlay}>
+
+          <div style={styles.cameraModal}>
+
+            <h2>
+              {scanAction === "time_in"
+                ? "Time In"
+                : "Time Out"}
+            </h2>
+
+            <p style={styles.cameraInstruction}>
+              Position your face inside the box
+            </p>
+
+            <div style={styles.cameraWrapper}>
+
+              <Webcam
+                ref={webcamRef}
+                audio={false}
+                screenshotFormat="image/jpeg"
+                videoConstraints={{
+                  width: 320,
+                  height: 240,
+                  facingMode: "user",
+                }}
+                style={styles.camera}
+              />
+
+              {faceStatus.box && (
+                <div
+                  style={{
+                    ...styles.faceBox,
+                    left: `${faceStatus.box.x}px`,
+                    top: `${faceStatus.box.y}px`,
+                    width: `${faceStatus.box.w}px`,
+                    height: `${faceStatus.box.h}px`,
+                    borderColor: faceStatus.valid
+                      ? "#22c55e"
+                      : "#ef4444",
+                  }}
+                />
+              )}
+
+            </div>
+
+            <div
+              style={{
+                ...styles.faceStatus,
+                color: faceStatus.valid
+                  ? "#16a34a"
+                  : "#dc2626",
+              }}
+            >
+              {checkingFace
+                ? "Checking face..."
+                : faceStatus.message}
+            </div>
+
+            <p style={styles.blinkText}>
+              When ready, blink once during scanning.
+            </p>
+
+            <div style={styles.actions}>
+
+              <button
+                style={styles.primaryBtn}
+                onClick={() =>
+                  handleScan(scanAction)
+                }
+                disabled={
+                  loading ||
+                  !faceStatus.valid
+                }
+              >
+                {loading
+                  ? "Processing..."
+                  : "Scan Attendance"}
+              </button>
+
+              <button
+                style={styles.secondaryBtn}
+                onClick={() => {
+                  setShowCamera(false);
+                  setScanAction(null);
+                }}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
     </>
   );
 
@@ -641,6 +819,73 @@ const styles = {
     padding: 0,
     letterSpacing: "-0.3px",
     lineHeight: "1.2",
+  },
+  cameraOverlay: {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0, 0, 0, 0.65)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 9999,
+},
+
+cameraModal: {
+  background: "#fff",
+  padding: "25px",
+  borderRadius: "16px",
+  width: "380px",
+  maxWidth: "90%",
+  textAlign: "center",
+  boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+},
+
+cameraInstruction: {
+  marginBottom: "15px",
+  color: "#6b7280",
+},
+
+cameraWrapper: {
+  position: "relative",
+  width: "320px",
+  height: "240px",
+  margin: "0 auto",
+  overflow: "hidden",
+  borderRadius: "10px",
+  background: "#000",
+},
+
+camera: {
+  width: "320px",
+  height: "240px",
+  display: "block",
+},
+
+faceBox: {
+  position: "absolute",
+  border: "3px solid",
+  borderRadius: "10px",
+  pointerEvents: "none",
+  boxSizing: "border-box",
+},
+
+faceStatus: {
+  marginTop: "15px",
+  fontWeight: "600",
+  minHeight: "24px",
+},
+
+blinkText: {
+  fontSize: "14px",
+  color: "#6b7280",
+  marginTop: "10px",
+},
+  attendanceButtons: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "15px",
+    marginTop: "10px",
+    marginBottom: "25px",
   },
 
   status: (status) => ({

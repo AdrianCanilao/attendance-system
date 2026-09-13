@@ -87,7 +87,7 @@ def load_kiosk_face_cache():
     kiosk_face_cache = []
 
     EMPLOYEE_ROLE_ID = (
-    "e4dbb928-7f0e-4da9-9eff-d7700d37b25a"
+        "e4dbb928-7f0e-4da9-9eff-d7700d37b25a"
     )
 
     MAINTENANCE_ROLE_ID = (
@@ -133,6 +133,7 @@ def load_kiosk_face_cache():
         )
 
         try:
+
             files_list = (
                 supabase
                 .storage
@@ -142,18 +143,24 @@ def load_kiosk_face_cache():
             )
 
         except Exception as e:
+
             print(
                 f"❌ CACHE STORAGE ERROR: "
                 f"{employee_name}: {e}",
                 flush=True
             )
+
             continue
 
         for stored_file in files_list:
 
+            file_name = stored_file.get("name")
+
+            if not file_name:
+                continue
+
             file_path = (
-                f"{folder_path}/"
-                f"{stored_file['name']}"
+                f"{folder_path}/{file_name}"
             )
 
             url = (
@@ -164,12 +171,25 @@ def load_kiosk_face_cache():
 
             try:
 
+                # ==================================================
+                # DOWNLOAD IMAGE
+                # ==================================================
+
                 response = requests.get(
                     url,
                     timeout=5
                 )
 
                 if response.status_code != 200:
+
+                    print(
+                        f"⚠️ DOWNLOAD FAILED: "
+                        f"{employee_name} | "
+                        f"FILE: {file_name} | "
+                        f"STATUS: {response.status_code}",
+                        flush=True
+                    )
+
                     continue
 
                 stored_img = cv2.imdecode(
@@ -181,51 +201,173 @@ def load_kiosk_face_cache():
                 )
 
                 if stored_img is None:
+
+                    print(
+                        f"❌ INVALID IMAGE: "
+                        f"{employee_name} | "
+                        f"FILE: {file_name}",
+                        flush=True
+                    )
+
                     continue
 
-                # Create ArcFace embedding directly from stored image
-                # Detect and extract the actual face first
+                # ==================================================
+                # REAL FACE DETECTION
+                # ==================================================
+
                 detected_faces = DeepFace.extract_faces(
                     img_path=stored_img,
                     detector_backend="opencv",
-                    enforce_detection=False,
+                    enforce_detection=True,
                     align=True
                 )
 
-                if not detected_faces:
+                # --------------------------------------------------
+                # MUST HAVE EXACTLY ONE FACE
+                # --------------------------------------------------
+
+                if len(detected_faces) != 1:
+
                     print(
-                        f"❌ NO FACE DETECTED: "
+                        f"❌ INVALID FACE COUNT: "
                         f"{employee_name} | "
-                        f"FILE: {stored_file['name']}",
+                        f"FILE: {file_name} | "
+                        f"FACES: {len(detected_faces)}",
                         flush=True
                     )
+
                     continue
+
+                detected_face = detected_faces[0]
+
+                confidence = float(
+                    detected_face.get(
+                        "confidence",
+                        0
+                    )
+                )
+
+                facial_area = (
+                    detected_face.get(
+                        "facial_area",
+                        {}
+                    )
+                )
+
+                x = int(
+                    facial_area.get("x", 0)
+                )
+
+                y = int(
+                    facial_area.get("y", 0)
+                )
+
+                w = int(
+                    facial_area.get("w", 0)
+                )
+
+                h = int(
+                    facial_area.get("h", 0)
+                )
+
+                image_height, image_width = (
+                    stored_img.shape[:2]
+                )
+
+                # ==================================================
+                # VALIDATION
+                # ==================================================
+
+                # Reject zero/invalid confidence
+                if confidence <= 0:
+
+                    print(
+                        f"❌ INVALID CONFIDENCE: "
+                        f"{employee_name} | "
+                        f"FILE: {file_name} | "
+                        f"CONFIDENCE: {confidence}",
+                        flush=True
+                    )
+
+                    continue
+
+                # Reject invalid bounding box
+                if w <= 0 or h <= 0:
+
+                    print(
+                        f"❌ INVALID FACE AREA: "
+                        f"{employee_name} | "
+                        f"FILE: {file_name}",
+                        flush=True
+                    )
+
+                    continue
+
+                # Reject full-image fallback detection
+                if (
+                    w >= image_width * 0.95
+                    and h >= image_height * 0.95
+                ):
+
+                    print(
+                        f"❌ FULL FRAME DETECTION SKIPPED: "
+                        f"{employee_name} | "
+                        f"FILE: {file_name} | "
+                        f"AREA: {facial_area}",
+                        flush=True
+                    )
+
+                    continue
+
+                # Reject extremely small faces
+                if (
+                    w < 40
+                    or h < 40
+                ):
+
+                    print(
+                        f"❌ FACE TOO SMALL: "
+                        f"{employee_name} | "
+                        f"FILE: {file_name} | "
+                        f"AREA: {facial_area}",
+                        flush=True
+                    )
+
+                    continue
+
+                # ==================================================
+                # VALID FACE
+                # ==================================================
 
                 print(
                     f"🔍 FACE DETECTED: "
                     f"{employee_name} | "
-                    f"FILE: {stored_file['name']} | "
-                    f"CONFIDENCE: {detected_faces[0].get('confidence')} | "
-                    f"AREA: {detected_faces[0].get('facial_area')}",
+                    f"FILE: {file_name} | "
+                    f"CONFIDENCE: {confidence} | "
+                    f"AREA: {facial_area}",
                     flush=True
                 )
 
-                # Get the face crop
-                face_crop = detected_faces[0]["face"]
+                # ==================================================
+                # EXTRACT ACTUAL FACE
+                # ==================================================
 
-                # Convert normalized image to uint8
+                face_crop = detected_face["face"]
+
                 face_crop = np.asarray(
                     face_crop * 255,
                     dtype=np.uint8
                 )
 
-                # Convert RGB to BGR
                 face_crop = cv2.cvtColor(
                     face_crop,
                     cv2.COLOR_RGB2BGR
                 )
 
-                # Create ArcFace embedding from the face crop
+                # ==================================================
+                # CREATE ARCFACE EMBEDDING
+                # ==================================================
+
                 embedding_result = DeepFace.represent(
                     img_path=face_crop,
                     model_name="ArcFace",
@@ -234,11 +376,23 @@ def load_kiosk_face_cache():
                 )
 
                 if not embedding_result:
+
+                    print(
+                        f"❌ EMBEDDING FAILED: "
+                        f"{employee_name} | "
+                        f"FILE: {file_name}",
+                        flush=True
+                    )
+
                     continue
 
                 embedding = (
                     embedding_result[0]["embedding"]
                 )
+
+                # ==================================================
+                # SAVE TO KIOSK CACHE
+                # ==================================================
 
                 kiosk_face_cache.append({
                     "employee": employee,
@@ -246,7 +400,9 @@ def load_kiosk_face_cache():
                 })
 
                 print(
-                    f"✅ Cached: {employee_name}",
+                    f"✅ Cached: "
+                    f"{employee_name} | "
+                    f"FILE: {file_name}",
                     flush=True
                 )
 
@@ -254,7 +410,9 @@ def load_kiosk_face_cache():
 
                 print(
                     f"❌ CACHE ERROR: "
-                    f"{employee_name} | FILE: {stored_file['name']} | ERROR: {e}",
+                    f"{employee_name} | "
+                    f"FILE: {file_name} | "
+                    f"ERROR: {e}",
                     flush=True
                 )
 
@@ -520,7 +678,249 @@ async def validate_face(file: UploadFile = File(...)):
             "valid": False,
             "message": "Unable to validate face."
         }
-        
+
+# ============================================================
+# 🔥 LIVE FACE RECOGNITION
+# ============================================================
+
+@app.post("/recognize-live-face")
+async def recognize_live_face(
+    file: UploadFile = File(...)
+):
+    try:
+        contents = await file.read()
+
+        npimg = np.frombuffer(
+            contents,
+            np.uint8
+        )
+
+        img = cv2.imdecode(
+            npimg,
+            cv2.IMREAD_COLOR
+        )
+
+        if img is None:
+            return {
+                "status": "No Face",
+                "message": "Unable to read camera frame."
+            }
+
+        # Resize for faster processing
+        img = cv2.resize(
+            img,
+            (320, 240)
+        )
+
+        # =====================================================
+        # DETECT FACE
+        # =====================================================
+
+        detected_faces = DeepFace.extract_faces(
+            img_path=img,
+            detector_backend="opencv",
+            enforce_detection=True,
+            align=True
+        )
+
+        if not detected_faces:
+            return {
+                "status": "No Face",
+                "message": "No face detected."
+            }
+
+        # Only use the first detected face
+        face_crop = detected_faces[0]["face"]
+
+        face_crop = np.asarray(
+            face_crop * 255,
+            dtype=np.uint8
+        )
+
+        face_crop = cv2.cvtColor(
+            face_crop,
+            cv2.COLOR_RGB2BGR
+        )
+
+        # =====================================================
+        # CREATE ARCFACE EMBEDDING
+        # =====================================================
+
+        embedding_result = DeepFace.represent(
+            img_path=face_crop,
+            model_name="ArcFace",
+            detector_backend="skip",
+            enforce_detection=False
+        )
+
+        if not embedding_result:
+            return {
+                "status": "No Face",
+                "message": "Unable to create face embedding."
+            }
+
+        captured_embedding = (
+            embedding_result[0]["embedding"]
+        )
+
+        # =====================================================
+        # COMPARE AGAINST REGISTERED EMPLOYEES
+        # =====================================================
+
+        if not kiosk_face_cache:
+            return {
+                "status": "Error",
+                "message": "No registered faces available."
+            }
+
+        employee_distances = {}
+
+        for cached_face in kiosk_face_cache:
+
+            employee = cached_face["employee"]
+
+            stored_embedding = (
+                cached_face["embedding"]
+            )
+
+            distance = cosine_distance(
+                captured_embedding,
+                stored_embedding
+            )
+
+            employee_id = str(
+                employee.get("id")
+            )
+
+            employee_name = (
+                employee.get("full_name")
+            )
+
+            if employee_id not in employee_distances:
+                employee_distances[employee_id] = {
+                    "employee": employee,
+                    "distances": []
+                }
+
+            employee_distances[
+                employee_id
+            ]["distances"].append(distance)
+
+        # =====================================================
+        # MEDIAN DISTANCE PER EMPLOYEE
+        # =====================================================
+
+        ranked_employees = sorted(
+            employee_distances.values(),
+            key=lambda item: float(
+                np.median(item["distances"])
+            )
+        )
+
+        if not ranked_employees:
+            return {
+                "status": "No Match",
+                "message": "No registered face matched."
+            }
+
+        best_employee = (
+            ranked_employees[0]["employee"]
+        )
+
+        best_distance = float(
+            np.median(
+                ranked_employees[0]["distances"]
+            )
+        )
+
+        if len(ranked_employees) >= 2:
+            second_distance = float(
+                np.median(
+                    ranked_employees[1]["distances"]
+                )
+            )
+        else:
+            second_distance = 1.0
+
+        margin = (
+            second_distance -
+            best_distance
+        )
+
+        employee_name = (
+            best_employee.get("full_name")
+        )
+
+        print(
+            f"🔎 LIVE RECOGNITION: "
+            f"{employee_name} | "
+            f"DISTANCE={best_distance:.4f} | "
+            f"MARGIN={margin:.4f}",
+            flush=True
+        )
+
+        # =====================================================
+        # RECOGNITION DECISION
+        # =====================================================
+
+        MIN_DISTANCE = 0.35
+        MIN_MARGIN = 0.05
+
+        if (
+            best_distance < MIN_DISTANCE
+            and margin >= MIN_MARGIN
+        ):
+            print(
+                f"✅ LIVE IDENTITY VERIFIED: "
+                f"{employee_name}",
+                flush=True
+            )
+
+            return {
+                "status": "Match",
+                "message": "Identity verified.",
+                "employee": {
+                    "id": best_employee.get("id"),
+                    "full_name": employee_name,
+                    "branch_id": best_employee.get("branch_id"),
+                    "shift_id": best_employee.get("shift_id")
+                },
+                "distance": best_distance,
+                "margin": margin
+            }
+
+        # Face is recognized as a possible employee,
+        # but the difference is not strong enough.
+        print(
+            f"⚠️ LIVE IDENTITY UNCERTAIN: "
+            f"{employee_name}",
+            flush=True
+        )
+
+        return {
+            "status": "Uncertain",
+            "message": "Face detected, but identity is not confident enough.",
+            "employee": {
+                "id": best_employee.get("id"),
+                "full_name": employee_name
+            },
+            "distance": best_distance,
+            "margin": margin
+        }
+
+    except Exception as e:
+
+        print(
+            "❌ LIVE RECOGNITION ERROR:",
+            str(e),
+            flush=True
+        )
+
+        return {
+            "status": "Error",
+            "message": "Unable to recognize face."
+        }
+
 # 🔥 VERIFY FACE
 @app.post("/verify-face")
 async def verify_face(
