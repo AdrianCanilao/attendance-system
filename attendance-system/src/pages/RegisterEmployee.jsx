@@ -110,7 +110,7 @@ const fetchShifts = async (branchId) => {
       );
 
       const response = await fetch(
-        "http://127.0.0.1:8000/validate-face",
+        "http://127.0.0.1:8002/validate-enrollment-face",
         {
           method: "POST",
           body: formData,
@@ -328,6 +328,41 @@ role: "maintenance",
   action: "REGISTER_EMPLOYEE",
   description: `Registered employee: ${name}`,
 });
+      }
+            // =====================================================
+      // 🔄 RELOAD INSIGHTFACE EMPLOYEE TEMPLATES
+      // =====================================================
+
+      try {
+        console.log("🔄 Reloading InsightFace templates...");
+
+        const reloadResponse = await fetch(
+          "http://127.0.0.1:8002/reload-templates",
+          {
+            method: "POST",
+          }
+        );
+
+        const reloadData = await reloadResponse.json();
+
+        console.log(
+          "🔄 INSIGHTFACE TEMPLATE RELOAD:",
+          reloadData
+        );
+
+        if (reloadData.status !== "OK") {
+          console.warn(
+            "⚠️ Employee registered, but InsightFace templates were not reloaded."
+          );
+        }
+
+      } catch (reloadError) {
+
+        console.warn(
+          "⚠️ Employee registered, but InsightFace reload failed:",
+          reloadError
+        );
+
       }
 
       alert("✅ Employee registered!");

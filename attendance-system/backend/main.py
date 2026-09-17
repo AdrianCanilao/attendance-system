@@ -6,6 +6,12 @@ import numpy as np
 import requests
 from supabase import create_client
 from deepface import DeepFace
+#from insightface_engine import (
+    #insightface_app,
+    #get_face_embedding,
+    #detect_faces,
+    #cosine_distance as insightface_cosine_distance
+#)
 import time
 from mediapipe.python.solutions import face_mesh as mp_face_mesh
 from datetime import datetime, date, timedelta
@@ -922,6 +928,14 @@ async def recognize_live_face(
         }
 
 # 🔥 VERIFY FACE
+# ============================================================
+# 🔥 VERIFY FACE
+# FINAL WEB ATTENDANCE VERIFICATION
+#
+# InsightFace recognition runs on port 8002.
+# MediaPipe blink/liveness remains here on port 8000.
+# ============================================================
+
 @app.post("/verify-face")
 async def verify_face(
     files: List[UploadFile] = File(...),
@@ -931,13 +945,15 @@ async def verify_face(
     print("🔥 VERIFY STARTED", flush=True)
 
     try:
+
         # =====================================================
-        # LOAD CAPTURED FRAMES
+        # 1. LOAD CAPTURED FRAMES
         # =====================================================
 
         frames = []
 
         for file in files[:8]:
+
             contents = await file.read()
 
             npimg = np.frombuffer(
@@ -953,7 +969,7 @@ async def verify_face(
             if img is None:
                 continue
 
-            # Smaller image = faster processing
+            # Keep processing fast
             img = cv2.resize(
                 img,
                 (320, 240)
@@ -973,8 +989,9 @@ async def verify_face(
             flush=True
         )
 
+
         # =====================================================
-        # BLINK / LIVENESS DETECTION
+        # 2. MEDIA PIPE BLINK / LIVENESS
         # =====================================================
 
         ear_values = []
@@ -1020,7 +1037,8 @@ async def verify_face(
 
                 ear_values.append(ear)
 
-        # Make sure MediaPipe detected the face
+
+        # Make sure MediaPipe detected enough frames
         if len(ear_values) < 2:
 
             return {
@@ -1028,15 +1046,16 @@ async def verify_face(
                 "message": "Face not detected properly"
             }
 
-        # Show the actual EAR values
+
         print(
             "👁️ EAR VALUES:",
             [round(e, 3) for e in ear_values],
             flush=True
         )
 
-                # =====================================================
-        # REAL BLINK / LIVENESS DETECTION
+
+        # =====================================================
+        # 3. BLINK SEQUENCE
         # OPEN → CLOSED → OPEN
         # =====================================================
 
@@ -1049,21 +1068,25 @@ async def verify_face(
 
         for ear in ear_values:
 
-            # Step 1: Eyes must start open
+            # Eyes must start open
             if not open_before:
+
                 if ear > OPEN_THRESHOLD:
                     open_before = True
 
-            # Step 2: Eyes must close
+            # Eyes must close
             elif not closed_during:
+
                 if ear < CLOSED_THRESHOLD:
                     closed_during = True
 
-            # Step 3: Eyes must open again
+            # Eyes must open again
             else:
+
                 if ear > OPEN_THRESHOLD:
                     blink_detected = True
                     break
+
 
         print(
             "👁️ BLINK CHECK:",
@@ -1073,6 +1096,7 @@ async def verify_face(
             flush=True
         )
 
+
         if not blink_detected:
 
             return {
@@ -1080,386 +1104,291 @@ async def verify_face(
                 "message": "Please blink once naturally during scanning."
             }
 
+
         print(
             "👁️ WEB BLINK DETECTED",
             flush=True
         )
 
+
         # =====================================================
-        # FACE DETECTION
+        # 4. SEND FRAMES TO INSIGHTFACE SERVER
+        # PORT 8002
         # =====================================================
 
-        valid_frames = []
-        # =====================================================
-        # FACE DETECTION
-        # =====================================================
+        recognition_results = []
 
-        valid_frames = []
-
-        for img in frames:
+        for index, img in enumerate(frames):
 
             try:
 
-                faces = DeepFace.extract_faces(
-                    img_path=img,
-                    detector_backend="opencv",
-                    enforce_detection=True
+                # Encode frame as JPEG
+                success, encoded_image = cv2.imencode(
+                    ".jpg",
+                    img,
+                    [
+                        cv2.IMWRITE_JPEG_QUALITY,
+                        85
+                    ]
                 )
 
-                if faces:
-                    valid_frames.append(img)
+                if not success:
+                    continue
 
-            except Exception:
-                pass
 
-        if len(valid_frames) < 1:
-            return {
-                "status": "No Face",
-                "message": "No face detected."
-            }
+                # Send frame to InsightFace API
+                response = requests.post(
+                    "http://127.0.0.1:8002/recognize-live-face",
+                    files={
+                        "file": (
+                            f"frame_{index}.jpg",
+                            encoded_image.tobytes(),
+                            "image/jpeg"
+                        )
+                    },
+                    timeout=10
+                )
 
-        print(
-            "👤 VALID WEB FRAMES:",
-            len(valid_frames),
-            flush=True
-        )
+
+                if response.status_code != 200:
+
+                    print(
+                        f"⚠️ INSIGHTFACE FRAME {index + 1}: "
+                        f"HTTP {response.status_code}",
+                        flush=True
+                    )
+
+                    continue
+
+
+                result = response.json()
+
+                print(
+                    f"🔎 INSIGHTFACE FRAME {index + 1}:",
+                    result,
+                    flush=True
+                )
+
+
+                recognition_results.append(result)
+
+
+            except Exception as e:
+
+                print(
+                    f"❌ INSIGHTFACE FRAME {index + 1} ERROR:",
+                    str(e),
+                    flush=True
+                )
+
 
         # =====================================================
-        # FIND THIS EMPLOYEE IN THE CACHE
+        # 5. MAKE SURE INSIGHTFACE RESPONDED
         # =====================================================
-        employee_cache = kiosk_face_cache.copy()
 
-        print(
-            "👤 WEB CACHED FACES:",
-            len(employee_cache),
-            flush=True
-        )
+        if not recognition_results:
 
-        if not employee_cache:
-            return {
-                "status": "Error",
-                "message": "No cached faces available."
-            }
-
-        if not employee_cache:
             return {
                 "status": "Error",
                 "message": (
-                    "No cached face found for this employee. "
-                    "Please restart the FastAPI server "
-                    "after registering the employee face."
+                    "Unable to connect to the InsightFace "
+                    "recognition service."
                 )
             }
 
+
         # =====================================================
-        # CREATE ONE ARCFACE EMBEDDING
+        # 6. TEMPORAL VOTING
+        # COUNT RECOGNIZED EMPLOYEES ACROSS FRAMES
         # =====================================================
 
-        img = valid_frames[-1]
+        employee_votes = {}
 
-        print(
-            "⚡ Creating web face embedding...",
-            flush=True
-        )
+        for result in recognition_results:
 
-        try:
+            if result.get("status") != "Match":
+                continue
 
-            # Detect and extract the actual face first
-            detected_faces = DeepFace.extract_faces(
-                img_path=img,
-                detector_backend="opencv",
-                enforce_detection=True,
-                align=True
-            )
+            employee_id = result.get("employee_id")
+            full_name = result.get("full_name")
 
-            if not detected_faces:
-                return {
-                    "status": "No Face",
-                    "message": "Unable to detect face for recognition."
+            if not employee_id or not full_name:
+                continue
+
+            employee_id = str(employee_id)
+
+            if employee_id not in employee_votes:
+
+                employee_votes[employee_id] = {
+                    "employee": {
+                        "id": employee_id,
+                        "full_name": full_name
+                    },
+                    "votes": 0,
+                    "distances": []
                 }
 
-            # Use the detected face crop
-            face_crop = detected_faces[0]["face"]
+            employee_votes[employee_id]["votes"] += 1
 
-            # Convert DeepFace face image to uint8 BGR
-            face_crop = np.asarray(face_crop * 255, dtype=np.uint8)
+            distance = result.get("distance")
 
-            face_crop = cv2.cvtColor(
-                face_crop,
-                cv2.COLOR_RGB2BGR
-            )
+            if distance is not None:
 
-            # Create ArcFace embedding from the actual face crop
-            captured_result = DeepFace.represent(
-                img_path=face_crop,
-                model_name="ArcFace",
-                detector_backend="skip",
-                enforce_detection=False
-            )
+                employee_votes[
+                    employee_id
+                ]["distances"].append(
+                    float(distance)
+                )
 
-            if not captured_result:
-                return {
-                    "status": "No Face",
-                    "message": "Unable to create face embedding."
-                }
+        # =====================================================
+        # 7. NO RECOGNIZED EMPLOYEE
+        # =====================================================
 
-            captured_embedding = captured_result[0]["embedding"]
+        if not employee_votes:
 
             print(
-                "✅ Web ArcFace embedding created",
-                flush=True
-            )
-
-        except Exception as e:
-
-            print(
-                "❌ WEB EMBEDDING ERROR:",
-                str(e),
+                "❌ INSIGHTFACE: NO MATCH",
                 flush=True
             )
 
             return {
-                "status": "Error",
-                "message": "Unable to process face for recognition."
+                "status": "No Match",
+                "message": "Face was not recognized."
             }
-        # =====================================================
-        # COMPARE AGAINST EMPLOYEE'S CACHED EMBEDDINGS
-        # USE ALL REGISTERED FACE IMAGES PER EMPLOYEE
-        # =====================================================
-
-        employee_distances = {}
-
-        for cached_face in employee_cache:
-
-            employee = cached_face["employee"]
-
-            stored_embedding = (
-                cached_face["embedding"]
-            )
-
-            distance = cosine_distance(
-                captured_embedding,
-                stored_embedding
-            )
-
-            employee_id = str(employee.get("id"))
-            employee_name = employee.get("full_name")
-
-            print(
-                f"📏 WEB DISTANCE "
-                f"{employee_name}: "
-                f"{distance}",
-                flush=True
-            )
-
-            if employee_id not in employee_distances:
-                employee_distances[employee_id] = {
-                    "employee": employee,
-                    "distances": []
-                }
-
-            employee_distances[employee_id]["distances"].append(
-                distance
-            )
 
 
         # =====================================================
-        # CALCULATE MEDIAN DISTANCE PER EMPLOYEE
+        # 8. SELECT EMPLOYEE WITH MOST VOTES
         # =====================================================
 
-        best_distance = 1.0
-        best_employee = None
+        ranked_votes = sorted(
+            employee_votes.values(),
+            key=lambda item: (
+                -item["votes"],
+                np.median(item["distances"])
+                if item["distances"]
+                else 1.0
+            )
+        )
 
-        for employee_id, data in employee_distances.items():
 
-            distances = data["distances"]
-            employee = data["employee"]
+        best_result = ranked_votes[0]
+
+        best_employee = best_result["employee"]
+
+        best_employee_id = str(
+            best_employee.get("id")
+        )
+
+        vote_count = best_result["votes"]
+
+
+        if best_result["distances"]:
 
             median_distance = float(
-                np.median(distances)
+                np.median(
+                    best_result["distances"]
+                )
             )
 
-            print(
-                f"📊 WEB MEDIAN "
-                f"{employee.get('full_name')}: "
-                f"{median_distance} "
-                f"FROM {len(distances)} FACE(S)",
-                flush=True
-            )
+        else:
 
-            if median_distance < best_distance:
-
-                best_distance = median_distance
-                best_employee = employee
+            median_distance = 1.0
 
 
         print(
-            "🏆 WEB BEST EMPLOYEE:",
-            best_employee.get("full_name")
-            if best_employee
-            else None,
+            "🏆 INSIGHTFACE BEST EMPLOYEE:",
+            best_employee.get("full_name"),
             flush=True
         )
 
         print(
-            "🔥 WEB BEST MEDIAN DISTANCE:",
-            best_distance,
+            "🗳️ INSIGHTFACE VOTES:",
+            vote_count,
+            "/",
+            len(recognition_results),
+            flush=True
+        )
+
+        print(
+            "📏 INSIGHTFACE MEDIAN DISTANCE:",
+            median_distance,
             flush=True
         )
 
 
         # =====================================================
-        # FINAL DECISION WITH CONFIDENCE MARGIN
+        # 9. REQUIRE TEMPORAL CONSISTENCY
+        #
+        # At least 3 frames must recognize the same employee.
+        # This prevents one accidental frame from being enough.
+        # =====================================================
+
+        if vote_count < 3:
+
+            print(
+                "⚠️ INSIGHTFACE: NOT ENOUGH CONSISTENT MATCHES",
+                flush=True
+            )
+
+            return {
+                "status": "No Match",
+                "message": (
+                    "Face recognition was not consistent "
+                    "enough. Please try again."
+                )
+            }
+
+
+        # =====================================================
+        # 10. VERIFY AGAINST LOGGED-IN EMPLOYEE
+        #
+        # IMPORTANT:
+        # Compare employee IDs, NOT names.
         # =====================================================
 
         requested_id = str(user_id)
 
-        # Sort all employees by their median distance
-        ranked_employees = sorted(
-            employee_distances.values(),
-            key=lambda item: float(np.median(item["distances"]))
-        )
 
-        best_employee = (
-            ranked_employees[0]["employee"]
-            if len(ranked_employees) >= 1
-            else None
-        )
-
-        best_distance = (
-            float(np.median(ranked_employees[0]["distances"]))
-            if len(ranked_employees) >= 1
-            else 1.0
-        )
-
-        second_distance = (
-            float(np.median(ranked_employees[1]["distances"]))
-            if len(ranked_employees) >= 2
-            else 1.0
-        )
-
-        # Difference between the best and second-best employee
-        margin = second_distance - best_distance
-
-        print(
-            "🏆 WEB BEST EMPLOYEE:",
-            best_employee.get("full_name")
-            if best_employee
-            else None,
-            flush=True
-        )
-
-        print(
-            "🔥 WEB BEST DISTANCE:",
-            best_distance,
-            flush=True
-        )
-
-        print(
-            "🥈 WEB SECOND-BEST DISTANCE:",
-            second_distance,
-            flush=True
-        )
-
-        print(
-            "📐 WEB CONFIDENCE MARGIN:",
-            margin,
-            flush=True
-        )
-
-
-        # =====================================================
-        # REQUIRE A CLEAR DIFFERENCE BETWEEN EMPLOYEES
-        # =====================================================
-
-        MIN_MARGIN = 0.05
-
-        if (
-            best_employee is not None
-            and best_distance < 0.35
-            and margin >= MIN_MARGIN
-        ):
-
-            matched_id = str(best_employee.get("id"))
-
-            # =================================================
-            # CORRECT LOGGED-IN EMPLOYEE
-            # =================================================
-
-            if matched_id == requested_id:
-
-                print(
-                    "✅ WEB FACE MATCH:",
-                    best_employee["full_name"],
-                    flush=True
-                )
-
-                return {
-                    "status": "Match",
-                    "distance": best_distance,
-                    "employee": {
-                        "id": best_employee["id"],
-                        "full_name": best_employee["full_name"],
-                        "branch_id": best_employee["branch_id"],
-                        "shift_id": best_employee["shift_id"]
-                    }
-                }
-
-            # =================================================
-            # FACE BELONGS TO ANOTHER EMPLOYEE
-            # =================================================
+        if best_employee_id != requested_id:
 
             print(
                 "🚨 WRONG EMPLOYEE:",
-                best_employee["full_name"],
-                "LOGGED-IN:",
+                best_employee.get("full_name"),
+                "| LOGGED-IN:",
                 full_name,
                 flush=True
             )
 
             return {
                 "status": "No Match",
-                "message": "Face does not belong to the logged-in employee."
+                "message": (
+                    "Face does not belong to the "
+                    "logged-in employee."
+                )
             }
 
 
         # =====================================================
-        # FACE MATCH IS TOO CLOSE / UNCERTAIN
-        # =====================================================
-
-        if (
-            best_employee is not None
-            and best_distance < 0.35
-            and margin < MIN_MARGIN
-        ):
-
-            print(
-                "⚠️ UNCERTAIN FACE MATCH:",
-                best_employee["full_name"],
-                "MARGIN:",
-                margin,
-                flush=True
-            )
-
-            return {
-                "status": "No Match",
-                "message": "Face recognition was not confident enough. Please try again."
-            }
-
-
-        # =====================================================
-        # NO MATCH
+        # 11. FINAL SUCCESS
         # =====================================================
 
         print(
-            "❌ WEB FACE NO MATCH",
+            "✅ WEB FACE MATCH:",
+            best_employee.get("full_name"),
             flush=True
         )
 
+
         return {
-            "status": "No Match",
-            "distance": best_distance
+            "status": "Match",
+            "distance": median_distance,
+            "employee": {
+                "id": best_employee.get("id"),
+                "full_name": best_employee.get("full_name")
+            }
         }
+
 
     except Exception as e:
 
@@ -1473,13 +1402,6 @@ async def verify_face(
             "status": "Error",
             "message": str(e)
         }
-
-    # ============================================================
-# KIOSK FACE IDENTIFICATION
-# ============================================================
-# ============================================================
-# KIOSK ATTENDANCE RECORDING
-# ============================================================
 
 def parse_shift_time(value):
     if not value:

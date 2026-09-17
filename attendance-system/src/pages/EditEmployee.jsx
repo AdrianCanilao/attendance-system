@@ -17,8 +17,12 @@ export default function EditEmployee() {
   const [imageSrc, setImageSrc] = useState(null);
   const [step, setStep] = useState(0);
   const [capturedImages, setCapturedImages] = useState([]);
-  const webcamRef = useRef(null);
-
+const [faceStatus, setFaceStatus] = useState({
+  valid: false,
+  message: "Position your face inside the camera.",
+  box: null,
+});
+const webcamRef = useRef(null);
   useEffect(() => {
   fetchEmployees();
   fetchBranches();
@@ -111,27 +115,141 @@ setImageSrc(emp.face_url || null);
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
+  // ============================================================
+// INSIGHTFACE ENROLLMENT VALIDATION
+// ============================================================
 
-  // ✅ UPDATED CAPTURE (NO ALERTS + FIXED AVATAR)
-  const captureFace = async () => {
-    const image = webcamRef.current.getScreenshot();
-    const blob = await fetch(image).then((r) => r.blob());
+useEffect(() => {
+  let interval;
 
-    const updated = [...capturedImages, blob];
-    setCapturedImages(updated);
-
-    // ✅ ONLY SET AVATAR ON FRONT FACE
-    if (step === 0) {
-      setImageSrc(image);
+  const validateLiveFace = async () => {
+    if (!showCamera || !webcamRef.current) {
+      return;
     }
 
-    if (step < 2) {
-      setStep(step + 1);
-    } else {
-      setShowCamera(false);
-      setStep(0);
+    const image = webcamRef.current.getScreenshot();
+
+    if (!image) {
+      return;
+    }
+
+    try {
+      const blob = await fetch(image).then((r) => r.blob());
+
+      const formData = new FormData();
+
+      formData.append(
+        "file",
+        blob,
+        "face.jpg"
+      );
+
+      const response = await fetch(
+        "http://127.0.0.1:8002/validate-enrollment-face",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      setFaceStatus(data);
+
+    } catch (error) {
+
+      console.error(
+        "❌ Enrollment face validation error:",
+        error
+      );
+
+      setFaceStatus({
+        valid: false,
+        message: "Face validation unavailable.",
+        box: null,
+      });
     }
   };
+
+  if (showCamera) {
+
+    validateLiveFace();
+
+    interval = setInterval(
+      validateLiveFace,
+      700
+    );
+  }
+
+  return () => {
+    if (interval) {
+      clearInterval(interval);
+    }
+  };
+
+}, [showCamera]);
+
+  // ✅ UPDATED CAPTURE (NO ALERTS + FIXED AVATAR)
+ // ============================================================
+// CAPTURE FACE
+// ============================================================
+
+const captureFace = async () => {
+
+  if (!faceStatus.valid) {
+    return;
+  }
+
+  const image =
+    webcamRef.current.getScreenshot();
+
+  if (!image) {
+    return;
+  }
+
+  const blob =
+    await fetch(image).then((r) => r.blob());
+
+
+  const updated = [
+    ...capturedImages,
+    blob
+  ];
+
+  setCapturedImages(updated);
+
+
+  // Set avatar using front-facing image
+  if (step === 0) {
+    setImageSrc(image);
+  }
+
+
+  if (step < 2) {
+
+    setStep(step + 1);
+
+    setFaceStatus({
+      valid: false,
+      message:
+        step === 0
+          ? "Turn your face slightly LEFT."
+          : "Turn your face slightly RIGHT.",
+      box: null,
+    });
+
+  } else {
+
+    setShowCamera(false);
+    setStep(0);
+
+    setFaceStatus({
+      valid: false,
+      message: "Face capture complete.",
+      box: null,
+    });
+  }
+};
 
   const deleteFaces = async () => {
   const safeName = form.name
@@ -160,101 +278,218 @@ setImageSrc(emp.face_url || null);
 };
 
   const uploadFaces = async () => {
-    console.log("Images:", capturedImages);
-    if (capturedImages.length !== 3) return;
 
-    const safeName = form.name
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "_");
+  // ==========================================================
+  // CHECK
+  // ==========================================================
 
-    const labels = ["front", "left", "right"];
+  if (capturedImages.length !== 3) {
+    throw new Error("Exactly 3 face images are required.");
+  }
 
-    for (let i = 0; i < 3; i++) {
-      const filePath = `employees/${safeName}/${labels[i]}.jpg`;
 
+  // ==========================================================
+  // EMPLOYEE FOLDER
+  // ==========================================================
+
+  const safeName = form.name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+  const labels = [
+    "front",
+    "left",
+    "right",
+  ];
+
+
+  // ==========================================================
+  // UPLOAD ALL 3 IMAGES
+  // ==========================================================
+
+  for (let i = 0; i < 3; i++) {
+
+    const filePath =
+      `employees/${safeName}/${labels[i]}.jpg`;
+
+    const { error } =
       await supabase.storage
         .from("faces")
-        .upload(filePath, capturedImages[i], { contentType: "image/jpeg", upsert: true });
+        .upload(
+          filePath,
+          capturedImages[i],
+          {
+            contentType: "image/jpeg",
+            upsert: true,
+          }
+        );
+
+    if (error) {
+
+      throw new Error(
+        `Failed to upload ${labels[i]} face: ${error.message}`
+      );
     }
-    const publicUrl = supabase
-  .storage
-  .from("faces")
-  .getPublicUrl(`employees/${safeName}/front.jpg`).data.publicUrl + `?t=${Date.now()}`;
+  }
 
-  await supabase
-  .from("employee_profiles")
-  .update({ face_url: publicUrl })
-  .eq("id", selected.id);
-  };
 
-  const handleUpdate = async () => {
-    if (!form.name || !form.email) {
-      alert("Name and Email required");
-      return;
-    }
+  // ==========================================================
+  // UPDATE PROFILE FACE URL
+  // ==========================================================
 
-    try {
-      setLoading(true);
+  const publicUrl =
+    supabase
+      .storage
+      .from("faces")
+      .getPublicUrl(
+        `employees/${safeName}/front.jpg`
+      )
+      .data
+      .publicUrl
+      + `?t=${Date.now()}`;
 
-      await supabase
-        .from("employee_profiles")
-        .update({
-    full_name: form.name,
-    contact_number: form.contact,
-    position: form.position,
-    shift_id: form.shift_id,
-})
-        .eq("id", selected.id);
 
-      if (capturedImages.length === 3) {
-        await uploadFaces();
+  const { error: profileError } =
+    await supabase
+      .from("employee_profiles")
+      .update({
+        face_url: publicUrl,
+      })
+      .eq("id", selected.id);
+
+
+  if (profileError) {
+
+    throw new Error(
+      `Failed to update employee face URL: ${profileError.message}`
+    );
+  }
+
+
+  // ==========================================================
+  // RELOAD INSIGHTFACE TEMPLATES
+  // ==========================================================
+
+  console.log(
+    "🔄 Reloading InsightFace templates..."
+  );
+
+
+  const reloadResponse =
+    await fetch(
+      "http://127.0.0.1:8002/reload-templates",
+      {
+        method: "POST",
       }
+    );
 
-      const { data: currentUser } =
-  await supabase.auth.getUser();
 
-await logAudit({
-  user_id: currentUser.user.id,
-  user_name: currentUser.user.email,
-  role: "manager",
-  action: "UPDATE_EMPLOYEE",
-  description: `Updated employee profile: ${form.name}`,
-});
+  if (!reloadResponse.ok) {
 
-      alert("✅ Updated!");
-      closeModal();
-      fetchEmployees();
-    } catch {
-      alert("Update failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+    throw new Error(
+      "InsightFace template reload failed."
+    );
+  }
 
-  const handleDelete = async () => {
-    if (!confirm("Delete this employee?")) return;
+
+  const reloadData =
+    await reloadResponse.json();
+
+
+  console.log(
+    "🔄 INSIGHTFACE TEMPLATE RELOAD:",
+    reloadData
+  );
+
+
+  if (reloadData.status !== "OK") {
+
+    throw new Error(
+      "InsightFace templates could not be reloaded."
+    );
+  }
+
+
+  console.log(
+    "✅ Face updated and InsightFace templates reloaded."
+  );
+};
+const handleUpdate = async () => {
+  if (!form.name || !form.email) {
+    alert("Name and Email required");
+    return;
+  }
+
+  try {
+    setLoading(true);
 
     await supabase
       .from("employee_profiles")
-      .delete()
+      .update({
+        full_name: form.name,
+        contact_number: form.contact,
+        position: form.position,
+        shift_id: form.shift_id,
+      })
       .eq("id", selected.id);
 
+    if (capturedImages.length === 3) {
+      await uploadFaces();
+    }
+
     const { data: currentUser } =
-  await supabase.auth.getUser();
+      await supabase.auth.getUser();
 
-await logAudit({
-  user_id: currentUser.user.id,
-  user_name: currentUser.user.email,
-  role: "manager",
-  action: "DELETE_EMPLOYEE",
-  description: `Deleted employee: ${selected.full_name}`,
-});
+    await logAudit({
+      user_id: currentUser.user.id,
+      user_name: currentUser.user.email,
+      role: "manager",
+      action: "UPDATE_EMPLOYEE",
+      description: `Updated employee profile: ${form.name}`,
+    });
 
-    alert("Deleted");
+    if (capturedImages.length === 3) {
+      alert("✅ Employee updated and face recognition template refreshed!");
+    } else {
+      alert("✅ Employee updated!");
+    }
+
     closeModal();
     fetchEmployees();
-  };
+
+  } catch {
+    alert("Update failed");
+
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+const handleDelete = async () => {
+  if (!confirm("Delete this employee?")) return;
+
+  await supabase
+    .from("employee_profiles")
+    .delete()
+    .eq("id", selected.id);
+
+  const { data: currentUser } =
+    await supabase.auth.getUser();
+
+  await logAudit({
+    user_id: currentUser.user.id,
+    user_name: currentUser.user.email,
+    role: "manager",
+    action: "DELETE_EMPLOYEE",
+    description: `Deleted employee: ${selected.full_name}`,
+  });
+
+  alert("Deleted");
+  closeModal();
+  fetchEmployees();
+};
 
   return (
     <ManagerLayout>
@@ -319,25 +554,21 @@ await logAudit({
                   )}
                 </div>
 
-  {hasFace ? (
-    <button
-      onClick={deleteFaces}
-      style={{ ...styles.primary, marginTop: "10px" }}
-    >
-      Delete Registered Photo
-    </button>
-  ) : (
-    <button
-      onClick={() => {
-        setShowCamera(true);
-        setCapturedImages([]);
-        setStep(0);
-      }}
-      style={{ ...styles.primary, marginTop: "10px" }}
-    >
-      Update Face
-    </button>
-  )}
+ <button
+  onClick={() => {
+    setShowCamera(true);
+    setCapturedImages([]);
+    setStep(0);
+    setFaceStatus({
+      valid: false,
+      message: "Position your face inside the camera.",
+      box: null,
+    });
+  }}
+  style={{ ...styles.primary, marginTop: "10px" }}
+>
+  Update Face
+</button>
 </div>
 
                 {showCamera && (
@@ -355,17 +586,40 @@ await logAudit({
                     </p>
 
                     <Webcam
-  ref={webcamRef}
-  screenshotFormat="image/jpeg"
-  style={{
-    width: "220px",
-    height: "220px",
-    borderRadius: "12px",
-    objectFit: "cover",
-  }}
-/>
+                      ref={webcamRef}
+                      screenshotFormat="image/jpeg"
+                      style={{
+                        width: "220px",
+                        height: "220px",
+                        borderRadius: "12px",
+                        objectFit: "cover",
+                      }}
+                    />
+                    <p
+                      style={{
+                        marginTop: "8px",
+                        marginBottom: "8px",
+                        fontSize: "13px",
+                        color: faceStatus.valid
+                          ? "#16a34a"
+                          : "#dc2626",
+                        fontWeight: "500",
+                      }}
+                    >
+                      {faceStatus.message}
+                    </p>
 
-                    <button onClick={captureFace} style={styles.primary}>
+                    <button
+                      onClick={captureFace}
+                      disabled={!faceStatus.valid}
+                      style={{
+                        ...styles.primary,
+                        opacity: faceStatus.valid ? 1 : 0.5,
+                        cursor: faceStatus.valid
+                          ? "pointer"
+                          : "not-allowed",
+                      }}
+                    >
                       Capture
                     </button>
                   </div>

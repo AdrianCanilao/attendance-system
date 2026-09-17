@@ -26,6 +26,13 @@ const [faceStatus, setFaceStatus] = useState({
   box: null,
 });
 const [checkingFace, setCheckingFace] = useState(false);
+const [currentEmployeeId, setCurrentEmployeeId] = useState(null);
+
+const [detectedFace, setDetectedFace] = useState(null);
+
+const [identityVerified, setIdentityVerified] = useState(false);
+
+const [recognizingFace, setRecognizingFace] = useState(false);
   const location = window.location.pathname;
 
   const managerMode =
@@ -102,6 +109,8 @@ const [checkingFace, setCheckingFace] = useState(false);
 
     const employeeId = profile.id;
 
+    setCurrentEmployeeId(employeeId);
+
     setName(profile.full_name || "Employee");
 
     setProfileClockIn(
@@ -174,12 +183,15 @@ const [checkingFace, setCheckingFace] = useState(false);
 const validateLiveFace = async () => {
   if (!webcamRef.current) return;
 
+  if (recognizingFace) return;
+
   const image = webcamRef.current.getScreenshot();
 
   if (!image) return;
 
   try {
     setCheckingFace(true);
+    setRecognizingFace(true);
 
     const blob = await fetch(image).then((res) =>
       res.blob()
@@ -193,7 +205,11 @@ const validateLiveFace = async () => {
       "live-face.jpg"
     );
 
-    const response = await fetch(
+    // ========================================================
+    // 1. EXISTING FACE VALIDATION
+    // ========================================================
+
+    const validationResponse = await fetch(
       "http://localhost:8000/validate-face",
       {
         method: "POST",
@@ -201,24 +217,137 @@ const validateLiveFace = async () => {
       }
     );
 
-    const data = await response.json();
+    const validationData =
+      await validationResponse.json();
 
-    setFaceStatus(data);
+    setFaceStatus(validationData);
+
+    // If face position/quality is invalid,
+    // don't run recognition.
+    if (!validationData.valid) {
+      setDetectedFace(null);
+      setIdentityVerified(false);
+      return;
+    }
+
+    // ========================================================
+    // 2. INSIGHTFACE RECOGNITION
+    // ========================================================
+
+    const recognitionResponse = await fetch(
+      "http://127.0.0.1:8002/recognize-live-face",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!recognitionResponse.ok) {
+      throw new Error(
+        "InsightFace recognition server error"
+      );
+    }
+
+    const recognitionData =
+      await recognitionResponse.json();
+
+    console.log(
+      "INSIGHTFACE RESULT:",
+      recognitionData
+    );
+
+    // ========================================================
+    // 3. UNKNOWN FACE
+    // ========================================================
+
+    if (
+      recognitionData.status !== "Match"
+    ) {
+      setDetectedFace({
+        name: null,
+        distance: recognitionData.distance,
+      });
+
+      setIdentityVerified(false);
+
+      setFaceStatus({
+        ...validationData,
+        message: "Unknown face.",
+      });
+
+      return;
+    }
+
+    // ========================================================
+    // 4. DISPLAY DETECTED EMPLOYEE
+    // ========================================================
+
+    const detectedEmployeeId =
+      recognitionData.employee_id;
+
+    const detectedEmployeeName =
+      recognitionData.full_name;
+
+    setDetectedFace({
+      name: detectedEmployeeName,
+      distance: recognitionData.distance,
+      employeeId: detectedEmployeeId,
+    });
+
+    // ========================================================
+    // 5. COMPARE WITH LOGGED-IN EMPLOYEE
+    // ========================================================
+
+    if (
+      detectedEmployeeId === currentEmployeeId
+    ) {
+      setIdentityVerified(true);
+
+      setFaceStatus({
+        ...validationData,
+        message: "Identity verified.",
+      });
+
+      console.log(
+        "IDENTITY VERIFIED:",
+        detectedEmployeeName
+      );
+    } else {
+      setIdentityVerified(false);
+
+      setFaceStatus({
+        ...validationData,
+        message:
+          "Detected face does not match the logged-in employee.",
+      });
+
+      console.log(
+        "IDENTITY MISMATCH:",
+        detectedEmployeeName
+      );
+    }
 
   } catch (error) {
+
     console.error(
-      "Live face validation error:",
+      "Live face recognition error:",
       error
     );
 
+    setDetectedFace(null);
+    setIdentityVerified(false);
+
     setFaceStatus({
       valid: false,
-      message: "Camera validation unavailable.",
+      message:
+        "Face recognition unavailable.",
       box: null,
     });
 
   } finally {
+
     setCheckingFace(false);
+    setRecognizingFace(false);
   }
 };
 useEffect(() => {
@@ -233,27 +362,36 @@ useEffect(() => {
   return () => {
     clearInterval(interval);
   };
-}, [showCamera]);
+}, [showCamera, currentEmployeeId]);
 const openAttendanceCamera = (actionType) => {
   if (loading) return;
 
-  setScanAction(actionType);
+    setScanAction(actionType);
 
-  setFaceStatus({
-    valid: false,
-    message: "Position your face inside the box.",
-    box: null,
-  });
+    setDetectedFace(null);
 
-  setShowCamera(true);
+    setIdentityVerified(false);
+
+    setFaceStatus({
+      valid: false,
+      message: "Position your face inside the box.",
+      box: null,
+    });
+
+    setShowCamera(true);
 };
 
-  const handleScan = async (
-    actionType
-  ) => {
-    if (loading) return;
+const handleScan = async (
+  actionType
+) => {
+  if (loading) return;
 
-    try {
+  if (!identityVerified) {
+    alert("Please verify your identity first.");
+    return;
+  }
+
+  try {
       setLoading(true);
 
       const frames =
@@ -691,15 +829,65 @@ const scheduledClockOut = new Date(
             <div
               style={{
                 ...styles.faceStatus,
-                color: faceStatus.valid
+                color: identityVerified
                   ? "#16a34a"
                   : "#dc2626",
               }}
             >
-              {checkingFace
-                ? "Checking face..."
+              {checkingFace || recognizingFace
+                ? "Recognizing face..."
                 : faceStatus.message}
             </div>
+
+            {detectedFace?.name && (
+              <div
+                style={{
+                  marginTop: "10px",
+                  fontWeight: "600",
+                  color: identityVerified
+                    ? "#16a34a"
+                    : "#dc2626",
+                }}
+              >
+                Detected Face: {detectedFace.name}
+
+                <div
+                  style={{
+                    fontSize: "13px",
+                    marginTop: "4px",
+                    color: "#6b7280",
+                  }}
+                >
+                  Recognition distance:{" "}
+                  {detectedFace.distance?.toFixed(4)}
+                </div>
+              </div>
+            )}
+
+            {identityVerified && (
+              <div
+                style={{
+                  marginTop: "8px",
+                  fontWeight: "700",
+                  color: "#16a34a",
+                }}
+              >
+                🟢 Identity Verified
+              </div>
+            )}
+
+            {detectedFace?.name &&
+              !identityVerified && (
+                <div
+                  style={{
+                    marginTop: "8px",
+                    fontWeight: "700",
+                    color: "#dc2626",
+                  }}
+                >
+                  🔴 Identity does not match
+                </div>
+              )}
 
             <p style={styles.blinkText}>
               When ready, blink once during scanning.
@@ -713,13 +901,16 @@ const scheduledClockOut = new Date(
                   handleScan(scanAction)
                 }
                 disabled={
-                  loading ||
-                  !faceStatus.valid
-                }
+                loading ||
+                !faceStatus.valid ||
+                !identityVerified
+              }
               >
                 {loading
                   ? "Processing..."
-                  : "Scan Attendance"}
+                  : identityVerified
+                  ? "Scan Attendance"
+                  : "Verify Identity First"}
               </button>
 
               <button
