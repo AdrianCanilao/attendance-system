@@ -1832,14 +1832,868 @@ async def record_kiosk_attendance(employee, action, face_url=None):
             "status": "Error",
             "message": str(e)
         }
+# ============================================================
+# KIOSK ATTENDANCE USING LIVE INSIGHTFACE RESULT
+# ============================================================
+
+# ============================================================
+# 🔥 KIOSK LIVE VERIFICATION
+#
+# Flow:
+# 1. Kiosk sends captured frames
+# 2. Verify registered kiosk
+# 3. MediaPipe checks blink/liveness
+# 4. Frames are sent to InsightFace :8002
+# 5. Temporal voting confirms the employee
+# 6. Successful frame is uploaded to Supabase
+# 7. Attendance is recorded
+# ============================================================
+
+@app.post("/kiosk-verify-live")
+async def kiosk_verify_live(
+    files: List[UploadFile] = File(...),
+    action: str = Form(...),
+    kiosk_code: str = Form(...)
+):
+    print("🔥 KIOSK LIVE VERIFICATION STARTED", flush=True)
+    print("ACTION:", action, flush=True)
+    print("KIOSK CODE:", kiosk_code, flush=True)
+
+    try:
+
+        # =====================================================
+        # 1. VALIDATE ACTION
+        # =====================================================
+
+        action = action.strip().upper()
+
+        if action not in ["TIME IN", "TIME OUT"]:
+            return {
+                "status": "Error",
+                "message": "Invalid attendance action."
+            }
+
+        # =====================================================
+        # 2. VERIFY KIOSK
+        # =====================================================
+
+        kiosk_response = (
+            supabase
+            .rpc(
+                "verify_kiosk",
+                {
+                    "p_kiosk_code": kiosk_code
+                }
+            )
+            .execute()
+        )
+
+        registered_kiosks = (
+            kiosk_response.data or []
+        )
+
+        print(
+            "🏪 KIOSK REGISTRATION RESULT:",
+            registered_kiosks,
+            flush=True
+        )
+
+        if not registered_kiosks:
+            return {
+                "status": "Error",
+                "message": "This kiosk is not registered."
+            }
+
+        kiosk = registered_kiosks[0]
+
+        if not kiosk.get("is_active"):
+            return {
+                "status": "Error",
+                "message": "This kiosk is inactive."
+            }
+
+        print(
+            "✅ REGISTERED KIOSK:",
+            kiosk.get("kiosk_code"),
+            flush=True
+        )
+
+        # =====================================================
+        # 3. LOAD CAMERA FRAMES
+        # =====================================================
+
+        frames = []
+
+        for file in files[:8]:
+
+            contents = await file.read()
+
+            npimg = np.frombuffer(
+                contents,
+                np.uint8
+            )
+
+            img = cv2.imdecode(
+                npimg,
+                cv2.IMREAD_COLOR
+            )
+
+            if img is None:
+                continue
+
+            # Keep the same processing size used
+            # by the employee web verification.
+            img = cv2.resize(
+                img,
+                (320, 240)
+            )
+
+            frames.append(img)
+
+        print(
+            "📸 KIOSK CAPTURED FRAMES:",
+            len(frames),
+            flush=True
+        )
+
+        if len(frames) < 2:
+            return {
+                "status": "Error",
+                "message": "Not enough camera frames were captured."
+            }
+
+        # =====================================================
+        # 4. MEDIAPIPE BLINK / LIVENESS
+        #
+        # Required sequence:
+        # OPEN → CLOSED → OPEN
+        # =====================================================
+
+        ear_values = []
+
+        for index, img in enumerate(frames):
+
+            rgb = cv2.cvtColor(
+                img,
+                cv2.COLOR_BGR2RGB
+            )
+
+            result = face_mesh.process(rgb)
+
+            if result.multi_face_landmarks:
+
+                landmarks = (
+                    result.multi_face_landmarks[0].landmark
+                )
+
+                h, w, _ = img.shape
+
+                points = [
+                    (
+                        int(l.x * w),
+                        int(l.y * h)
+                    )
+                    for l in landmarks
+                ]
+
+                left_eye = [
+                    33,
+                    160,
+                    158,
+                    133,
+                    153,
+                    144
+                ]
+
+                ear = eye_aspect_ratio(
+                    points,
+                    left_eye
+                )
+
+                ear_values.append(ear)
+
+        print(
+            "👁️ KIOSK EAR VALUES:",
+            [round(e, 3) for e in ear_values],
+            flush=True
+        )
+
+        if len(ear_values) < 2:
+            return {
+                "status": "Fake",
+                "message": (
+                    "Face was not detected properly. "
+                    "Please position your face in the camera."
+                )
+            }
+
+        # =====================================================
+        # BLINK SEQUENCE
+        # OPEN → CLOSED → OPEN
+        # =====================================================
+
+        OPEN_THRESHOLD = 0.23
+        CLOSED_THRESHOLD = 0.22
+
+        blink_detected = False
+        open_before = False
+        closed_during = False
+
+        for ear in ear_values:
+
+            # Eyes start open
+            if not open_before:
+
+                if ear > OPEN_THRESHOLD:
+                    open_before = True
+
+            # Eyes close
+            elif not closed_during:
+
+                if ear < CLOSED_THRESHOLD:
+                    closed_during = True
+
+            # Eyes open again
+            else:
+
+                if ear > OPEN_THRESHOLD:
+                    blink_detected = True
+                    break
+
+        print(
+            "👁️ KIOSK BLINK CHECK:",
+            f"OPEN_BEFORE={open_before}",
+            f"CLOSED={closed_during}",
+            f"OPEN_AFTER={blink_detected}",
+            flush=True
+        )
+
+        if not blink_detected:
+            return {
+                "status": "Fake",
+                "message": (
+                    "Please blink once naturally "
+                    "during scanning."
+                )
+            }
+
+        print(
+            "✅ KIOSK BLINK VERIFIED",
+            flush=True
+        )
+
+        # =====================================================
+        # 5. SEND FRAMES TO INSIGHTFACE
+        # =====================================================
+
+        recognition_results = []
+
+        for index, img in enumerate(frames):
+
+            try:
+
+                success, encoded_image = cv2.imencode(
+                    ".jpg",
+                    img,
+                    [
+                        cv2.IMWRITE_JPEG_QUALITY,
+                        85
+                    ]
+                )
+
+                if not success:
+                    continue
+
+                response = requests.post(
+                    "http://127.0.0.1:8002/recognize-live-face",
+                    files={
+                        "file": (
+                            f"kiosk_frame_{index}.jpg",
+                            encoded_image.tobytes(),
+                            "image/jpeg"
+                        )
+                    },
+                    timeout=10
+                )
+
+                if response.status_code != 200:
+
+                    print(
+                        f"⚠️ INSIGHTFACE FRAME "
+                        f"{index + 1}: "
+                        f"HTTP {response.status_code}",
+                        flush=True
+                    )
+
+                    continue
+
+                result = response.json()
+
+                print(
+                    f"🔎 INSIGHTFACE FRAME "
+                    f"{index + 1}:",
+                    result,
+                    flush=True
+                )
+
+                recognition_results.append({
+                    "result": result,
+                    "frame": img
+                })
+
+            except Exception as e:
+
+                print(
+                    f"❌ INSIGHTFACE FRAME "
+                    f"{index + 1} ERROR:",
+                    str(e),
+                    flush=True
+                )
+
+        # =====================================================
+        # 6. MAKE SURE INSIGHTFACE RESPONDED
+        # =====================================================
+
+        if not recognition_results:
+            return {
+                "status": "Error",
+                "message": (
+                    "Unable to connect to the "
+                    "InsightFace recognition service."
+                )
+            }
+
+        # =====================================================
+        # 7. TEMPORAL VOTING
+        # =====================================================
+
+        employee_votes = {}
+
+        for item in recognition_results:
+
+            result = item["result"]
+
+            if result.get("status") != "Match":
+                continue
+
+            # Current InsightFace response:
+            #
+            # "employee": {
+            #     "id": "...",
+            #     "full_name": "...",
+            #     "branch_id": "...",
+            #     "shift_id": "..."
+            # }
+            #
+            # Also support the older flat response format.
+
+            employee_data = (
+                result.get("employee")
+                or {}
+            )
+
+            employee_id = (
+                employee_data.get("id")
+                or result.get("employee_id")
+            )
+
+            full_name = (
+                employee_data.get("full_name")
+                or result.get("full_name")
+            )
+
+            if not employee_id or not full_name:
+                continue
+
+            employee_id = str(employee_id)
+
+            if employee_id not in employee_votes:
+
+                employee_votes[employee_id] = {
+                    "employee": {
+                        "id": employee_id,
+                        "full_name": full_name,
+                        "branch_id":
+                            employee_data.get("branch_id"),
+                        "shift_id":
+                            employee_data.get("shift_id")
+                    },
+                    "votes": 0,
+                    "distances": [],
+                    "frames": []
+                }
+
+            employee_votes[
+                employee_id
+            ]["votes"] += 1
+
+            distance = result.get("distance")
+
+            if distance is not None:
+
+                employee_votes[
+                    employee_id
+                ]["distances"].append(
+                    float(distance)
+                )
+
+            employee_votes[
+                employee_id
+            ]["frames"].append(
+                item["frame"]
+            )
+
+        # =====================================================
+        # 8. NO RECOGNIZED EMPLOYEE
+        # =====================================================
+
+        if not employee_votes:
+
+            print(
+                "❌ KIOSK INSIGHTFACE: NO MATCH",
+                flush=True
+            )
+
+            return {
+                "status": "No Match",
+                "message": "Face was not recognized."
+            }
+
+        # =====================================================
+        # 9. RANK EMPLOYEES
+        # =====================================================
+
+        ranked_employees = sorted(
+            employee_votes.values(),
+            key=lambda item: (
+                -item["votes"],
+                np.median(item["distances"])
+                if item["distances"]
+                else 1.0
+            )
+        )
+
+        best_result = ranked_employees[0]
+
+        best_employee = best_result["employee"]
+
+        best_distance = float(
+            np.median(
+                best_result["distances"]
+            )
+        )
+
+        best_votes = best_result["votes"]
+
+        second_distance = (
+            float(
+                np.median(
+                    ranked_employees[1]["distances"]
+                )
+            )
+            if len(ranked_employees) >= 2
+            else 1.0
+        )
+
+        margin = (
+            second_distance -
+            best_distance
+        )
+
+        print(
+            "🏆 KIOSK BEST EMPLOYEE:",
+            best_employee["full_name"],
+            flush=True
+        )
+
+        print(
+            "🗳️ KIOSK VOTES:",
+            best_votes,
+            "/",
+            len(recognition_results),
+            flush=True
+        )
+
+        print(
+            "📏 KIOSK DISTANCE:",
+            best_distance,
+            flush=True
+        )
+
+        print(
+            "📐 KIOSK MARGIN:",
+            margin,
+            flush=True
+        )
+
+        # =====================================================
+        # 10. REQUIRE CONSISTENT RECOGNITION
+        # =====================================================
+
+        if best_votes < 3:
+
+            print(
+                "⚠️ KIOSK: NOT ENOUGH CONSISTENT MATCHES",
+                flush=True
+            )
+
+            return {
+                "status": "No Match",
+                "message": (
+                    "Face recognition was not consistent "
+                    "enough. Please try again."
+                )
+            }
+
+        # =====================================================
+        # 11. FINAL RECOGNITION THRESHOLD
+        # =====================================================
+
+        MIN_DISTANCE = 0.35
+        MIN_MARGIN = 0.05
+
+        if best_distance >= MIN_DISTANCE:
+
+            print(
+                "❌ KIOSK: DISTANCE TOO HIGH",
+                best_distance,
+                flush=True
+            )
+
+            return {
+                "status": "No Match",
+                "message": (
+                    "Face was detected, but the identity "
+                    "could not be verified."
+                )
+            }
+
+        if margin < MIN_MARGIN:
+
+            print(
+                "⚠️ KIOSK: MATCH TOO CLOSE",
+                margin,
+                flush=True
+            )
+
+            return {
+                "status": "No Match",
+                "message": (
+                    "Face recognition was not confident "
+                    "enough. Please try again."
+                )
+            }
+
+        print(
+            "✅ KIOSK IDENTITY VERIFIED:",
+            best_employee["full_name"],
+            flush=True
+        )
+
+        # =====================================================
+        # 12. UPLOAD ATTENDANCE PHOTO
+        #
+        # Use the last successful frame belonging
+        # to the recognized employee.
+        # =====================================================
+
+        face_url = None
+
+        successful_frames = (
+            best_result["frames"]
+        )
+
+        if successful_frames:
+
+            face_frame = successful_frames[-1]
+
+            try:
+
+                success, encoded_image = cv2.imencode(
+                    ".jpg",
+                    face_frame,
+                    [
+                        cv2.IMWRITE_JPEG_QUALITY,
+                        90
+                    ]
+                )
+
+                if not success:
+
+                    print(
+                        "⚠️ KIOSK PHOTO ENCODE FAILED",
+                        flush=True
+                    )
+
+                else:
+
+                    face_bytes = (
+                        encoded_image.tobytes()
+                    )
+
+                    safe_name = normalize_name(
+                        best_employee["full_name"]
+                    )
+
+                    action_folder = (
+                        action.lower().replace(" ", "_")
+                    )
+
+                    file_name = (
+                        f"attendance/"
+                        f"{safe_name}/"
+                        f"{action_folder}/"
+                        f"{int(time.time() * 1000)}.jpg"
+                    )
+
+                    print(
+                        "📸 KIOSK ATTENDANCE PHOTO:",
+                        file_name,
+                        flush=True
+                    )
+
+                    supabase.storage.from_(
+                        "faces"
+                    ).upload(
+                        file_name,
+                        face_bytes,
+                        {
+                            "content-type":
+                                "image/jpeg",
+                            "upsert": "true"
+                        }
+                    )
+
+                    face_url = (
+                        supabase
+                        .storage
+                        .from_("faces")
+                        .get_public_url(
+                            file_name
+                        )
+                    )
+
+                    print(
+                        "✅ KIOSK PHOTO SAVED:",
+                        face_url,
+                        flush=True
+                    )
+
+            except Exception as e:
+
+                print(
+                    "⚠️ KIOSK PHOTO UPLOAD FAILED:",
+                    str(e),
+                    flush=True
+                )
+
+        # =====================================================
+        # 13. RECORD ATTENDANCE
+        # =====================================================
+
+        attendance_result = (
+            await record_kiosk_attendance(
+                best_employee,
+                action,
+                face_url
+            )
+        )
+
+        # =====================================================
+        # 14. RETURN FINAL RESULT
+        # =====================================================
+
+        return {
+            "status": "Match",
+            "message": (
+                "Identity verified and attendance recorded."
+            ),
+            "employee": {
+                "id": best_employee["id"],
+                "full_name": best_employee["full_name"]
+            },
+            "distance": best_distance,
+            "margin": margin,
+            "blink_verified": True,
+            "face_url": face_url,
+            "attendance": attendance_result
+        }
+
+    except Exception as e:
+
+        print(
+            "❌ KIOSK LIVE VERIFICATION ERROR:",
+            str(e),
+            flush=True
+        )
+
+        return {
+            "status": "Error",
+            "message": str(e)
+        }
+@app.post("/kiosk-attendance")
+async def kiosk_attendance(
+    employee_id: str = Form(...),
+    action: str = Form(...),
+    kiosk_code: str = Form(...)
+):
+    print("🔥 KIOSK ATTENDANCE REQUEST", flush=True)
+    print("EMPLOYEE ID:", employee_id, flush=True)
+    print("ACTION:", action, flush=True)
+    print("KIOSK CODE:", kiosk_code, flush=True)
+
+    try:
+        # Verify kiosk
+        kiosk_response = (
+            supabase
+            .rpc(
+                "verify_kiosk",
+                {
+                    "p_kiosk_code": kiosk_code
+                }
+            )
+            .execute()
+        )
+
+        registered_kiosks = kiosk_response.data or []
+
+        if not registered_kiosks:
+            return {
+                "status": "Error",
+                "message": "This kiosk is not registered."
+            }
+
+        kiosk = registered_kiosks[0]
+
+        if not kiosk.get("is_active"):
+            return {
+                "status": "Error",
+                "message": "This kiosk is inactive."
+            }
+
+        # Find employee recognized by InsightFace
+        employee_response = (
+            supabase
+            .table("employee_profiles")
+            .select(
+                "id, full_name, branch_id, shift_id, role_id"
+            )
+            .eq("id", employee_id)
+            .limit(1)
+            .execute()
+        )
+
+        employees = employee_response.data or []
+
+        if not employees:
+            return {
+                "status": "Error",
+                "message": "Employee profile was not found."
+            }
+
+        employee = employees[0]
+
+        # Reuse existing attendance logic
+        attendance = await record_kiosk_attendance(
+            employee,
+            action
+        )
+
+        return {
+            **attendance,
+            "employee": {
+                "id": employee["id"],
+                "full_name": employee["full_name"]
+            }
+        }
+
+    except Exception as e:
+        print(
+            "❌ KIOSK ATTENDANCE ENDPOINT ERROR:",
+            str(e),
+            flush=True
+        )
+
+        return {
+            "status": "Error",
+            "message": str(e)
+        }
 @app.post("/kiosk-verify")
 async def kiosk_verify(
     files: List[UploadFile] = File(...),
-    action: str = Form(...)
+    action: str = Form(...),
+    kiosk_code: str = Form(...)
 ):
     print("🔥 KIOSK VERIFY STARTED", flush=True)
+    print(
+    "🏪 KIOSK CODE:",
+    kiosk_code,
+    flush=True
+)
 
     try:
+                # =====================================================
+        # 🏪 VERIFY KIOSK REGISTRATION
+        # =====================================================
+
+        kiosk_response = (
+            supabase
+            .rpc(
+                "verify_kiosk",
+                {
+                    "p_kiosk_code": kiosk_code
+                }
+            )
+            .execute()
+        )
+
+        registered_kiosks = (
+            kiosk_response.data or []
+        )
+
+        print(
+            "🏪 KIOSK REGISTRATION RESULT:",
+            registered_kiosks,
+            flush=True
+        )
+
+        if not registered_kiosks:
+            return {
+                "status": "Error",
+                "message": "This kiosk is not registered."
+            }
+
+        kiosk = registered_kiosks[0]
+
+        if not kiosk.get("is_active"):
+            return {
+                "status": "Error",
+                "message": "This kiosk is inactive."
+            }
+
+        print(
+            "✅ REGISTERED KIOSK:",
+            kiosk.get("kiosk_code"),
+            flush=True
+        )
+                # =====================================================
+        # 🏢 GET KIOSK BRANCH
+        # =====================================================
+
+        kiosk_branch_id = kiosk.get("branch_id")
+
+        if kiosk_branch_id:
+            print(
+                "🏢 KIOSK BRANCH:",
+                kiosk_branch_id,
+                flush=True
+            )
+        else:
+            print(
+                "🏢 KIOSK BRANCH: NOT ASSIGNED "
+                "(DEVELOPMENT MODE)",
+                flush=True
+            )
         # =====================================================
         # LOAD FRAMES
         # =====================================================
@@ -1995,6 +2849,47 @@ async def kiosk_verify(
                 "status": "Error",
                 "message": "Kiosk face database is empty."
             }
+                # =====================================================
+        # 🏢 FILTER FACES BY KIOSK BRANCH
+        # =====================================================
+
+        if kiosk_branch_id:
+
+            branch_face_cache = [
+                cached_face
+                for cached_face in kiosk_face_cache
+                if str(
+                    cached_face["employee"].get("branch_id")
+                ) == str(kiosk_branch_id)
+            ]
+
+            print(
+                "🏢 BRANCH-FILTERED FACE CACHE:",
+                len(branch_face_cache),
+                "FACE EMBEDDINGS",
+                flush=True
+            )
+
+        else:
+
+            # Development kiosk has no branch assigned yet.
+            # Keep using the complete cache temporarily.
+            branch_face_cache = kiosk_face_cache
+
+            print(
+                "🧪 DEVELOPMENT MODE:",
+                "Using all kiosk face embeddings.",
+                flush=True
+            )
+
+        if not branch_face_cache:
+            return {
+                "status": "Error",
+                "message": (
+                    "No registered employees were found "
+                    "for this kiosk branch."
+                )
+            }
 
 
         # =====================================================
@@ -2080,7 +2975,7 @@ async def kiosk_verify(
 
         employee_distances = {}
 
-        for cached_face in kiosk_face_cache:
+        for cached_face in branch_face_cache:
 
             employee = cached_face["employee"]
 
