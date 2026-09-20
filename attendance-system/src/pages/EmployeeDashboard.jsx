@@ -831,63 +831,76 @@ const scheduledClockOut = new Date(
                 ...styles.faceStatus,
                 color: identityVerified
                   ? "#16a34a"
-                  : "#dc2626",
+                  : detectedFace?.name
+                  ? "#dc2626"
+                  : "#6b7280",
               }}
             >
-              {checkingFace || recognizingFace
-                ? "Recognizing face..."
-                : faceStatus.message}
+              {identityVerified
+                ? "Identity verified."
+                : detectedFace?.name
+                ? "Identity does not match the logged-in employee."
+                : "Scanning for your face..."}
             </div>
 
-            {detectedFace?.name && (
-              <div
-                style={{
-                  marginTop: "10px",
-                  fontWeight: "600",
-                  color: identityVerified
-                    ? "#16a34a"
-                    : "#dc2626",
-                }}
-              >
-                Detected Face: {detectedFace.name}
+            <div
+              style={{
+                marginTop: "10px",
+                height: "48px",
+                fontWeight: "600",
+                color: identityVerified
+                  ? "#16a34a"
+                  : detectedFace?.name
+                  ? "#dc2626"
+                  : "#6b7280",
+              }}
+            >
+              {detectedFace?.name ? (
+                <>
+                  Detected Face: {detectedFace.name}
 
-                <div
-                  style={{
-                    fontSize: "13px",
-                    marginTop: "4px",
-                    color: "#6b7280",
-                  }}
-                >
-                  Recognition distance:{" "}
-                  {detectedFace.distance?.toFixed(4)}
-                </div>
-              </div>
-            )}
-
-            {identityVerified && (
-              <div
-                style={{
-                  marginTop: "8px",
-                  fontWeight: "700",
-                  color: "#16a34a",
-                }}
-              >
-                🟢 Identity Verified
-              </div>
-            )}
-
-            {detectedFace?.name &&
-              !identityVerified && (
-                <div
-                  style={{
-                    marginTop: "8px",
-                    fontWeight: "700",
-                    color: "#dc2626",
-                  }}
-                >
-                  🔴 Identity does not match
-                </div>
+                  <div
+                    style={{
+                      fontSize: "13px",
+                      marginTop: "4px",
+                      color: "#6b7280",
+                      fontWeight: "400",
+                    }}
+                  >
+                    Recognition distance:{" "}
+                    {detectedFace.distance?.toFixed(4)}
+                  </div>
+                </>
+              ) : (
+                <span style={{ visibility: "hidden" }}>
+                  Detected Face: —
+                  <div>Recognition distance: —</div>
+                </span>
               )}
+            </div>
+
+            <div
+              style={{
+                marginTop: "8px",
+                height: "24px",
+                fontWeight: "700",
+                lineHeight: "24px",
+              }}
+            >
+              {identityVerified ? (
+                <span style={{ color: "#16a34a" }}>
+                  🟢 Identity Verified
+                </span>
+              ) : detectedFace?.name ? (
+                <span style={{ color: "#dc2626" }}>
+                  🔴 Identity does not match
+                </span>
+              ) : (
+                <span style={{ visibility: "hidden" }}>
+                  🔴 Identity does not match
+                </span>
+              )}
+            </div>
 
             <p style={styles.blinkText}>
               When ready, blink once during scanning.
@@ -1063,13 +1076,16 @@ faceBox: {
 faceStatus: {
   marginTop: "15px",
   fontWeight: "600",
-  minHeight: "24px",
+  height: "24px",
+  lineHeight: "24px",
+  overflow: "hidden",
 },
-
 blinkText: {
   fontSize: "14px",
   color: "#6b7280",
   marginTop: "10px",
+  height: "20px",
+  lineHeight: "20px",
 },
   attendanceButtons: {
     display: "flex",

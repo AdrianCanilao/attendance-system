@@ -605,7 +605,7 @@ async def validate_enrollment_face(
         # FACE SIZE CHECK
         # ====================================================
 
-        MIN_FACE_WIDTH = 80
+        MIN_FACE_WIDTH = 60
         MIN_FACE_HEIGHT = 80
 
         if (

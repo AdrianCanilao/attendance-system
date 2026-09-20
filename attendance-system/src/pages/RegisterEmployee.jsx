@@ -422,16 +422,16 @@ role: "maintenance",
                     Step {step + 1}/3: {steps[step]}
                   </p>
 
-                  <div
-                    style={{
-                      position: "relative",
-                      width: "320px",
-                      height: "240px",
-                      borderRadius: "12px",
-                      overflow: "hidden",
-                      background: "#111827",
-                    }}
-                  >
+                    <div
+                      style={{
+                        position: "relative",
+                        width: "320px",
+                        height: "240px",
+                        borderRadius: "12px",
+                        overflow: "hidden",
+                        background: "#111827",
+                      }}
+                    >
 
                     <Webcam
                       ref={webcamRef}
@@ -510,7 +510,7 @@ role: "maintenance",
 
                   <button
                     onClick={captureFace}
-                    disabled={!faceStatus.valid || checkingFace}
+                    disabled={!faceStatus.valid}
                     style={{
                       ...styles.captureBtn,
 
@@ -530,11 +530,9 @@ role: "maintenance",
                           : 0.7,
                     }}
                   >
-                    {checkingFace
-                      ? "Checking..."
-                      : faceStatus.valid
-                        ? "Capture"
-                        : "Waiting for Face..."}
+                    {faceStatus.valid
+                      ? "Capture"
+                      : "Waiting for Face..."}
                   </button>
                 </>
               ) : (
@@ -710,13 +708,14 @@ const styles = {
     flexShrink: 0,
   },
 
-  cameraWrapper: {
-    width: "260px",
-    minHeight: "220px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-  },
+cameraWrapper: {
+  width: "260px",
+  minHeight: "220px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "10px",
+},
 
   camera: {
     width: "260px",

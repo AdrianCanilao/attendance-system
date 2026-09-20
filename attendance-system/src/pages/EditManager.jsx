@@ -18,6 +18,11 @@ const [shifts, setShifts] = useState([]);
   const [imageSrc, setImageSrc] = useState(null);
   const [step, setStep] = useState(0);
   const [capturedImages, setCapturedImages] = useState([]);
+  const [faceStatus, setFaceStatus] = useState({
+    valid: false,
+    message: "Position your face inside the camera.",
+    box: null,
+  });
   const webcamRef = useRef(null);
 
   useEffect(() => {
@@ -89,30 +94,143 @@ setImageSrc(emp.face_url || null);
     setStep(0);
   };
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+const handleChange = (e) => {
+  setForm({ ...form, [e.target.name]: e.target.value });
+};
 
-  // ✅ UPDATED CAPTURE (NO ALERTS + FIXED AVATAR)
-  const captureFace = async () => {
+// ============================================================
+// INSIGHTFACE ENROLLMENT VALIDATION
+// ============================================================
+
+useEffect(() => {
+  let interval;
+
+  const validateLiveFace = async () => {
+    if (!showCamera || !webcamRef.current) {
+      return;
+    }
+
     const image = webcamRef.current.getScreenshot();
-    const blob = await fetch(image).then((r) => r.blob());
 
-    const updated = [...capturedImages, blob];
-    setCapturedImages(updated);
-
-    // ✅ ONLY SET AVATAR ON FRONT FACE
-    if (step === 0) {
-      setImageSrc(image);
+    if (!image) {
+      return;
     }
 
-    if (step < 2) {
-      setStep(step + 1);
-    } else {
-      setShowCamera(false);
-      setStep(0);
+    try {
+      const blob = await fetch(image).then((r) => r.blob());
+
+      const formData = new FormData();
+
+      formData.append(
+        "file",
+        blob,
+        "face.jpg"
+      );
+
+      const response = await fetch(
+        "http://127.0.0.1:8002/validate-enrollment-face",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      console.log(
+        "🔥 FACE VALIDATION DATA:",
+        JSON.stringify(data, null, 2)
+      );
+
+      setFaceStatus(data);
+
+    } catch (error) {
+
+      console.error(
+        "❌ Enrollment face validation error:",
+        error
+      );
+
+      setFaceStatus({
+        valid: false,
+        message: "Face validation unavailable.",
+        box: null,
+      });
     }
   };
+
+  if (showCamera) {
+
+    validateLiveFace();
+
+    interval = setInterval(
+      validateLiveFace,
+      700
+    );
+  }
+
+  return () => {
+    if (interval) {
+      clearInterval(interval);
+    }
+  };
+
+}, [showCamera]);
+
+// ✅ UPDATED CAPTURE (NO ALERTS + FIXED AVATAR)
+const captureFace = async () => {
+
+  if (!faceStatus.valid) {
+    return;
+  }
+
+  const image =
+    webcamRef.current.getScreenshot();
+
+  if (!image) {
+    return;
+  }
+
+  const blob =
+    await fetch(image).then((r) => r.blob());
+
+  const updated = [
+    ...capturedImages,
+    blob
+  ];
+
+  setCapturedImages(updated);
+
+  // Set avatar using front-facing image
+  if (step === 0) {
+    setImageSrc(image);
+  }
+
+  if (step < 2) {
+
+    setStep(step + 1);
+
+    setFaceStatus({
+      valid: false,
+      message:
+        step === 0
+          ? "Turn your face slightly LEFT."
+          : "Turn your face slightly RIGHT.",
+      box: null,
+    });
+
+  } else {
+
+    setShowCamera(false);
+    setStep(0);
+
+    setFaceStatus({
+      valid: false,
+      message: "Face capture complete.",
+      box: null,
+    });
+  }
+};
 
   const deleteFaces = async () => {
   const safeName = form.name
@@ -140,34 +258,135 @@ setImageSrc(emp.face_url || null);
   setImageSrc(null);
 };
 
-  const uploadFaces = async () => {
-    console.log("Images:", capturedImages);
-    if (capturedImages.length !== 3) return;
+const uploadFaces = async () => {
 
-    const safeName = form.name
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "_");
+  // ==========================================================
+  // CHECK
+  // ==========================================================
 
-    const labels = ["front", "left", "right"];
+  if (capturedImages.length !== 3) {
+    throw new Error("Exactly 3 face images are required.");
+  }
 
-    for (let i = 0; i < 3; i++) {
-      const filePath = `employees/${safeName}/${labels[i]}.jpg`;
+  // ==========================================================
+  // DELETE OLD FACE IMAGES
+  // ==========================================================
 
-      await supabase.storage
+  await deleteFaces();
+
+  // ==========================================================
+  // EMPLOYEE FOLDER
+  // ==========================================================
+
+  const safeName = form.name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+  const labels = [
+    "front",
+    "left",
+    "right",
+  ];
+
+  // ==========================================================
+  // UPLOAD ALL 3 IMAGES
+  // ==========================================================
+
+  for (let i = 0; i < 3; i++) {
+
+    const filePath =
+      `employees/${safeName}/${labels[i]}.jpg`;
+
+    const { error } =
+      await supabase
+        .storage
         .from("faces")
-        .upload(filePath, capturedImages[i], { contentType: "image/jpeg", upsert: true });
-    }
-    const publicUrl = supabase
-  .storage
-  .from("faces")
-  .getPublicUrl(`employees/${safeName}/front.jpg`).data.publicUrl + `?t=${Date.now()}`;
+        .upload(
+          filePath,
+          capturedImages[i],
+          {
+            contentType: "image/jpeg",
+            upsert: true,
+          }
+        );
 
-  await supabase
-  .from("employee_profiles")
-  .update({ face_url: publicUrl })
-  .eq("id", selected.id);
-  };
+    if (error) {
+      throw new Error(
+        `Failed to upload ${labels[i]} face: ${error.message}`
+      );
+    }
+  }
+
+  // ==========================================================
+  // UPDATE PROFILE FACE URL
+  // ==========================================================
+
+  const publicUrl =
+    supabase
+      .storage
+      .from("faces")
+      .getPublicUrl(
+        `employees/${safeName}/front.jpg`
+      )
+      .data
+      .publicUrl
+      + `?t=${Date.now()}`;
+
+  const { error: profileError } =
+    await supabase
+      .from("employee_profiles")
+      .update({
+        face_url: publicUrl,
+      })
+      .eq("id", selected.id);
+
+  if (profileError) {
+    throw new Error(
+      `Failed to update employee face URL: ${profileError.message}`
+    );
+  }
+
+  // ==========================================================
+  // RELOAD INSIGHTFACE TEMPLATES
+  // ==========================================================
+
+  console.log(
+    "🔄 Reloading InsightFace templates..."
+  );
+
+  const reloadResponse =
+    await fetch(
+      "http://127.0.0.1:8002/reload-templates",
+      {
+        method: "POST",
+      }
+    );
+
+  if (!reloadResponse.ok) {
+    throw new Error(
+      "InsightFace template reload failed."
+    );
+  }
+
+  const reloadData =
+    await reloadResponse.json();
+
+  console.log(
+    "🔄 INSIGHTFACE TEMPLATE RELOAD:",
+    reloadData
+  );
+
+  if (reloadData.status !== "OK") {
+    throw new Error(
+      "InsightFace templates could not be reloaded."
+    );
+  }
+
+  console.log(
+    "✅ Face updated and InsightFace templates reloaded."
+  );
+};
 
   const handleUpdate = async () => {
     if (!form.name || !form.email) {
@@ -277,30 +496,26 @@ setImageSrc(emp.face_url || null);
                     </svg>
                   )}
                 </div>
+              <button
+                onClick={() => {
+                  setShowCamera(true);
+                  setCapturedImages([]);
+                  setStep(0);
 
-  {hasFace ? (
-    <button
-      onClick={deleteFaces}
-      style={{ ...styles.primary, marginTop: "10px" }}
-    >
-      Delete Registered Photo
-    </button>
-  ) : (
-    <button
-      onClick={() => {
-        setShowCamera(true);
-        setCapturedImages([]);
-        setStep(0);
-      }}
-      style={{ ...styles.primary, marginTop: "10px" }}
-    >
-      Update Face
-    </button>
-  )}
-</div>
+                  setFaceStatus({
+                    valid: false,
+                    message: "Position your face inside the camera.",
+                    box: null,
+                  });
+                }}
+                style={{ ...styles.primary, marginTop: "10px" }}
+              >
+                Update Face
+              </button>
+            </div>
 
-                {showCamera && (
-                  <div style={{ width: "220px", textAlign: "center", marginTop: "0px" }}>
+                  {showCamera && (
+                    <div style={{ width: "280px", textAlign: "center", marginTop: "0px" }}>
                     
                     {/* ✅ STEP TEXT (LIKE REGISTER) */}
                     <p style={{ marginBottom: "8px", fontWeight: "500" }}>
@@ -313,18 +528,80 @@ setImageSrc(emp.face_url || null);
                       }
                     </p>
 
-                    <Webcam
-  ref={webcamRef}
-  screenshotFormat="image/jpeg"
-  style={{
-    width: "220px",
-    height: "220px",
-    borderRadius: "12px",
-    objectFit: "cover",
-  }}
-/>
+                    <div
+                      style={{
+                        position: "relative",
+                        width: "280px",
+                        height: "210px",
+                        borderRadius: "12px",
+                        overflow: "hidden",
+                        background: "#111827",
+                      }}
+                    >
+                      <Webcam
+                        ref={webcamRef}
+                        screenshotFormat="image/jpeg"
+                        videoConstraints={{
+                          width: 320,
+                          height: 240,
+                          facingMode: "user",
+                        }}
+                        style={{
+                          width: "280px",
+                          height: "210px",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
 
-                    <button onClick={captureFace} style={styles.primary}>
+                      {faceStatus.box && (
+                        <div
+                          style={{
+                            position: "absolute",
+
+                            left: `${(faceStatus.box.x / 320) * 100}%`,
+                            top: `${(faceStatus.box.y / 240) * 100}%`,
+                            width: `${(faceStatus.box.w / 320) * 100}%`,
+                            height: `${(faceStatus.box.h / 240) * 100}%`,
+
+                            border: faceStatus.valid
+                              ? "3px solid #22c55e"
+                              : "3px solid #ef4444",
+
+                            borderRadius: "12px",
+                            boxSizing: "border-box",
+                            pointerEvents: "none",
+                            transition: "all 0.2s ease",
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    <p
+                      style={{
+                        marginTop: "8px",
+                        marginBottom: "8px",
+                        fontSize: "13px",
+                        color: faceStatus.valid
+                          ? "#16a34a"
+                          : "#dc2626",
+                        fontWeight: "500",
+                      }}
+                    >
+                      {faceStatus.message}
+                    </p>
+
+                    <button
+                      onClick={captureFace}
+                      disabled={!faceStatus.valid}
+                      style={{
+                        ...styles.primary,
+                        opacity: faceStatus.valid ? 1 : 0.5,
+                        cursor: faceStatus.valid
+                          ? "pointer"
+                          : "not-allowed",
+                      }}
+                    >
                       Capture
                     </button>
                   </div>

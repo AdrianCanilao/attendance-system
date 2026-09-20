@@ -154,6 +154,11 @@ useEffect(() => {
 
       const data = await response.json();
 
+      console.log(
+        "🔥 FACE VALIDATION DATA:",
+        JSON.stringify(data, null, 2)
+      );
+
       setFaceStatus(data);
 
     } catch (error) {
@@ -277,7 +282,7 @@ const captureFace = async () => {
   setImageSrc(null);
 };
 
-  const uploadFaces = async () => {
+const uploadFaces = async () => {
 
   // ==========================================================
   // CHECK
@@ -286,6 +291,12 @@ const captureFace = async () => {
   if (capturedImages.length !== 3) {
     throw new Error("Exactly 3 face images are required.");
   }
+
+  // ==========================================================
+  // DELETE OLD FACE IMAGES
+  // ==========================================================
+
+  await deleteFaces();
 
 
   // ==========================================================
@@ -572,7 +583,7 @@ const handleDelete = async () => {
 </div>
 
                 {showCamera && (
-                  <div style={{ width: "220px", textAlign: "center", marginTop: "0px" }}>
+                  <div style={{ width: "280px", textAlign: "center", marginTop: "0px" }}>
                     
                     {/* ✅ STEP TEXT (LIKE REGISTER) */}
                     <p style={{ marginBottom: "8px", fontWeight: "500" }}>
@@ -585,16 +596,55 @@ const handleDelete = async () => {
                       }
                     </p>
 
+                    <div
+                      style={{
+                        position: "relative",
+                        width: "280px",
+                        height: "210px",
+                        borderRadius: "12px",
+                        overflow: "hidden",
+                        background: "#111827",
+                      }}
+                    >
                     <Webcam
                       ref={webcamRef}
                       screenshotFormat="image/jpeg"
+                      videoConstraints={{
+                        width: 320,
+                        height: 240,
+                        facingMode: "user",
+                      }}
                       style={{
-                        width: "220px",
-                        height: "220px",
-                        borderRadius: "12px",
+                        width: "280px",
+                        height: "210px",
                         objectFit: "cover",
+                        display: "block",
                       }}
                     />
+
+                    {faceStatus.box && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: `${(faceStatus.box.x / 320) * 100}%`,
+                          top: `${(faceStatus.box.y / 240) * 100}%`,
+                          width: `${(faceStatus.box.w / 320) * 100}%`,
+                          height: `${(faceStatus.box.h / 240) * 100}%`,
+                          border: faceStatus.valid
+                            ? "3px solid #22c55e"
+                            : "3px solid #ef4444",
+
+                          borderRadius: "12px",
+
+                          boxSizing: "border-box",
+
+                          pointerEvents: "none",
+
+                          transition: "all 0.2s ease",
+                        }}
+                      />
+                    )}
+                    </div>
                     <p
                       style={{
                         marginTop: "8px",

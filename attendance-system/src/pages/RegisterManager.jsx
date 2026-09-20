@@ -117,7 +117,7 @@ const validateLiveFace = async () => {
     );
 
     const response = await fetch(
-      "http://127.0.0.1:8000/validate-face",
+      "http://127.0.0.1:8002/validate-enrollment-face",
       {
         method: "POST",
         body: formData,
@@ -293,8 +293,41 @@ shift_id: form.shift_id,
             .eq("id", userId);
         }
       }
+
+      // =====================================================
+      // 🔄 RELOAD INSIGHTFACE EMPLOYEE TEMPLATES
+      // =====================================================
+      try {
+        console.log("🔄 Reloading InsightFace templates...");
+
+        const reloadResponse = await fetch(
+          "http://127.0.0.1:8002/reload-templates",
+          {
+            method: "POST",
+          }
+        );
+
+        const reloadData = await reloadResponse.json();
+
+        console.log(
+          "🔄 INSIGHTFACE TEMPLATE RELOAD:",
+          reloadData
+        );
+
+        if (reloadData.status !== "OK") {
+          console.warn(
+            "⚠️ Maintenance specialist registered, but InsightFace templates were not reloaded."
+          );
+        }
+      } catch (reloadError) {
+        console.warn(
+          "⚠️ Maintenance specialist registered, but InsightFace reload failed:",
+          reloadError
+        );
+      }
+
       const { data: currentUser } =
-  await supabase.auth.getUser();
+        await supabase.auth.getUser();
 
 await logAudit({
   user_id: currentUser.user.id,
@@ -423,6 +456,8 @@ shift_id: "",
                   {/* FACE STATUS */}
                   <div
                     style={{
+                      width: "320px",
+                      boxSizing: "border-box",
                       marginTop: "10px",
                       padding: "8px 12px",
                       borderRadius: "8px",
@@ -448,7 +483,7 @@ shift_id: "",
                   {/* CAPTURE BUTTON */}
                   <button
                     onClick={captureFace}
-                    disabled={!faceStatus.valid || checkingFace}
+                    disabled={!faceStatus.valid}
                     style={{
                       ...styles.captureBtn,
 
@@ -465,11 +500,9 @@ shift_id: "",
                         : 0.7,
                     }}
                   >
-                    {checkingFace
-                      ? "Checking..."
-                      : faceStatus.valid
-                        ? "Capture"
-                        : "Waiting for Face..."}
+                    {faceStatus.valid
+                      ? "Capture"
+                      : "Waiting for Face..."}
                   </button>
                 </>
               ) : (
@@ -644,13 +677,14 @@ const styles = {
     flexShrink: 0,
   },
 
-  cameraWrapper: {
-    width: "260px",
-    minHeight: "220px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-  },
+cameraWrapper: {
+  width: "320px",
+  minHeight: "220px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "10px",
+},
 
   camera: {
     width: "260px",

@@ -688,13 +688,14 @@ const styles = {
     zIndex: 999,
   },
 
-  modal: {
-    width: "95%",
-    maxWidth: "1500px",
-    background: "#fff",
-    borderRadius: "20px",
-    padding: "30px",
-  },
+modal: {
+  width: "95%",
+  maxWidth: "1500px",
+  background: "#fff",
+  borderRadius: "20px",
+  padding: "30px",
+  position: "relative",
+},
 
   modalHeader: {
     display: "flex",
@@ -707,12 +708,23 @@ const styles = {
     fontWeight: "700",
   },
 
-  closeButton: {
-    border: "none",
-    background: "transparent",
-    fontSize: "28px",
-    cursor: "pointer",
-  },
+closeButton: {
+  position: "absolute",
+  top: "18px",
+  right: "20px",
+  border: "none",
+  background: "#f97316",
+  color: "#fff",
+  width: "36px",
+  height: "36px",
+  borderRadius: "8px",
+  fontSize: "20px",
+  fontWeight: "700",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+},
 
   attendanceContainer: {
     overflowX: "auto",
