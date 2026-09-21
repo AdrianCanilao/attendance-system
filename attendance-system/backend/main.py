@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
@@ -29,8 +30,12 @@ app.add_middleware(
 )
 
 # 🔥 SUPABASE CONFIG
-SUPABASE_URL = "https://gncvkqqmreufoarakjmj.supabase.co"
-SUPABASE_SERVICE_KEY = "sb_publishable_o2igaNv9uPIf3iM6nmgN4w_b8DyuYtZ"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_KEY")
+INSIGHTFACE_URL = os.getenv("INSIGHTFACE_URL", "http://127.0.0.1:8002").rstrip("/")
+
+if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+    raise RuntimeError("SUPABASE_URL and SUPABASE_KEY environment variables are required.")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
@@ -1138,7 +1143,7 @@ async def verify_face(
 
                 # Send frame to InsightFace API
                 response = requests.post(
-                    "http://127.0.0.1:8002/recognize-live-face",
+                    f"{INSIGHTFACE_URL}/recognize-live-face",
                     files={
                         "file": (
                             f"frame_{index}.jpg",
@@ -2105,7 +2110,7 @@ async def kiosk_verify_live(
                     continue
 
                 response = requests.post(
-                    "http://127.0.0.1:8002/recognize-live-face",
+                    f"{INSIGHTFACE_URL}/recognize-live-face",
                     files={
                         "file": (
                             f"kiosk_frame_{index}.jpg",
