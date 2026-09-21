@@ -4,7 +4,7 @@ import ManagerLayout from "../layouts/ManagerLayout";
 import Webcam from "react-webcam";
 import { logAudit } from "../utils/auditLogger";
 
-const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || INSIGHTFACE_URL + "").replace(/\/$/, "");
+const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
 
 export default function EditEmployee() {
   const [employees, setEmployees] = useState([]);
