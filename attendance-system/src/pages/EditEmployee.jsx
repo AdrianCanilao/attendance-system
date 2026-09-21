@@ -4,6 +4,8 @@ import ManagerLayout from "../layouts/ManagerLayout";
 import Webcam from "react-webcam";
 import { logAudit } from "../utils/auditLogger";
 
+const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || INSIGHTFACE_URL + "").replace(/\/$/, "");
+
 export default function EditEmployee() {
   const [employees, setEmployees] = useState([]);
   const [search, setSearch] = useState("");
@@ -145,7 +147,7 @@ useEffect(() => {
       );
 
       const response = await fetch(
-        "http://127.0.0.1:8002/validate-enrollment-face",
+        INSIGHTFACE_URL + "/validate-enrollment-face",
         {
           method: "POST",
           body: formData,
@@ -389,7 +391,7 @@ const uploadFaces = async () => {
 
   const reloadResponse =
     await fetch(
-      "http://127.0.0.1:8002/reload-templates",
+      INSIGHTFACE_URL + "/reload-templates",
       {
         method: "POST",
       }
