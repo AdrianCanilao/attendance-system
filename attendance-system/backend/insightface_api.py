@@ -6,7 +6,7 @@ import requests
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from insightface_engine import insightface_app
+from backend.insightface_engine import insightface_app
 
 
 # ============================================================
