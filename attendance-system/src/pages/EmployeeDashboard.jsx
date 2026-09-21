@@ -5,6 +5,9 @@ import ManagerLayout from "../layouts/ManagerLayout";
 import Webcam from "react-webcam";
 import { logAudit } from "../utils/auditLogger";
 
+const API_URL = (import.meta.env.VITE_API_URL || API_URL + "").replace(/\/$/, "");
+const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || INSIGHTFACE_URL + "").replace(/\/$/, "");
+
 export default function EmployeeDashboard({
   isManager = false,
 }) {
@@ -213,7 +216,7 @@ const validateLiveFace = async () => {
     // ========================================================
 
     const validationResponse = await fetch(
-      "http://localhost:8000/validate-face",
+      API_URL + "/validate-face",
       {
         method: "POST",
         body: formData,
@@ -238,7 +241,7 @@ const validateLiveFace = async () => {
     // ========================================================
 
     const recognitionResponse = await fetch(
-      "http://127.0.0.1:8002/recognize-live-face",
+      INSIGHTFACE_URL + "/recognize-live-face",
       {
         method: "POST",
         body: formData,
@@ -512,7 +515,7 @@ const scheduledClockOut = new Date(
       );
 
       const res = await fetch(
-        "http://localhost:8000/verify-face",
+        API_URL + "/verify-face",
         {
           method: "POST",
           body: formData,
