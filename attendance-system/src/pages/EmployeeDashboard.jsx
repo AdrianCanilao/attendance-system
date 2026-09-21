@@ -5,8 +5,8 @@ import ManagerLayout from "../layouts/ManagerLayout";
 import Webcam from "react-webcam";
 import { logAudit } from "../utils/auditLogger";
 
-const API_URL = (import.meta.env.VITE_API_URL || API_URL + "").replace(/\/$/, "");
-const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || INSIGHTFACE_URL + "").replace(/\/$/, "");
+const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
 
 export default function EmployeeDashboard({
   isManager = false,
