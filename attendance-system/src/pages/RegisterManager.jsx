@@ -4,6 +4,9 @@ import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
 import { logAudit } from "../utils/auditLogger";
 
+const API_URL = (import.meta.env.VITE_API_URL || API_URL + "").replace(/\/$/, "");
+const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || INSIGHTFACE_URL + "").replace(/\/$/, "");
+
 export default function RegisterManager() {
   const webcamRef = useRef(null);
 
@@ -117,7 +120,7 @@ const validateLiveFace = async () => {
     );
 
     const response = await fetch(
-      "http://127.0.0.1:8002/validate-enrollment-face",
+      INSIGHTFACE_URL + "/validate-enrollment-face",
       {
         method: "POST",
         body: formData,
@@ -274,7 +277,7 @@ shift_id: form.shift_id,
         formData.append("user_id", userId);
         formData.append("full_name", name);
 
-        const res = await fetch("http://127.0.0.1:8000/upload-face", {
+        const res = await fetch(API_URL + "/upload-face", {
           method: "POST",
           body: formData,
         });
@@ -301,7 +304,7 @@ shift_id: form.shift_id,
         console.log("🔄 Reloading InsightFace templates...");
 
         const reloadResponse = await fetch(
-          "http://127.0.0.1:8002/reload-templates",
+          INSIGHTFACE_URL + "/reload-templates",
           {
             method: "POST",
           }
