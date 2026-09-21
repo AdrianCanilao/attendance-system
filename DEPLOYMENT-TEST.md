@@ -5,7 +5,7 @@
 Branch: test-deployment
 
 Build command:
-pip install -r requirements.txt
+pip install -r requirements-render-main.txt
 
 Start command:
 cd attendance-system && uvicorn backend.main:app --host 0.0.0.0 --port $PORT
