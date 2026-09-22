@@ -530,13 +530,11 @@ export default function Kiosk() {
               </div>
               <div style={styles.homeActions}>
                 <button style={styles.timeInButton} onClick={() => openAttendanceCamera("TIME IN")}>
-                  <span style={styles.buttonIcon}>↪</span>
-                  <span><strong>TIME IN</strong><small>Start your work day</small></span>
+                  <span><strong>TIME IN</strong></span>
                 </button>
 
                 <button style={styles.timeOutButton} onClick={() => openAttendanceCamera("TIME OUT")}>
-                  <span style={styles.buttonIcon}>↪</span>
-                  <span><strong>TIME OUT</strong><small>End your work day</small></span>
+                  <span><strong>TIME OUT</strong></span>
                 </button>
               </div>
             </div>
