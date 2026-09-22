@@ -539,6 +539,13 @@ export default function Kiosk() {
               GOOD PEOPLE&nbsp;&nbsp; GREAT FOOD&nbsp;&nbsp; BRIGHTER DAYS
             </div>
           </div>
+
+          {cameraOpen && (
+            <div style={styles.headerAction}>
+              {selectedAction}
+            </div>
+          )}
+
           <div style={styles.clockBlock}>
             <div style={styles.dateText}>{formatDate(currentTime)}</div>
             <div style={styles.timeText}>{formatTime(currentTime)}</div>
@@ -565,10 +572,6 @@ export default function Kiosk() {
         ) : (
           <div style={styles.cameraCard}>
             <div style={styles.actionHeader}>
-              <div style={styles.actionTitleCenter}>
-                <div style={styles.selectedAction}>{selectedAction}</div>
-              </div>
-
               {scanState !== "success" && (
                 <button
                   style={styles.cancelButton}
@@ -811,14 +814,15 @@ const styles = {
   page: { position: "relative", height: "100vh", width: "100%", overflow: "hidden", backgroundImage: "linear-gradient(90deg, rgba(10,15,25,0.82), rgba(10,15,25,0.58)), " + KIOSK_BACKGROUND, backgroundSize: "cover", backgroundPosition: "center", fontFamily: "Arial, Helvetica, sans-serif", boxSizing: "border-box" },
   overlay: { position: "absolute", inset: 0, background: "rgba(255,255,255,0.04)", pointerEvents: "none" },
   container: { position: "relative", zIndex: 1, width: "min(1600px, 96vw)", height: "100%", margin: "0 auto", display: "flex", flexDirection: "column", boxSizing: "border-box", padding: "10px 0 8px" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", color: "#fff", flexShrink: 0, minHeight: "72px" },
+  header: { position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start", color: "#fff", flexShrink: 0, minHeight: "72px" },
   brandBlock: { textAlign: "left" },
   logo: { fontSize: "clamp(36px, 4vw, 62px)", lineHeight: 0.9, fontWeight: "900", color: "#f97316", letterSpacing: "-2px" },
   title: { display: "none" },
   tagline: { display: "none" },
   clockBlock: { textAlign: "right", paddingTop: "4px" },
+  headerAction: { position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", fontSize: "clamp(28px, 2.6vw, 44px)", lineHeight: 1, fontWeight: "900", color: "#172033", textAlign: "center", whiteSpace: "nowrap" },
   dateText: { fontSize: "clamp(12px, 1.1vw, 17px)", fontWeight: "600", color: "#fff" },
-  timeText: { marginTop: "2px", fontSize: "clamp(24px, 2.4vw, 38px)", fontWeight: "900", color: "#fff" },
+  timeText: { marginTop: "2px", fontSize: "clamp(24px, 2.4vw, 38px)", fontWeight: "900", color: "#f97316" },
   homeCard: { flex: 1, minHeight: 0, marginTop: "16px", borderRadius: "26px", background: "rgba(255,255,255,0.96)", boxShadow: "0 20px 60px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "30px", boxSizing: "border-box" },
   homeIntro: { textAlign: "center", marginBottom: "28px" },
   homeTitle: { fontSize: "clamp(28px, 3vw, 46px)", fontWeight: "900", color: "#172033" },
@@ -832,7 +836,6 @@ const styles = {
   actionLabel: { display: "none" },
   selectedAction: { fontSize: "clamp(25px, 2.2vw, 38px)", fontWeight: "900", color: "#172033", marginTop: "0", textAlign: "center" },
   actionHint: { fontSize: "13px", color: "#64748b", marginTop: "1px" },
-  actionTitleCenter: { textAlign: "center", width: "100%" },
   cancelButton: { position: "absolute", right: "0", border: "none", borderRadius: "10px", padding: "11px 20px", background: "#e2e8f0", color: "#334155", fontWeight: "800", cursor: "pointer" },
   cameraContainer: { position: "relative", width: "min(100%, 1200px)", flex: "1 1 auto", minHeight: "0", aspectRatio: "16 / 9", margin: "0 auto", background: "#0f172a", borderRadius: "20px", overflow: "hidden" },
   camera: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
