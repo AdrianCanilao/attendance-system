@@ -829,7 +829,7 @@ const styles = {
   blinkInstructionActive: { marginTop: "5px", fontSize: "15px", fontWeight: "800", color: "#166534" },
   resultMessage: { fontSize: "14px", color: "#475569" },
   readyBox: { marginTop: "8px", padding: "9px 14px", borderRadius: "10px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e3a8a", display: "flex", flexDirection: "row", gap: "8px", justifyContent: "center", fontSize: "13px", flexShrink: 0 },
-  scanningBox: { marginTop: "8px", padding: "10px", borderRadius: "10px", background: "#fff7ed", border: "1px solid #fed7aa", color: "#9a3412", display: "flex", justifyContent: "center", alignItems: "center", gap: "10px", fontSize: "13px", flexShrink: 0 },
+  scanningBox: { marginTop: "0", width: "100%", height: "100%", padding: "10px", borderRadius: "10px", background: "#fff7ed", border: "1px solid #fed7aa", color: "#9a3412", boxSizing: "border-box", display: "flex", justifyContent: "center", alignItems: "center", gap: "10px", fontSize: "13px", flexShrink: 0 },
   smallSpinner: { width: "18px", height: "18px", border: "3px solid #fdba74", borderTop: "3px solid transparent", borderRadius: "50%", animation: "spin 1s linear infinite" },
   successBox: { marginTop: "0", height: "100%", padding: "6px 12px", borderRadius: "14px", background: "#ecfdf5", border: "2px solid #22c55e", boxSizing: "border-box", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "center", flexShrink: 0 },
   warningBox: { marginTop: "0", height: "100%", padding: "14px", borderRadius: "14px", background: "#fff7ed", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", overflow: "hidden" },
