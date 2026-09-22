@@ -21,8 +21,11 @@ const initialRecognition = {
 export default function Kiosk() {
   const webcamRef = useRef(null);
   const recognitionBusyRef = useRef(false);
+  const recognitionInFlightRef = useRef(0);
+  const recognitionSequenceRef = useRef(0);
+  const latestAppliedRecognitionRef = useRef(0);
   const scanStartedRef = useRef(false);
-  const recognitionAbortControllerRef = useRef(null);
+  const recognitionAbortControllersRef = useRef(new Set());
 
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
@@ -87,7 +90,7 @@ export default function Kiosk() {
 
     const recognizeFace = async () => {
       if (!webcamRef.current) return;
-      if (recognitionBusyRef.current) return;
+      if (recognitionInFlightRef.current >= 2) return;
       if (scanStartedRef.current) return;
       if (attendanceLoading) return;
       if (scanState === "scanning" || scanState === "success") {
@@ -100,8 +103,10 @@ export default function Kiosk() {
       if (!imageSrc) return;
 
       recognitionBusyRef.current = true;
+      recognitionInFlightRef.current += 1;
+      const requestId = ++recognitionSequenceRef.current;
       const controller = new AbortController();
-      recognitionAbortControllerRef.current = controller;
+      recognitionAbortControllersRef.current.add(controller);
 
       try {
         const response = await fetch(imageSrc);
@@ -132,6 +137,13 @@ export default function Kiosk() {
           data
         );
 
+        // Only apply the newest completed frame. This prevents an older
+        // server response from moving the box backward after a newer frame.
+        if (requestId < latestAppliedRecognitionRef.current) {
+          return;
+        }
+        latestAppliedRecognitionRef.current = requestId;
+
         if (!recognitionResponse.ok) {
           setRecognition({
             status: "Error",
@@ -143,6 +155,10 @@ export default function Kiosk() {
               "Unable to connect to InsightFace.",
           });
 
+          return;
+        }
+
+        if (scanStartedRef.current && data.status !== "Match") {
           return;
         }
 
@@ -268,14 +284,13 @@ export default function Kiosk() {
         });
 
       } finally {
-        if (
-          recognitionAbortControllerRef.current ===
-          controller
-        ) {
-          recognitionAbortControllerRef.current = null;
-        }
-
-        recognitionBusyRef.current = false;
+        recognitionAbortControllersRef.current.delete(controller);
+        recognitionInFlightRef.current = Math.max(
+          0,
+          recognitionInFlightRef.current - 1
+        );
+        recognitionBusyRef.current =
+          recognitionInFlightRef.current > 0;
       }
     };
 
@@ -291,11 +306,11 @@ export default function Kiosk() {
         clearInterval(intervalId);
       }
 
-      if (recognitionAbortControllerRef.current) {
-        recognitionAbortControllerRef.current.abort();
-        recognitionAbortControllerRef.current = null;
-      }
-
+      recognitionAbortControllersRef.current.forEach(
+        (controller) => controller.abort()
+      );
+      recognitionAbortControllersRef.current.clear();
+      recognitionInFlightRef.current = 0;
       recognitionBusyRef.current = false;
     };
   }, [
@@ -886,7 +901,7 @@ const styles = {
   cameraLoading: { position: "absolute", inset: 0, background: "#111827", color: "#fff", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", fontSize: "18px" },
   loadingCircle: { width: "35px", height: "35px", border: "4px solid #fff", borderTop: "4px solid transparent", borderRadius: "50%", marginBottom: "15px", animation: "spin 1s linear infinite" },
   cameraStatus: { marginTop: "4px", fontSize: "13px", fontWeight: "700", flexShrink: 0 },
-  bottomInfoRow: { width: "100%", display: "grid", gridTemplateColumns: "minmax(0, 0.44fr) minmax(0, 0.56fr)", gap: "10px", alignItems: "stretch", marginTop: "16px", flexShrink: 0 },
+  bottomInfoRow: { width: "100%", display: "grid", gridTemplateColumns: "minmax(0, 0.40fr) minmax(0, 0.60fr)", gap: "10px", alignItems: "stretch", marginTop: "16px", flexShrink: 0 },
   recognitionBox: { marginTop: "0", padding: "5px 16px", borderRadius: "14px", border: "2px solid #d1d5db", minHeight: "58px", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", flexShrink: 0 },
   recognizedLabel: { fontSize: "13px", fontWeight: "800", color: "#16a34a" },
   recognitionStatus: { fontSize: "15px", fontWeight: "800", color: "#334155" },
