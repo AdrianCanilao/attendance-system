@@ -571,7 +571,9 @@ export default function Kiosk() {
           </>
         ) : (
           <div style={styles.cameraCard}>
-            <div style={styles.cameraContainer}>
+            <div style={styles.actionHeader}></div>
+
+          <div style={styles.cameraContainer}>
               <Webcam
                 ref={webcamRef}
                 audio={false}
