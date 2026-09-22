@@ -598,18 +598,24 @@ export default function Kiosk() {
                 style={styles.camera}
               />
 
-              {recognition.box && recognition.status === "Match" && (
-                <div
-                  style={{
-                    ...styles.faceBox,
-                    left: `${(recognition.box.x / 1280) * 100}%`,
-                    top: `${(recognition.box.y / 720) * 100}%`,
-                    width: `${(recognition.box.w / 1280) * 100}%`,
-                    height: `${(recognition.box.h / 720) * 100}%`,
-                  }}
+              {recognition.box && (
+                <svg
+                  aria-hidden="true"
+                  style={styles.faceOverlay}
+                  viewBox={"0 0 " + (recognition.image_width || 1280) + " " + (recognition.image_height || 720)}
+                  preserveAspectRatio="xMidYMid slice"
                 >
-                  <span style={styles.faceBoxLabel}>FACE DETECTED</span>
-                </div>
+                  <rect
+                    x={recognition.box.x}
+                    y={recognition.box.y}
+                    width={recognition.box.w}
+                    height={recognition.box.h}
+                    rx="10"
+                    fill="none"
+                    stroke={recognition.status === "Match" ? "#22c55e" : "#ef4444"}
+                    strokeWidth="5"
+                  />
+                </svg>
               )}
 
               {!cameraReady && (
@@ -870,8 +876,7 @@ const styles = {
   cancelButton: { border: "none", borderRadius: "10px", padding: "11px 20px", background: "#e2e8f0", color: "#334155", fontWeight: "800", cursor: "pointer" },
   cameraContainer: { position: "relative", width: "min(100%, 1200px)", flex: "1 1 auto", minHeight: "0", aspectRatio: "16 / 9", margin: "0 auto", background: "#0f172a", borderRadius: "20px", overflow: "hidden" },
   camera: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
-  faceBox: { position: "absolute", border: "4px solid #22c55e", borderRadius: "14px", boxSizing: "border-box", pointerEvents: "none", zIndex: 3, boxShadow: "0 0 0 2px rgba(255,255,255,0.35)" },
-  faceBoxLabel: { position: "absolute", top: "-30px", left: "0", background: "#22c55e", color: "#fff", fontSize: "12px", fontWeight: "900", padding: "5px 9px", borderRadius: "7px", whiteSpace: "nowrap" },
+  faceOverlay: { position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 3 },
   cameraLoading: { position: "absolute", inset: 0, background: "#111827", color: "#fff", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", fontSize: "18px" },
   loadingCircle: { width: "35px", height: "35px", border: "4px solid #fff", borderTop: "4px solid transparent", borderRadius: "50%", marginBottom: "15px", animation: "spin 1s linear infinite" },
   cameraStatus: { marginTop: "4px", fontSize: "13px", fontWeight: "700", flexShrink: 0 },
