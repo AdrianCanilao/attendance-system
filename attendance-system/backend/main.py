@@ -2616,3 +2616,403 @@ async def kiosk_attendance(
 
         return {
             **attendance,
+            "employee": {
+                "id": employee["id"],
+                "full_name": employee["full_name"]
+            }
+        }
+
+    except Exception as e:
+        print(
+            "❌ KIOSK ATTENDANCE ENDPOINT ERROR:",
+            str(e),
+            flush=True
+        )
+
+        return {
+            "status": "Error",
+            "message": str(e)
+        }
+@app.post("/kiosk-verify")
+async def kiosk_verify(
+    files: List[UploadFile] = File(...),
+    action: str = Form(...),
+    kiosk_code: str = Form(...)
+):
+    print("🔥 KIOSK VERIFY STARTED", flush=True)
+    print(
+    "🏪 KIOSK CODE:",
+    kiosk_code,
+    flush=True
+)
+
+    try:
+                # =====================================================
+        # 🏪 VERIFY KIOSK REGISTRATION
+        # =====================================================
+
+        kiosk_response = (
+            supabase
+            .rpc(
+                "verify_kiosk",
+                {
+                    "p_kiosk_code": kiosk_code
+                }
+            )
+            .execute()
+        )
+
+        registered_kiosks = (
+            kiosk_response.data or []
+        )
+
+        print(
+            "🏪 KIOSK REGISTRATION RESULT:",
+            registered_kiosks,
+            flush=True
+        )
+
+        if not registered_kiosks:
+            return {
+                "status": "Error",
+                "message": "This kiosk is not registered."
+            }
+
+        kiosk = registered_kiosks[0]
+
+        if not kiosk.get("is_active"):
+            return {
+                "status": "Error",
+                "message": "This kiosk is inactive."
+            }
+
+        print(
+            "✅ REGISTERED KIOSK:",
+            kiosk.get("kiosk_code"),
+            flush=True
+        )
+                # =====================================================
+        # 🏢 GET KIOSK BRANCH
+        # =====================================================
+
+        kiosk_branch_id = kiosk.get("branch_id")
+
+        if kiosk_branch_id:
+            print(
+                "🏢 KIOSK BRANCH:",
+                kiosk_branch_id,
+                flush=True
+            )
+        else:
+            print(
+                "🏢 KIOSK BRANCH: NOT ASSIGNED "
+                "(DEVELOPMENT MODE)",
+                flush=True
+            )
+        # =====================================================
+        # LOAD FRAMES
+        # =====================================================
+
+        frames = []
+
+        for file in files[:6]:
+            contents = await file.read()
+
+            npimg = np.frombuffer(contents, np.uint8)
+            img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+
+            if img is None:
+                continue
+
+            # Keep the same optimized size used by
+            # the existing employee verification system.
+            img = cv2.resize(img, (320, 240))
+
+            frames.append(img)
+
+        if len(frames) < 2:
+            return {
+                "status": "Error",
+                "message": "Not enough frames"
+            }
+
+        print(
+            "📸 KIOSK FRAMES:",
+            len(frames),
+            flush=True
+        )
+
+        # =====================================================
+        # BLINK DETECTION
+        # =====================================================
+
+        ear_values = []
+
+        for img in frames:
+
+            rgb = cv2.cvtColor(
+                img,
+                cv2.COLOR_BGR2RGB
+            )
+
+            result = face_mesh.process(rgb)
+
+            if result.multi_face_landmarks:
+
+                landmarks = (
+                    result.multi_face_landmarks[0].landmark
+                )
+
+                h, w, _ = img.shape
+
+                points = [
+                    (
+                        int(l.x * w),
+                        int(l.y * h)
+                    )
+                    for l in landmarks
+                ]
+
+                left_eye = [
+                    33,
+                    160,
+                    158,
+                    133,
+                    153,
+                    144
+                ]
+
+                ear = eye_aspect_ratio(
+                    points,
+                    left_eye
+                )
+
+                ear_values.append(ear)
+
+        if len(ear_values) < 2:
+            return {
+                "status": "Fake",
+                "message": "Face not detected properly"
+            }
+
+            print(
+    "👁️ EAR VALUES:",
+    [round(e, 3) for e in ear_values],
+    flush=True
+)
+
+        closed = any(
+            e < 0.18
+            for e in ear_values
+        )
+
+        open_eye = any(
+            e > 0.22
+            for e in ear_values
+        )
+
+        if not (closed and open_eye):
+            return {
+                "status": "Fake",
+                "message": "No real blink detected"
+            }
+
+        print(
+            "👁️ KIOSK BLINK DETECTED",
+            flush=True
+        )
+
+        # =====================================================
+        # FACE DETECTION
+        # =====================================================
+
+        valid_frames = []
+
+        for img in frames:
+
+            try:
+
+                faces = DeepFace.extract_faces(
+                    img_path=img,
+                    detector_backend="opencv",
+                    enforce_detection=True
+                )
+
+                if faces:
+                    valid_frames.append(img)
+
+            except Exception:
+                pass
+
+        if len(valid_frames) < 1:
+            return {
+                "status": "No Face"
+            }
+
+        print(
+            "👤 VALID KIOSK FRAMES:",
+            len(valid_frames),
+            flush=True
+        )
+
+        # =====================================================
+        # 🚀 FAST KIOSK IDENTIFICATION
+        # =====================================================
+
+        if not kiosk_face_cache:
+            return {
+                "status": "Error",
+                "message": "Kiosk face database is empty."
+            }
+                # =====================================================
+        # 🏢 FILTER FACES BY KIOSK BRANCH
+        # =====================================================
+
+        if kiosk_branch_id:
+
+            branch_face_cache = [
+                cached_face
+                for cached_face in kiosk_face_cache
+                if str(
+                    cached_face["employee"].get("branch_id")
+                ) == str(kiosk_branch_id)
+            ]
+
+            print(
+                "🏢 BRANCH-FILTERED FACE CACHE:",
+                len(branch_face_cache),
+                "FACE EMBEDDINGS",
+                flush=True
+            )
+
+        else:
+
+            # Development kiosk has no branch assigned yet.
+            # Keep using the complete cache temporarily.
+            branch_face_cache = kiosk_face_cache
+
+            print(
+                "🧪 DEVELOPMENT MODE:",
+                "Using all kiosk face embeddings.",
+                flush=True
+            )
+
+        if not branch_face_cache:
+            return {
+                "status": "Error",
+                "message": (
+                    "No registered employees were found "
+                    "for this kiosk branch."
+                )
+            }
+
+
+        # =====================================================
+        # CREATE ONE EMBEDDING FROM THE CAPTURED FACE
+        # =====================================================
+
+        img = valid_frames[-1]
+
+        try:
+
+            print(
+                "⚡ Creating kiosk face embedding...",
+                flush=True
+            )
+
+            # Detect and extract the actual face first
+            detected_faces = DeepFace.extract_faces(
+                img_path=img,
+                detector_backend="opencv",
+                enforce_detection=True,
+                align=True
+            )
+
+            if not detected_faces:
+                return {
+                    "status": "No Face",
+                    "message": "Unable to detect face for recognition."
+                }
+
+            # Get the detected face crop
+            face_crop = detected_faces[0]["face"]
+
+            # Convert normalized face image to uint8
+            face_crop = np.asarray(
+                face_crop * 255,
+                dtype=np.uint8
+            )
+
+            # Convert RGB to BGR
+            face_crop = cv2.cvtColor(
+                face_crop,
+                cv2.COLOR_RGB2BGR
+            )
+
+            # Create ArcFace embedding from the face crop
+            captured_result = DeepFace.represent(
+                img_path=face_crop,
+                model_name="ArcFace",
+                detector_backend="skip",
+                enforce_detection=False
+            )
+
+            if not captured_result:
+                return {
+                    "status": "No Face",
+                    "message": "Unable to create face embedding."
+                }
+
+            captured_embedding = (
+                captured_result[0]["embedding"]
+            )
+
+        except Exception as e:
+
+            print(
+                "❌ EMBEDDING ERROR:",
+                str(e),
+                flush=True
+            )
+
+            return {
+                "status": "Error",
+                "message": "Unable to process face."
+            }
+        # =====================================================
+        # COMPARE AGAINST CACHED EMPLOYEE EMBEDDINGS
+        # =====================================================
+
+# =====================================================
+# COMPARE AGAINST CACHED EMPLOYEE EMBEDDINGS
+# USE ALL REGISTERED FACE IMAGES PER EMPLOYEE
+# =====================================================
+
+        employee_distances = {}
+
+        for cached_face in branch_face_cache:
+
+            employee = cached_face["employee"]
+
+            stored_embedding = (
+                cached_face["embedding"]
+            )
+
+            distance = cosine_distance(
+                captured_embedding,
+                stored_embedding
+            )
+
+            employee_id = str(employee.get("id"))
+            employee_name = (
+                employee.get("full_name") or ""
+            )
+
+            print(
+                f"📏 {employee_name}: {distance}",
+                flush=True
+            )
+
+            if employee_id not in employee_distances:
+                employee_distances[employee_id] = {
+                    "employee": employee,
