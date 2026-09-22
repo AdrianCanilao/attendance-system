@@ -759,14 +759,14 @@ export default function Kiosk() {
             )}
 
             <div style={styles.resultActionRow}>
-            {attendanceResult && (
-              <div style={
-                attendanceResult.type === "success"
-                  ? styles.successBox
-                  : attendanceResult.type === "warning"
-                  ? styles.warningBox
-                  : styles.errorBox
-              }>
+              {attendanceResult && (
+                <div style={
+                  attendanceResult.type === "success"
+                    ? styles.successBox
+                    : attendanceResult.type === "warning"
+                    ? styles.warningBox
+                    : styles.errorBox
+                }>
                 <div style={styles.successHeader}>
                   <div style={styles.successIcon}>
                     {attendanceResult.type === "success" ? "✓" : "!"}
@@ -795,15 +795,15 @@ export default function Kiosk() {
                 )}
 
 
-              </div>
-            )}
+                </div>
+              )}
 
-            <div style={styles.kioskActionBox}>
+              <div style={styles.kioskActionBox}>
               <div style={styles.kioskActionTitle}>KIOSK ACTION</div>
               <button style={styles.largeDismissButton} onClick={continueToKiosk}>
                 BACK TO KIOSK
               </button>
-            </div>
+              </div>
             </div>
 
 
