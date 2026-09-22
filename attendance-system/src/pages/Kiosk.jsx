@@ -526,7 +526,6 @@ export default function Kiosk() {
             <div style={styles.homeCard}>
               <div style={styles.homeIntro}>
                 <div style={styles.homeTitle}>CIBO ATTENDANCE KIOSK</div>
-                <div style={styles.homeText}>Please select an action to begin facial recognition.</div>
               </div>
               <div style={styles.homeActions}>
                 <button style={styles.timeInButton} onClick={() => openAttendanceCamera("TIME IN")}>
@@ -849,7 +848,7 @@ const styles = {
   selectedAction: { fontSize: "clamp(25px, 2.2vw, 38px)", fontWeight: "900", color: "#172033", marginTop: "2px" },
   actionHint: { fontSize: "14px", color: "#64748b", marginTop: "2px" },
   cancelButton: { border: "none", borderRadius: "10px", padding: "11px 20px", background: "#e2e8f0", color: "#334155", fontWeight: "800", cursor: "pointer" },
-  cameraContainer: { position: "relative", width: "min(100%, 900px)", aspectRatio: "16 / 9", maxHeight: "52vh", margin: "0 auto", background: "#0f172a", borderRadius: "18px", overflow: "hidden", flexShrink: 1 },
+  cameraContainer: { position: "relative", width: "min(100%, 1000px)", height: "min(56vh, 562px)", aspectRatio: "16 / 9", margin: "0 auto", background: "#0f172a", borderRadius: "18px", overflow: "hidden", flex: "0 0 auto" },
   camera: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
   cameraLoading: { position: "absolute", inset: 0, background: "#111827", color: "#fff", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", fontSize: "18px" },
   loadingCircle: { width: "35px", height: "35px", border: "4px solid #fff", borderTop: "4px solid transparent", borderRadius: "50%", marginBottom: "15px", animation: "spin 1s linear infinite" },
