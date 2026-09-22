@@ -793,9 +793,17 @@ export default function Kiosk() {
                   </div>
                 )}
 
-                <button style={styles.dismissButton} onClick={continueToKiosk}>BACK TO KIOSK</button>
+
               </div>
-            )}            </div>
+            )}
+            </div>
+
+            <div style={styles.kioskActionBox}>
+              <div style={styles.kioskActionTitle}>KIOSK ACTION</div>
+              <button style={styles.largeDismissButton} onClick={continueToKiosk}>
+                BACK TO KIOSK
+              </button>
+            </div>
 
 
           </div>
@@ -842,7 +850,7 @@ const styles = {
     cameraLoading: { position: "absolute", inset: 0, background: "#111827", color: "#fff", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", fontSize: "18px" },
   loadingCircle: { width: "35px", height: "35px", border: "4px solid #fff", borderTop: "4px solid transparent", borderRadius: "50%", marginBottom: "15px", animation: "spin 1s linear infinite" },
   cameraStatus: { marginTop: "4px", fontSize: "13px", fontWeight: "700", flexShrink: 0 },
-  bottomInfoRow: { width: "100%", height: "215px", display: "grid", gridTemplateColumns: "minmax(0, 0.40fr) minmax(0, 0.60fr)", gap: "10px", alignItems: "stretch", marginTop: "-2px", flexShrink: 0 },
+  bottomInfoRow: { width: "100%", height: "215px", display: "grid", gridTemplateColumns: "minmax(0, 0.35fr) minmax(0, 0.45fr) minmax(180px, 0.20fr)", gap: "10px", alignItems: "stretch", marginTop: "-2px", flexShrink: 0 },
   recognitionBox: { marginTop: "0", height: "100%", padding: "5px 16px", borderRadius: "14px", border: "2px solid #d1d5db", minHeight: "0", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", flexShrink: 0 },
   recognizedLabel: { fontSize: "13px", fontWeight: "800", color: "#16a34a" },
   recognitionStatus: { fontSize: "15px", fontWeight: "800", color: "#334155" },
@@ -865,6 +873,9 @@ const styles = {
   presentBadge: { color: "#15803d", background: "#dcfce7", padding: "3px 9px", borderRadius: "999px" },
   photoSaved: { color: "#15803d" },
   dismissButton: { marginTop: "4px", padding: "6px 22px", border: "none", borderRadius: "10px", background: "#273449", color: "#fff", fontSize: "14px", fontWeight: "800", cursor: "pointer" },
+  kioskActionBox: { height: "100%", padding: "14px", borderRadius: "14px", background: "rgba(255,255,255,0.98)", border: "2px solid #cbd5e1", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "stretch", gap: "14px", overflow: "hidden" },
+  kioskActionTitle: { textAlign: "center", fontSize: "14px", fontWeight: "900", color: "#334155", letterSpacing: "0.5px" },
+  largeDismissButton: { width: "100%", minHeight: "64px", padding: "14px 10px", border: "none", borderRadius: "12px", background: "#273449", color: "#fff", fontSize: "16px", fontWeight: "900", cursor: "pointer" },
   helperText: { margin: "7px 0 0", fontSize: "12px", color: "#64748b", flexShrink: 0 },
   footer: { marginTop: "8px", color: "#fff", fontSize: "12px", textAlign: "center", opacity: 0.9, flexShrink: 0 },
 };
