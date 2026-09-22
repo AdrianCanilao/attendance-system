@@ -571,18 +571,6 @@ export default function Kiosk() {
           </>
         ) : (
           <div style={styles.cameraCard}>
-            <div style={styles.actionHeader}>
-              {scanState !== "success" && (
-                <button
-                  style={styles.cancelButton}
-                  onClick={continueToKiosk}
-                  disabled={attendanceLoading}
-                >
-                  CANCEL
-                </button>
-              )}
-            </div>
-
             <div style={styles.cameraContainer}>
               <Webcam
                 ref={webcamRef}
@@ -809,7 +797,6 @@ const styles = {
   actionLabel: { display: "none" },
   selectedAction: { fontSize: "clamp(25px, 2.2vw, 38px)", fontWeight: "900", color: "#172033", marginTop: "0", textAlign: "center" },
   actionHint: { fontSize: "13px", color: "#64748b", marginTop: "1px" },
-  cancelButton: { position: "absolute", right: "0", border: "none", borderRadius: "10px", padding: "11px 20px", background: "#e2e8f0", color: "#334155", fontWeight: "800", cursor: "pointer" },
   cameraContainer: { position: "relative", width: "min(100%, 1200px)", flex: "0 0 520px", minHeight: "520px", aspectRatio: "16 / 9", margin: "-22px auto 0", background: "#0f172a", borderRadius: "20px", overflow: "hidden" },
   camera: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
     cameraLoading: { position: "absolute", inset: 0, background: "#111827", color: "#fff", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", fontSize: "18px" },
