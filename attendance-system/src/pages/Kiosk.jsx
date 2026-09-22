@@ -829,7 +829,7 @@ const styles = {
   header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", color: "#fff", flexShrink: 0, minHeight: "72px" },
   brandBlock: { textAlign: "left" },
   logo: { fontSize: "clamp(36px, 4vw, 62px)", lineHeight: 0.9, fontWeight: "900", color: "#f97316", letterSpacing: "-2px" },
-  title: { fontSize: "clamp(26px, 3vw, 48px)", lineHeight: 1, fontWeight: "900", color: "#fff", margin: "6px 0 0", letterSpacing: "-1px" },
+  title: { display: "none" },
   tagline: { display: "none" },
   clockBlock: { textAlign: "right", paddingTop: "4px" },
   dateText: { fontSize: "clamp(12px, 1.1vw, 17px)", fontWeight: "600", color: "#fff" },
