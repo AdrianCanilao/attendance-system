@@ -765,12 +765,9 @@ export default function Kiosk() {
 
               </div>
 
-                <div style={styles.kioskActionBox}>
-                  <div style={styles.kioskActionTitle}>KIOSK ACTION</div>
-                  <button style={styles.largeDismissButton} onClick={continueToKiosk}>
-                    BACK TO KIOSK
-                  </button>
-                </div>
+                <button style={styles.kioskActionButton} onClick={continueToKiosk}>
+                  BACK TO KIOSK
+                </button>
             </div>
 
 
@@ -842,9 +839,7 @@ const styles = {
   presentBadge: { color: "#15803d", background: "#dcfce7", padding: "3px 9px", borderRadius: "999px" },
   photoSaved: { color: "#15803d" },
   dismissButton: { marginTop: "4px", padding: "6px 22px", border: "none", borderRadius: "10px", background: "#273449", color: "#fff", fontSize: "14px", fontWeight: "800", cursor: "pointer" },
-  kioskActionBox: { height: "100%", padding: "14px", borderRadius: "14px", background: "rgba(255,255,255,0.98)", border: "2px solid #cbd5e1", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "stretch", gap: "14px", overflow: "hidden" },
-  kioskActionTitle: { textAlign: "center", fontSize: "14px", fontWeight: "900", color: "#334155", letterSpacing: "0.5px" },
-  largeDismissButton: { width: "100%", minHeight: "64px", padding: "14px 10px", border: "none", borderRadius: "12px", background: "#273449", color: "#fff", fontSize: "16px", fontWeight: "900", cursor: "pointer" },
+  kioskActionButton: { width: "100%", height: "100%", padding: "14px 10px", border: "none", borderRadius: "14px", background: "#ff7a18", color: "#fff", fontSize: "16px", fontWeight: "900", cursor: "pointer", boxSizing: "border-box" },
   helperText: { margin: "7px 0 0", fontSize: "12px", color: "#64748b", flexShrink: 0 },
   footer: { marginTop: "8px", color: "#fff", fontSize: "12px", textAlign: "center", opacity: 0.9, flexShrink: 0 },
 };
