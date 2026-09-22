@@ -565,13 +565,8 @@ export default function Kiosk() {
         ) : (
           <div style={styles.cameraCard}>
             <div style={styles.actionHeader}>
-              <div>
-                <div style={styles.actionLabel}>
-                  SELECTED ACTION
-                </div>
-
+              <div style={styles.actionTitleCenter}>
                 <div style={styles.selectedAction}>{selectedAction}</div>
-                
               </div>
 
               {scanState !== "success" && (
@@ -618,26 +613,6 @@ export default function Kiosk() {
                 }}
                 style={styles.camera}
               />
-
-              {recognition.box && (
-                <svg
-                  aria-hidden="true"
-                  style={styles.faceOverlay}
-                  viewBox={"0 0 " + (recognition.image_width || 1280) + " " + (recognition.image_height || 720)}
-                  preserveAspectRatio="xMidYMid slice"
-                >
-                  <rect
-                    x={recognition.box.x}
-                    y={recognition.box.y}
-                    width={recognition.box.w}
-                    height={recognition.box.h}
-                    rx="10"
-                    fill="none"
-                    stroke={recognition.status === "Match" ? "#22c55e" : "#ef4444"}
-                    strokeWidth="3"
-                  />
-                </svg>
-              )}
 
               {!cameraReady && (
                 <div style={styles.cameraLoading}>
@@ -715,22 +690,9 @@ export default function Kiosk() {
                       : "—"}
                   </div>
 
-                  <div
-                    style={
-                      scanState ===
-                      "scanning"
-                        ? styles.blinkInstructionActive
-                        : styles.blinkInstruction
-                    }
-                  >
-                    {scanState ===
-                    "scanning"
-                      ? "👁 Please blink once..."
-                      : scanState ===
-                        "success"
-                      ? "✓ Liveness verified"
-                      : "Please blink once. Verification will start automatically."}
-                  </div>
+                  {scanState === "success" && (
+                    <div style={styles.blinkInstruction}>✓ Liveness verified</div>
+                  )}
                 </>
               ) : (
                 <>
@@ -770,22 +732,6 @@ export default function Kiosk() {
                 </>
               )}
             </div>
-
-            {scanState ===
-              "recognized" &&
-              !attendanceLoading &&
-              !attendanceResult && (
-                <div style={styles.readyBox}>
-                  <strong>
-                    Identity verified.
-                  </strong>
-
-                  <span>
-                    Please remain in front of
-                    the camera and blink once.
-                  </span>
-                </div>
-              )}
 
             {scanState ===
               "scanning" && (
@@ -882,25 +828,25 @@ const styles = {
   timeInButton: { minHeight: "150px", border: "none", borderRadius: "20px", background: "linear-gradient(135deg, #ff7a18, #f4510b)", color: "#fff", fontSize: "clamp(22px, 2vw, 34px)", fontWeight: "800", boxShadow: "0 12px 28px rgba(249,115,22,0.3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "20px" },
   timeOutButton: { minHeight: "150px", border: "none", borderRadius: "20px", background: "#273449", color: "#fff", fontSize: "clamp(22px, 2vw, 34px)", fontWeight: "800", boxShadow: "0 12px 28px rgba(0,0,0,0.2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "20px" },
   cameraCard: { flex: 1, minHeight: 0, marginTop: "4px", borderRadius: "26px", background: "rgba(255,255,255,0.98)", boxShadow: "0 20px 60px rgba(0,0,0,0.35)", padding: "10px 18px", boxSizing: "border-box", display: "flex", flexDirection: "column", overflow: "hidden" },
-  actionHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px", flexShrink: 0 },
-  actionLabel: { fontSize: "11px", fontWeight: "800", color: "#64748b", letterSpacing: "1px" },
-  selectedAction: { fontSize: "clamp(25px, 2.2vw, 38px)", fontWeight: "900", color: "#172033", marginTop: "2px" },
+  actionHeader: { position: "relative", display: "flex", justifyContent: "center", alignItems: "center", minHeight: "38px", marginBottom: "4px", flexShrink: 0 },
+  actionLabel: { display: "none" },
+  selectedAction: { fontSize: "clamp(25px, 2.2vw, 38px)", fontWeight: "900", color: "#172033", marginTop: "0", textAlign: "center" },
   actionHint: { fontSize: "13px", color: "#64748b", marginTop: "1px" },
-  cancelButton: { border: "none", borderRadius: "10px", padding: "11px 20px", background: "#e2e8f0", color: "#334155", fontWeight: "800", cursor: "pointer" },
+  actionTitleCenter: { textAlign: "center", width: "100%" },
+  cancelButton: { position: "absolute", right: "0", border: "none", borderRadius: "10px", padding: "11px 20px", background: "#e2e8f0", color: "#334155", fontWeight: "800", cursor: "pointer" },
   cameraContainer: { position: "relative", width: "min(100%, 1200px)", flex: "1 1 auto", minHeight: "0", aspectRatio: "16 / 9", margin: "0 auto", background: "#0f172a", borderRadius: "20px", overflow: "hidden" },
   camera: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
-  faceOverlay: { position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 3 },
-  cameraLoading: { position: "absolute", inset: 0, background: "#111827", color: "#fff", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", fontSize: "18px" },
+    cameraLoading: { position: "absolute", inset: 0, background: "#111827", color: "#fff", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", fontSize: "18px" },
   loadingCircle: { width: "35px", height: "35px", border: "4px solid #fff", borderTop: "4px solid transparent", borderRadius: "50%", marginBottom: "15px", animation: "spin 1s linear infinite" },
   cameraStatus: { marginTop: "4px", fontSize: "13px", fontWeight: "700", flexShrink: 0 },
-  bottomInfoRow: { width: "100%", height: "132px", display: "grid", gridTemplateColumns: "minmax(0, 0.40fr) minmax(0, 0.60fr)", gap: "10px", alignItems: "stretch", marginTop: "16px", flexShrink: 0 },
+  bottomInfoRow: { width: "100%", height: "175px", display: "grid", gridTemplateColumns: "minmax(0, 0.40fr) minmax(0, 0.60fr)", gap: "10px", alignItems: "stretch", marginTop: "16px", flexShrink: 0 },
   recognitionBox: { marginTop: "0", height: "100%", padding: "5px 16px", borderRadius: "14px", border: "2px solid #d1d5db", minHeight: "0", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", flexShrink: 0 },
   recognizedLabel: { fontSize: "13px", fontWeight: "800", color: "#16a34a" },
   recognitionStatus: { fontSize: "15px", fontWeight: "800", color: "#334155" },
   employeeName: { fontSize: "clamp(24px, 2vw, 34px)", fontWeight: "900", color: "#172033" },
   distance: { fontSize: "12px", color: "#64748b" },
   blinkInstruction: { marginTop: "5px", fontSize: "14px", fontWeight: "700", color: "#334155" },
-  blinkInstructionActive: { marginTop: "5px", fontSize: "15px", fontWeight: "800", color: "#f97316" },
+  blinkInstructionActive: { marginTop: "5px", fontSize: "15px", fontWeight: "800", color: "#166534" },
   resultMessage: { fontSize: "14px", color: "#475569" },
   readyBox: { marginTop: "8px", padding: "9px 14px", borderRadius: "10px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e3a8a", display: "flex", flexDirection: "row", gap: "8px", justifyContent: "center", fontSize: "13px", flexShrink: 0 },
   scanningBox: { marginTop: "8px", padding: "10px", borderRadius: "10px", background: "#fff7ed", border: "1px solid #fed7aa", color: "#9a3412", display: "flex", justifyContent: "center", alignItems: "center", gap: "10px", fontSize: "13px", flexShrink: 0 },
