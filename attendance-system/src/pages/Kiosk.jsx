@@ -13,6 +13,7 @@ const initialRecognition = {
   full_name: null,
   distance: null,
   message: "Select Time In or Time Out to start.",
+  box: null,
 };
 
 export default function Kiosk() {
@@ -164,6 +165,7 @@ export default function Kiosk() {
             distance: data.distance,
             message:
               "Identity recognized.",
+            box: data.box || null,
           });
 
           setScanState((current) =>
@@ -222,6 +224,7 @@ export default function Kiosk() {
             distance: data.distance,
             message:
               "Face not recognized.",
+            box: data.box || null,
           });
 
           setScanState("waiting");
@@ -595,6 +598,20 @@ export default function Kiosk() {
                 style={styles.camera}
               />
 
+              {recognition.box && recognition.status === "Match" && (
+                <div
+                  style={{
+                    ...styles.faceBox,
+                    left: `${(recognition.box.x / 1280) * 100}%`,
+                    top: `${(recognition.box.y / 720) * 100}%`,
+                    width: `${(recognition.box.w / 1280) * 100}%`,
+                    height: `${(recognition.box.h / 720) * 100}%`,
+                  }}
+                >
+                  <span style={styles.faceBoxLabel}>FACE DETECTED</span>
+                </div>
+              )}
+
               {!cameraReady && (
                 <div style={styles.cameraLoading}>
                   <div
@@ -851,13 +868,15 @@ const styles = {
   selectedAction: { fontSize: "clamp(25px, 2.2vw, 38px)", fontWeight: "900", color: "#172033", marginTop: "2px" },
   actionHint: { fontSize: "13px", color: "#64748b", marginTop: "1px" },
   cancelButton: { border: "none", borderRadius: "10px", padding: "11px 20px", background: "#e2e8f0", color: "#334155", fontWeight: "800", cursor: "pointer" },
-  cameraContainer: { position: "relative", width: "min(100%, 1100px)", height: "min(55vh, 610px)", aspectRatio: "16 / 9", margin: "0 auto", background: "#0f172a", borderRadius: "20px", overflow: "hidden", flex: "0 0 auto" },
+  cameraContainer: { position: "relative", width: "min(100%, 1200px)", flex: "1 1 auto", minHeight: "0", aspectRatio: "16 / 9", margin: "0 auto", background: "#0f172a", borderRadius: "20px", overflow: "hidden" },
   camera: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
+  faceBox: { position: "absolute", border: "4px solid #22c55e", borderRadius: "14px", boxSizing: "border-box", pointerEvents: "none", zIndex: 3, boxShadow: "0 0 0 2px rgba(255,255,255,0.35)" },
+  faceBoxLabel: { position: "absolute", top: "-30px", left: "0", background: "#22c55e", color: "#fff", fontSize: "12px", fontWeight: "900", padding: "5px 9px", borderRadius: "7px", whiteSpace: "nowrap" },
   cameraLoading: { position: "absolute", inset: 0, background: "#111827", color: "#fff", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", fontSize: "18px" },
   loadingCircle: { width: "35px", height: "35px", border: "4px solid #fff", borderTop: "4px solid transparent", borderRadius: "50%", marginBottom: "15px", animation: "spin 1s linear infinite" },
-  cameraStatus: { marginTop: "3px", fontSize: "13px", fontWeight: "700", flexShrink: 0 },
-  bottomInfoRow: { width: "100%", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "10px", alignItems: "stretch", marginTop: "10px", flexShrink: 0 },
-  recognitionBox: { marginTop: "0", padding: "6px 16px", borderRadius: "14px", border: "2px solid #d1d5db", minHeight: "62px", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", flexShrink: 0 },
+  cameraStatus: { marginTop: "4px", fontSize: "13px", fontWeight: "700", flexShrink: 0 },
+  bottomInfoRow: { width: "100%", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "10px", alignItems: "stretch", marginTop: "16px", flexShrink: 0 },
+  recognitionBox: { marginTop: "0", padding: "5px 16px", borderRadius: "14px", border: "2px solid #d1d5db", minHeight: "58px", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", flexShrink: 0 },
   recognizedLabel: { fontSize: "13px", fontWeight: "800", color: "#16a34a" },
   recognitionStatus: { fontSize: "15px", fontWeight: "800", color: "#334155" },
   employeeName: { fontSize: "clamp(24px, 2vw, 34px)", fontWeight: "900", color: "#172033" },
