@@ -17,6 +17,7 @@ export default function Kiosk() {
   const webcamRef = useRef(null);
   const recognitionBusyRef = useRef(false);
   const scanStartedRef = useRef(false);
+  const recognitionAbortControllerRef = useRef(null);
 
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
@@ -65,6 +66,7 @@ export default function Kiosk() {
     const recognizeFace = async () => {
       if (!webcamRef.current) return;
       if (recognitionBusyRef.current) return;
+      if (scanStartedRef.current) return;
       if (attendanceLoading) return;
       if (scanState === "scanning" || scanState === "success") {
         return;
@@ -76,6 +78,8 @@ export default function Kiosk() {
       if (!imageSrc) return;
 
       recognitionBusyRef.current = true;
+      const controller = new AbortController();
+      recognitionAbortControllerRef.current = controller;
 
       try {
         const response = await fetch(imageSrc);
@@ -94,6 +98,7 @@ export default function Kiosk() {
           {
             method: "POST",
             body: formData,
+            signal: controller.signal,
           }
         );
 
@@ -216,6 +221,10 @@ export default function Kiosk() {
         }
 
       } catch (error) {
+        if (error.name === "AbortError") {
+          return;
+        }
+
         console.error(
           "KIOSK LIVE RECOGNITION ERROR:",
           error
@@ -231,6 +240,13 @@ export default function Kiosk() {
         });
 
       } finally {
+        if (
+          recognitionAbortControllerRef.current ===
+          controller
+        ) {
+          recognitionAbortControllerRef.current = null;
+        }
+
         recognitionBusyRef.current = false;
       }
     };
@@ -246,6 +262,13 @@ export default function Kiosk() {
       if (intervalId) {
         clearInterval(intervalId);
       }
+
+      if (recognitionAbortControllerRef.current) {
+        recognitionAbortControllerRef.current.abort();
+        recognitionAbortControllerRef.current = null;
+      }
+
+      recognitionBusyRef.current = false;
     };
   }, [
     cameraOpen,
@@ -271,8 +294,10 @@ export default function Kiosk() {
         capturedFrames.push(imageSrc);
       }
 
+      // Keep the same 8-frame verification, but give the blink
+      // a slightly longer sampling window.
       await new Promise((resolve) =>
-        setTimeout(resolve, 150)
+        setTimeout(resolve, 200)
       );
     }
 
