@@ -804,7 +804,7 @@ const styles = {
     cameraLoading: { position: "absolute", inset: 0, background: "#111827", color: "#fff", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", fontSize: "18px" },
   loadingCircle: { width: "35px", height: "35px", border: "4px solid #fff", borderTop: "4px solid transparent", borderRadius: "50%", marginBottom: "15px", animation: "spin 1s linear infinite" },
   cameraStatus: { marginTop: "4px", fontSize: "13px", fontWeight: "700", flexShrink: 0 },
-  bottomInfoRow: { width: "100%", height: "215px", display: "grid", gridTemplateColumns: "minmax(0, 0.30fr) minmax(0, 0.50fr) minmax(0, 0.20fr)", gap: "10px", alignItems: "stretch", marginTop: "-2px", flexShrink: 0 },
+  bottomInfoRow: { width: "100%", height: "205px", display: "grid", gridTemplateColumns: "minmax(0, 0.30fr) minmax(0, 0.50fr) minmax(0, 0.20fr)", gap: "10px", alignItems: "stretch", marginTop: "-2px", flexShrink: 0 },
   resultActionRow: { height: "100%", display: "block", minWidth: "0" },
   recognitionBox: { marginTop: "0", height: "100%", padding: "5px 16px", borderRadius: "14px", border: "2px solid #d1d5db", minHeight: "0", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", flexShrink: 0 },
   recognizedLabel: { fontSize: "13px", fontWeight: "800", color: "#16a34a" },
