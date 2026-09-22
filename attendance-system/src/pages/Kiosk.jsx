@@ -826,7 +826,7 @@ export default function Kiosk() {
 }
 
 const styles = {
-  page: { position: "relative", height: "100vh", width: "100%", overflow: "hidden", backgroundImage: "linear-gradient(90deg, rgba(10,15,25,0.82), rgba(10,15,25,0.58)), " + KIOSK_BACKGROUND", backgroundSize: "cover", backgroundPosition: "center", fontFamily: "Arial, Helvetica, sans-serif", boxSizing: "border-box" },
+  page: { position: "relative", height: "100vh", width: "100%", overflow: "hidden", backgroundImage: "linear-gradient(90deg, rgba(10,15,25,0.82), rgba(10,15,25,0.58)), " + KIOSK_BACKGROUND, backgroundSize: "cover", backgroundPosition: "center", fontFamily: "Arial, Helvetica, sans-serif", boxSizing: "border-box" },
   overlay: { position: "absolute", inset: 0, background: "rgba(255,255,255,0.04)", pointerEvents: "none" },
   container: { position: "relative", zIndex: 1, width: "min(1500px, 94vw)", height: "100%", margin: "0 auto", display: "flex", flexDirection: "column", boxSizing: "border-box", padding: "18px 0 12px" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", color: "#fff", flexShrink: 0 },
