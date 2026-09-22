@@ -621,6 +621,7 @@ export default function Kiosk() {
                 : "● Starting Camera"}
             </div>
 
+            <div style={styles.bottomInfoRow}>
             <div
               style={{
                 ...styles.recognitionBox,
@@ -801,7 +802,9 @@ export default function Kiosk() {
 
                 <button style={styles.dismissButton} onClick={continueToKiosk}>BACK TO KIOSK</button>
               </div>
-            )}            {!attendanceResult &&
+            )}            </div>
+
+            {!attendanceResult &&
               scanState !== "scanning" &&
               scanState !== "success" && (
                 <p style={styles.helperText}>
@@ -848,11 +851,12 @@ const styles = {
   selectedAction: { fontSize: "clamp(25px, 2.2vw, 38px)", fontWeight: "900", color: "#172033", marginTop: "2px" },
   actionHint: { fontSize: "13px", color: "#64748b", marginTop: "1px" },
   cancelButton: { border: "none", borderRadius: "10px", padding: "11px 20px", background: "#e2e8f0", color: "#334155", fontWeight: "800", cursor: "pointer" },
-  cameraContainer: { position: "relative", width: "min(100%, 1050px)", height: "min(42vh, 470px)", aspectRatio: "16 / 9", margin: "0 auto", background: "#0f172a", borderRadius: "20px", overflow: "hidden", flex: "0 0 auto" },
+  cameraContainer: { position: "relative", width: "min(100%, 1100px)", height: "min(50vh, 560px)", aspectRatio: "16 / 9", margin: "0 auto", background: "#0f172a", borderRadius: "20px", overflow: "hidden", flex: "0 0 auto" },
   camera: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
   cameraLoading: { position: "absolute", inset: 0, background: "#111827", color: "#fff", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", fontSize: "18px" },
   loadingCircle: { width: "35px", height: "35px", border: "4px solid #fff", borderTop: "4px solid transparent", borderRadius: "50%", marginBottom: "15px", animation: "spin 1s linear infinite" },
   cameraStatus: { marginTop: "3px", fontSize: "13px", fontWeight: "700", flexShrink: 0 },
+  bottomInfoRow: { width: "100%", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "10px", alignItems: "stretch", marginTop: "4px", flexShrink: 0 },
   recognitionBox: { marginTop: "4px", padding: "6px 16px", borderRadius: "14px", border: "2px solid #d1d5db", minHeight: "62px", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "center", flexShrink: 0 },
   recognizedLabel: { fontSize: "13px", fontWeight: "800", color: "#16a34a" },
   recognitionStatus: { fontSize: "15px", fontWeight: "800", color: "#334155" },
