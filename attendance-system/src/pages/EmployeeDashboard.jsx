@@ -20,6 +20,7 @@ export default function EmployeeDashboard({
  const [loading, setLoading] = useState(false);
 
 const webcamRef = useRef(null);
+const recognizingFaceRef = useRef(false);
 
 const [showCamera, setShowCamera] = useState(false);
 const [scanAction, setScanAction] = useState(null);
@@ -165,10 +166,8 @@ const [recognizingFace, setRecognizingFace] = useState(false);
  const captureFrames = async () => {
   const frames = [];
 
-  // Give the camera 2 seconds to stabilize
-  await new Promise((res) => setTimeout(res, 2000));
-
-  // Capture more frames so a quick blink is less likely to be missed
+  // Capture the same 8 verification frames, but sample more frequently
+  // so a quick blink is less likely to be missed.
   for (let i = 0; i < 8; i++) {
     const image = webcamRef.current.getScreenshot();
 
@@ -180,8 +179,8 @@ const [recognizingFace, setRecognizingFace] = useState(false);
 
     frames.push(blob);
 
-    // Capture every 350 ms
-    await new Promise((res) => setTimeout(res, 350));
+    // Capture every 200 ms.
+    await new Promise((res) => setTimeout(res, 200));
   }
 
   return frames;
@@ -189,7 +188,9 @@ const [recognizingFace, setRecognizingFace] = useState(false);
 const validateLiveFace = async () => {
   if (!webcamRef.current) return;
 
-  if (recognizingFace) return;
+  if (recognizingFaceRef.current) return;
+
+  recognizingFaceRef.current = true;
 
   const image = webcamRef.current.getScreenshot();
 
@@ -342,6 +343,7 @@ const validateLiveFace = async () => {
 
     setDetectedFace(null);
     setIdentityVerified(false);
+    recognizingFaceRef.current = false;
 
     setFaceStatus({
       valid: false,
@@ -354,10 +356,11 @@ const validateLiveFace = async () => {
 
     setCheckingFace(false);
     setRecognizingFace(false);
+    recognizingFaceRef.current = false;
   }
 };
 useEffect(() => {
-  if (!showCamera) {
+  if (!showCamera || identityVerified) {
     return;
   }
 
@@ -368,7 +371,7 @@ useEffect(() => {
   return () => {
     clearInterval(interval);
   };
-}, [showCamera, currentEmployeeId]);
+}, [showCamera, currentEmployeeId, identityVerified]);
 const openAttendanceCamera = (actionType) => {
   if (loading) return;
 
@@ -448,9 +451,12 @@ const handleScan = async (
 
       const employeeId = profile.id;
 
-const today = new Date()
-  .toISOString()
-  .split("T")[0];
+const today = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Manila",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date());
 
 const now = new Date();
 
@@ -609,27 +615,27 @@ const scheduledClockOut = new Date(
     );
   }
 
-        await supabase
-  .from("attendance_logs")
-  .insert({
-    employee_id: employeeId,
+        const { error: attendanceInsertError } =
+          await supabase
+            .from("attendance_logs")
+            .insert({
+              employee_id: employeeId,
+              log_date: today,
+              time_in: now.toISOString(),
+              scheduled_time_in: profile.clock_in,
+              scheduled_time_out: profile.clock_out,
+              late_minutes: lateMinutes,
+              overtime_minutes: 0,
+              status: attendanceStatus,
+              time_in_face_url: faceUrl,
+            });
 
-    log_date: today,
-
-    time_in: now.toISOString(),
-
-    scheduled_time_in: profile.clock_in,
-
-    scheduled_time_out: profile.clock_out,
-
-    late_minutes: lateMinutes,
-
-    overtime_minutes: 0,
-
-    status: attendanceStatus,
-
-    time_in_face_url: faceUrl,
-  });
+        if (attendanceInsertError) {
+          throw new Error(
+            "Attendance Time In could not be saved: " +
+            attendanceInsertError.message
+          );
+        }
 
         await logAudit({
           user_id: employeeId,
@@ -655,18 +661,24 @@ const scheduledClockOut = new Date(
     );
   }
 
-  await supabase
-  .from("attendance_logs")
-  .update({
-    time_out: now.toISOString(),
+  const { error: attendanceUpdateError } =
+    await supabase
+      .from("attendance_logs")
+      .update({
+        time_out: now.toISOString(),
+        overtime_minutes: overtimeMinutes,
+        time_out_face_url: faceUrl,
+      })
+      .eq("employee_id", employeeId)
+      .eq("log_date", today)
+      .is("time_out", null);
 
-    overtime_minutes: overtimeMinutes,
-
-    time_out_face_url: faceUrl,
-  })
-  .eq("employee_id", employeeId)
-  .eq("log_date", today)
-  .is("time_out", null);
+  if (attendanceUpdateError) {
+    throw new Error(
+      "Attendance Time Out could not be saved: " +
+      attendanceUpdateError.message
+    );
+  }
 
 
         await logAudit({
