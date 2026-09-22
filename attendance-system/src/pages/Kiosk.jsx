@@ -644,165 +644,131 @@ export default function Kiosk() {
             </div>
 
             <div style={styles.bottomInfoRow}>
-            <div
-              style={{
-                ...styles.recognitionBox,
-                borderColor:
-                  recognition.status ===
-                  "Match"
-                    ? "#22c55e"
-                    : recognition.status ===
-                      "Error"
-                    ? "#ef4444"
-                    : "#d1d5db",
-                background:
-                  recognition.status ===
-                  "Match"
-                    ? "#ecfdf5"
-                    : "#f9fafb",
-              }}
-            >
-              {recognition.status ===
-              "Match" ? (
-                <>
-                  <div
-                    style={
-                      styles.recognizedLabel
-                    }
-                  >
-                    IDENTITY RECOGNIZED
-                  </div>
-
-                  <div
-                    style={
-                      styles.employeeName
-                    }
-                  >
-                    {recognition.full_name}
-                  </div>
-
-                  <div
-                    style={styles.distance}
-                  >
-                    Recognition distance:{" "}
-                    {typeof recognition.distance ===
-                    "number"
-                      ? recognition.distance.toFixed(
-                          4
-                        )
-                      : "—"}
-                  </div>
-
-                  {scanState === "success" && (
-                    <div style={styles.blinkInstruction}>✓ Liveness verified</div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div
-                    style={
-                      styles.recognitionStatus
-                    }
-                  >
-                    {recognition.status ===
-                    "No Face"
-                      ? "WAITING FOR FACE"
-                      : recognition.status ===
-                        "Unknown"
-                      ? "FACE NOT RECOGNIZED"
-                      : recognition.status ===
-                        "Multiple Faces"
-                      ? "MULTIPLE FACES DETECTED"
-                      : recognition.status ===
-                        "Starting"
-                      ? "STARTING CAMERA"
-                      : recognition.status ===
-                        "Idle"
-                      ? "READY"
-                      : recognition.status ===
-                        "Error"
-                      ? "RECOGNITION ERROR"
-                      : "SCANNING"}
-                  </div>
-
-                  <div
-                    style={
-                      styles.resultMessage
-                    }
-                  >
-                    {recognition.message}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {scanState ===
-              "scanning" && (
-              <div style={styles.scanningBox}>
-                <div
-                  style={
-                    styles.smallSpinner
-                  }
-                ></div>
-
-                <div>
-                  <strong>
-                    Verifying attendance...
-                  </strong>
-
-                  <span>
-                    Checking liveness and
-                    recording your attendance.
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div style={styles.resultActionRow}>
-              {attendanceResult && (
-                <div style={
-                  attendanceResult.type === "success"
-                    ? styles.successBox
-                    : attendanceResult.type === "warning"
-                    ? styles.warningBox
-                    : styles.errorBox
-                }>
-                <div style={styles.successHeader}>
-                  <div style={styles.successIcon}>
-                    {attendanceResult.type === "success" ? "✓" : "!"}
-                  </div>
-                  <div>
-                    <div style={styles.resultTitle}>
-                      {attendanceResult.type === "success"
-                        ? (selectedAction + " RECORDED!")
-                        : attendanceResult.type === "warning"
-                        ? "VERIFICATION FAILED"
-                        : "SYSTEM ERROR"}
+              <div
+                style={{
+                  ...styles.recognitionBox,
+                  borderColor:
+                    recognition.status === "Match"
+                      ? "#22c55e"
+                      : recognition.status === "Error"
+                      ? "#ef4444"
+                      : "#d1d5db",
+                  background:
+                    recognition.status === "Match"
+                      ? "#ecfdf5"
+                      : "#f9fafb",
+                }}
+              >
+                {recognition.status === "Match" ? (
+                  <>
+                    <div style={styles.recognizedLabel}>IDENTITY RECOGNIZED</div>
+                    <div style={styles.employeeName}>{recognition.full_name}</div>
+                    <div style={styles.distance}>
+                      Recognition distance:{" "}
+                      {typeof recognition.distance === "number"
+                        ? recognition.distance.toFixed(4)
+                        : "—"}
                     </div>
-                    <div style={styles.resultMessage}>{attendanceResult.message}</div>
-                  </div>
-                </div>
+                    {scanState === "success" && (
+                      <div style={styles.blinkInstruction}>✓ Liveness verified</div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div style={styles.recognitionStatus}>
+                      {recognition.status === "No Face"
+                        ? "WAITING FOR FACE"
+                        : recognition.status === "Unknown"
+                        ? "FACE NOT RECOGNIZED"
+                        : recognition.status === "Multiple Faces"
+                        ? "MULTIPLE FACES DETECTED"
+                        : recognition.status === "Starting"
+                        ? "STARTING CAMERA"
+                        : recognition.status === "Idle"
+                        ? "READY"
+                        : recognition.status === "Error"
+                        ? "RECOGNITION ERROR"
+                        : "SCANNING"}
+                    </div>
+                    <div style={styles.resultMessage}>{recognition.message}</div>
+                  </>
+                )}
+              </div>
 
-                {attendanceResult.type === "success" && (
-                  <div style={styles.infoGrid}>
-                    <div style={styles.infoRow}><span>Employee</span><strong>{recognition.full_name || "—"}</strong></div>
-                    <div style={styles.infoRow}><span>Date</span><strong>{formatDate(attendanceResult.recordedAt || currentTime)}</strong></div>
-                    <div style={styles.infoRow}><span>{selectedAction === "TIME IN" ? "Time In" : "Time Out"}</span><strong>{formatTime(attendanceResult.recordedAt || currentTime)}</strong></div>
-                    <div style={styles.infoRow}><span>Kiosk</span><strong>{KIOSK_CODE}</strong></div>
-                    <div style={styles.infoRow}><span>Status</span><strong style={styles.presentBadge}>Present</strong></div>
-                    <div style={styles.infoRow}><span>Photo</span><strong style={styles.photoSaved}>✓ Attendance photo saved</strong></div>
+              <div style={styles.resultActionRow}>
+                {scanState === "scanning" && (
+                  <div style={styles.scanningBox}>
+                    <div style={styles.smallSpinner}></div>
+                    <div>
+                      <strong>Verifying attendance...</strong>
+                      <span>Checking liveness and recording your attendance.</span>
+                    </div>
                   </div>
                 )}
 
+                {attendanceResult && (
+                  <div
+                    style={
+                      attendanceResult.type === "success"
+                        ? styles.successBox
+                        : attendanceResult.type === "warning"
+                        ? styles.warningBox
+                        : styles.errorBox
+                    }
+                  >
+                    <div style={styles.successHeader}>
+                      <div style={styles.successIcon}>
+                        {attendanceResult.type === "success" ? "✓" : "!"}
+                      </div>
+                      <div>
+                        <div style={styles.resultTitle}>
+                          {attendanceResult.type === "success"
+                            ? selectedAction + " RECORDED!"
+                            : attendanceResult.type === "warning"
+                            ? "VERIFICATION FAILED"
+                            : "SYSTEM ERROR"}
+                        </div>
+                        <div style={styles.resultMessage}>{attendanceResult.message}</div>
+                      </div>
+                    </div>
 
+                    {attendanceResult.type === "success" && (
+                      <div style={styles.infoGrid}>
+                        <div style={styles.infoRow}>
+                          <span>Employee</span>
+                          <strong>{recognition.full_name || "—"}</strong>
+                        </div>
+                        <div style={styles.infoRow}>
+                          <span>Date</span>
+                          <strong>{formatDate(attendanceResult.recordedAt || currentTime)}</strong>
+                        </div>
+                        <div style={styles.infoRow}>
+                          <span>{selectedAction === "TIME IN" ? "Time In" : "Time Out"}</span>
+                          <strong>{formatTime(attendanceResult.recordedAt || currentTime)}</strong>
+                        </div>
+                        <div style={styles.infoRow}>
+                          <span>Kiosk</span>
+                          <strong>{KIOSK_CODE}</strong>
+                        </div>
+                        <div style={styles.infoRow}>
+                          <span>Status</span>
+                          <strong style={styles.presentBadge}>Present</strong>
+                        </div>
+                        <div style={styles.infoRow}>
+                          <span>Photo</span>
+                          <strong style={styles.photoSaved}>✓ Attendance photo saved</strong>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div style={styles.kioskActionBox}>
+                  <div style={styles.kioskActionTitle}>KIOSK ACTION</div>
+                  <button style={styles.largeDismissButton} onClick={continueToKiosk}>
+                    BACK TO KIOSK
+                  </button>
                 </div>
-              )}
-
-              <div style={styles.kioskActionBox}>
-              <div style={styles.kioskActionTitle}>KIOSK ACTION</div>
-              <button style={styles.largeDismissButton} onClick={continueToKiosk}>
-                BACK TO KIOSK
-              </button>
               </div>
             </div>
 
