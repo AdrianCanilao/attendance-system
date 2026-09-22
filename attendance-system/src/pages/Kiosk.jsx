@@ -204,7 +204,7 @@ export default function Kiosk() {
 
             setTimeout(() => {
               startAttendanceScan();
-            }, 700);
+            }, 300);
           }
 
         } else if (data.status === "No Face") {
