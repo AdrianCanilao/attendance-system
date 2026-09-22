@@ -1,4 +1,5 @@
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
@@ -46,6 +47,40 @@ face_mesh = mp_face_mesh.FaceMesh()
 print("🔥 Loading ArcFace model...", flush=True)
 DeepFace.build_model("ArcFace")
 print("✅ ArcFace model ready", flush=True)
+
+
+
+def recognize_insightface_frame(index, img):
+    """Send one frame to InsightFace without changing recognition rules."""
+    try:
+        success, encoded_image = cv2.imencode(
+            ".jpg",
+            img,
+            [cv2.IMWRITE_JPEG_QUALITY, 85]
+        )
+
+        if not success:
+            return index, None, "JPEG encoding failed"
+
+        response = requests.post(
+            f"{INSIGHTFACE_URL}/recognize-live-face",
+            files={
+                "file": (
+                    f"frame_{index}.jpg",
+                    encoded_image.tobytes(),
+                    "image/jpeg"
+                )
+            },
+            timeout=10
+        )
+
+        if response.status_code != 200:
+            return index, None, f"HTTP {response.status_code}"
+
+        return index, response.json(), None
+
+    except Exception as e:
+        return index, None, str(e)
 
 def normalize_name(name: str):
     return name.strip().lower().replace(" ", "_")
@@ -1123,50 +1158,30 @@ async def verify_face(
 
         recognition_results = []
 
-        for index, img in enumerate(frames):
+        # Run frame requests concurrently. Recognition thresholds and
+        # temporal voting remain unchanged.
+        completed_results = []
 
-            try:
-
-                # Encode frame as JPEG
-                success, encoded_image = cv2.imencode(
-                    ".jpg",
-                    img,
-                    [
-                        cv2.IMWRITE_JPEG_QUALITY,
-                        85
-                    ]
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = [
+                executor.submit(
+                    recognize_insightface_frame,
+                    index,
+                    img
                 )
+                for index, img in enumerate(frames)
+            ]
 
-                if not success:
-                    continue
+            for future in as_completed(futures):
+                index, result, error = future.result()
 
-
-                # Send frame to InsightFace API
-                response = requests.post(
-                    f"{INSIGHTFACE_URL}/recognize-live-face",
-                    files={
-                        "file": (
-                            f"frame_{index}.jpg",
-                            encoded_image.tobytes(),
-                            "image/jpeg"
-                        )
-                    },
-                    timeout=10
-                )
-
-
-                if response.status_code != 200:
-
+                if error:
                     print(
-                        f"⚠️ INSIGHTFACE FRAME {index + 1}: "
-                        f"HTTP {response.status_code}",
+                        f"❌ INSIGHTFACE FRAME {index + 1} ERROR:",
+                        error,
                         flush=True
                     )
-
                     continue
-
-
-                result = response.json()
 
                 print(
                     f"🔎 INSIGHTFACE FRAME {index + 1}:",
@@ -1174,18 +1189,14 @@ async def verify_face(
                     flush=True
                 )
 
+                if result is not None:
+                    completed_results.append((index, result))
 
-                recognition_results.append(result)
-
-
-            except Exception as e:
-
-                print(
-                    f"❌ INSIGHTFACE FRAME {index + 1} ERROR:",
-                    str(e),
-                    flush=True
-                )
-
+        completed_results.sort(key=lambda item: item[0])
+        recognition_results = [
+            result
+            for _, result in completed_results
+        ]
 
         # =====================================================
         # 5. MAKE SURE INSIGHTFACE RESPONDED
@@ -2093,67 +2104,48 @@ async def kiosk_verify_live(
 
         recognition_results = []
 
-        for index, img in enumerate(frames):
+        # Run frame requests concurrently while keeping the same
+        # frames, recognition model, thresholds, and voting rules.
+        completed_results = []
 
-            try:
-
-                success, encoded_image = cv2.imencode(
-                    ".jpg",
-                    img,
-                    [
-                        cv2.IMWRITE_JPEG_QUALITY,
-                        85
-                    ]
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = [
+                executor.submit(
+                    recognize_insightface_frame,
+                    index,
+                    img
                 )
+                for index, img in enumerate(frames)
+            ]
 
-                if not success:
-                    continue
+            for future in as_completed(futures):
+                index, result, error = future.result()
 
-                response = requests.post(
-                    f"{INSIGHTFACE_URL}/recognize-live-face",
-                    files={
-                        "file": (
-                            f"kiosk_frame_{index}.jpg",
-                            encoded_image.tobytes(),
-                            "image/jpeg"
-                        )
-                    },
-                    timeout=10
-                )
-
-                if response.status_code != 200:
-
+                if error:
                     print(
-                        f"⚠️ INSIGHTFACE FRAME "
-                        f"{index + 1}: "
-                        f"HTTP {response.status_code}",
+                        f"❌ INSIGHTFACE FRAME {index + 1} ERROR:",
+                        error,
                         flush=True
                     )
-
                     continue
 
-                result = response.json()
-
                 print(
-                    f"🔎 INSIGHTFACE FRAME "
-                    f"{index + 1}:",
+                    f"🔎 INSIGHTFACE FRAME {index + 1}:",
                     result,
                     flush=True
                 )
 
-                recognition_results.append({
-                    "result": result,
-                    "frame": img
-                })
+                if result is not None:
+                    completed_results.append((index, result))
 
-            except Exception as e:
-
-                print(
-                    f"❌ INSIGHTFACE FRAME "
-                    f"{index + 1} ERROR:",
-                    str(e),
-                    flush=True
-                )
+        completed_results.sort(key=lambda item: item[0])
+        recognition_results = [
+            {
+                "result": result,
+                "frame": frames[index]
+            }
+            for index, result in completed_results
+        ]
 
         # =====================================================
         # 6. MAKE SURE INSIGHTFACE RESPONDED
