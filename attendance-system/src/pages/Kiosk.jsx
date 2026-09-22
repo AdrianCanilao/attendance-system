@@ -821,7 +821,7 @@ const styles = {
   tagline: { display: "none" },
   clockBlock: { textAlign: "right", paddingTop: "4px" },
   headerAction: { position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", fontSize: "clamp(28px, 2.6vw, 44px)", lineHeight: 1, fontWeight: "900", color: "#172033", textAlign: "center", whiteSpace: "nowrap" },
-  dateText: { fontSize: "clamp(12px, 1.1vw, 17px)", fontWeight: "600", color: "#fff" },
+  dateText: { fontSize: "clamp(12px, 1.1vw, 17px)", fontWeight: "700", color: "#f97316" },
   timeText: { marginTop: "2px", fontSize: "clamp(24px, 2.4vw, 38px)", fontWeight: "900", color: "#f97316" },
   homeCard: { flex: 1, minHeight: 0, marginTop: "16px", borderRadius: "26px", background: "rgba(255,255,255,0.96)", boxShadow: "0 20px 60px rgba(0,0,0,0.35)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "30px", boxSizing: "border-box" },
   homeIntro: { textAlign: "center", marginBottom: "28px" },
