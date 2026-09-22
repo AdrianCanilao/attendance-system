@@ -446,6 +446,8 @@ async def recognize_live_face(
         "h": int(max(0, y2 - y1)),
     }
 
+    image_height, image_width = image.shape[:2]
+
     embedding = normalize_embedding(
         face.embedding
     )
@@ -524,6 +526,8 @@ async def recognize_live_face(
         ),
         "threshold": RECOGNITION_THRESHOLD,
         "box": box,
+        "image_width": image_width,
+        "image_height": image_height,
     }
 
 # ============================================================
