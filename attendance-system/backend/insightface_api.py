@@ -437,6 +437,15 @@ async def recognize_live_face(
 
     face = faces[0]
 
+    # Face bounding box for the kiosk UI overlay.
+    x1, y1, x2, y2 = face.bbox
+    box = {
+        "x": int(max(0, x1)),
+        "y": int(max(0, y1)),
+        "w": int(max(0, x2 - x1)),
+        "h": int(max(0, y2 - y1)),
+    }
+
     embedding = normalize_embedding(
         face.embedding
     )
@@ -498,6 +507,7 @@ async def recognize_live_face(
                 4
             ),
             "threshold": RECOGNITION_THRESHOLD,
+            "box": box,
         }
 
     # ========================================================
@@ -513,6 +523,7 @@ async def recognize_live_face(
             4
         ),
         "threshold": RECOGNITION_THRESHOLD,
+        "box": box,
     }
 
 # ============================================================
