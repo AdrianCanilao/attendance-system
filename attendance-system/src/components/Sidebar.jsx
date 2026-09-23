@@ -56,7 +56,7 @@ export default function Sidebar({ role }) {
           <div>
             <button
               onClick={() => setLeaveDropdown(!leaveDropdown)}
-              className="cibo-sidebar-link" className="cibo-sidebar-link" style={styles.link}
+              className="cibo-sidebar-link" style={styles.link}
             >
               <FaClipboardList />
               Leave Overview
@@ -64,6 +64,7 @@ export default function Sidebar({ role }) {
             </button>
 
             <div
+              className="cibo-sidebar-dropdown"
               style={{
                 ...styles.dropdown,
                 maxHeight: leaveDropdown ? "200px" : "0px",
@@ -146,6 +147,7 @@ export default function Sidebar({ role }) {
   </button>
 
   <div
+    className="cibo-sidebar-dropdown"
     style={{
       ...styles.dropdown,
       maxHeight: openEmployee ? "200px" : "0px",
