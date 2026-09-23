@@ -1940,7 +1940,8 @@ async def kiosk_verify_live(
 
         frames = []
 
-        for file in files[:8]:
+        # Allow the full 12-frame kiosk blink window to reach MediaPipe.
+        for file in files[:12]:
 
             contents = await file.read()
 
