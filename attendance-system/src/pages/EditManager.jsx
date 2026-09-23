@@ -478,8 +478,8 @@ const uploadFaces = async () => {
         </div>
 
         {selected && (
-          <div style={styles.modalOverlay}>
-            <div style={styles.modal}>
+          <div className="cibo-hr-edit-modal-overlay" style={styles.modalOverlay}>
+            <div className="cibo-hr-edit-modal" style={styles.modal}>
               <h3>Edit Manager</h3>
 
               <div style={styles.topSection}>
