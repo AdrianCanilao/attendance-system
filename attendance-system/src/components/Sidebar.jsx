@@ -264,6 +264,7 @@ export default function Sidebar({ role }) {
       </button>
 
       <div
+        className={`cibo-sidebar-dropdown ${openEmployee ? "is-open" : ""}`}
         style={{
           ...styles.dropdown,
           maxHeight: openEmployee ? "250px" : "0px",
