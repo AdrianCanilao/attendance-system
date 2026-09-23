@@ -327,10 +327,9 @@ export default function Kiosk() {
         capturedFrames.push(imageSrc);
       }
 
-      // Use a longer 12-frame sampling window so the user has enough time
-      // to blink naturally without changing the recognition algorithm.
+      // Match the web attendance sampling speed.
       await new Promise((resolve) =>
-        setTimeout(resolve, 200)
+        setTimeout(resolve, 150)
       );
     }
 
