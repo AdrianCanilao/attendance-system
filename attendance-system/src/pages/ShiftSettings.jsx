@@ -170,6 +170,7 @@ export default function ShiftSettings() {
   return (
     <HRLayout>
       <div
+        className="cibo-hr-page cibo-hr-shift-page"
         style={{
           padding: "30px",
           background: "#f8f9fa",
@@ -177,6 +178,7 @@ export default function ShiftSettings() {
         }}
       >
         <div
+          className="cibo-shift-page-header"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -206,6 +208,7 @@ export default function ShiftSettings() {
           </button>
         </div>
                 <div
+          className="cibo-shift-branch-card"
           style={{
             background: "#fff",
             padding: "20px",
@@ -256,6 +259,7 @@ export default function ShiftSettings() {
         </div>
 
 <div
+  className="cibo-shift-list"
   style={{
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(380px,1fr))",
@@ -268,6 +272,7 @@ export default function ShiftSettings() {
     shifts.map((shift) => (
       <div
         key={shift.id}
+        className="cibo-shift-card"
         style={{
           background: "#fff",
           borderRadius: "14px",
@@ -344,6 +349,7 @@ export default function ShiftSettings() {
         </div>
 
         <div
+  className="cibo-shift-actions"
   style={{
     display: "flex",
     gap: "10px",
@@ -389,6 +395,7 @@ export default function ShiftSettings() {
 
         {showForm && (
           <div
+            className="cibo-shift-modal-overlay"
             style={{
               position: "fixed",
               inset: 0,
@@ -399,6 +406,7 @@ export default function ShiftSettings() {
             }}
           >
             <div
+              className="cibo-shift-modal"
               style={{
                 background: "#fff",
                 width: "450px",
