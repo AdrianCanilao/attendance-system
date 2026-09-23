@@ -218,10 +218,10 @@ export default function Login() {
   };
 
   return (
-    <div style={styles.container}>
+    <div className="cibo-login" style={styles.container}>
       <div style={styles.overlay}></div>
 
-      <div style={styles.card}>
+      <div className="cibo-login-card" style={styles.card}>
         <img
           src="/logo.png"
           alt="logo"
