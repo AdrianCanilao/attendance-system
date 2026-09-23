@@ -39,11 +39,6 @@ const [search, setSearch] = useState("");
           HR Audit Trail
         </h1>
 
-        <p style={styles.subtitle}>
-          Monitor employee attendance activities,
-          corrections, and system actions.
-        </p>
-
         <input
   placeholder="Search audit logs..."
   className="searchInput"
