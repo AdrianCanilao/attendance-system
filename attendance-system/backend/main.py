@@ -2084,12 +2084,25 @@ async def kiosk_verify_live(
         # OPEN → CLOSED → OPEN
         # =====================================================
 
-        # Slightly more tolerant kiosk blink thresholds.
-        # The kiosk now samples for longer, so require a clear
-        # open -> closed -> open transition without making blinking
-        # unnecessarily difficult to trigger.
-        OPEN_THRESHOLD = 0.22
-        CLOSED_THRESHOLD = 0.20
+        # Match the web attendance adaptive blink detection.
+        # Use the user's observed open-eye EAR as a baseline while
+        # still requiring OPEN -> CLOSED -> OPEN.
+        sorted_ears = sorted(ear_values, reverse=True)
+        open_reference = float(
+            np.median(
+                sorted_ears[:min(4, len(sorted_ears))]
+            )
+        )
+
+        OPEN_THRESHOLD = max(
+            0.20,
+            open_reference * 0.72
+        )
+
+        CLOSED_THRESHOLD = min(
+            0.20,
+            open_reference * 0.68
+        )
 
         blink_detected = False
         open_before = False
@@ -2144,12 +2157,11 @@ async def kiosk_verify_live(
 
         recognition_results = []
 
-        # Keep all 8 frames for MediaPipe blink/liveness,
-        # but use the same 4-frame InsightFace optimization
-        # as Web Attendance to reduce verification time.
+        # Match Web Attendance: keep all 12 frames for blink/liveness,
+        # but send only three representative frames to InsightFace.
         recognition_indices = (
-            [0, 2, 5, 7]
-            if len(frames) >= 8
+            [1, 6, 10]
+            if len(frames) >= 12
             else list(range(len(frames)))
         )
 
@@ -2166,7 +2178,7 @@ async def kiosk_verify_live(
 
         completed_results = []
 
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             futures = [
                 executor.submit(
                     recognize_insightface_frame,
