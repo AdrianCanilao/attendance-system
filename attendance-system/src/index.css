@@ -1296,3 +1296,324 @@ code {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+
+/* Final HR phone layout cleanup: keep the HR header inside the viewport
+   and give Audit / Register / Edit their own mobile spacing. */
+@media (max-width: 768px) {
+  .cibo-hr-layout {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .cibo-hr-main {
+    flex: 1 1 auto !important;
+    width: 0 !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .cibo-hr-topbar {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 0 0 64px !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+  }
+
+  .cibo-hr-topbar > h3 {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .cibo-hr-topbar > div:last-child {
+    flex: 0 0 auto !important;
+    margin-left: auto !important;
+    width: auto !important;
+    min-width: max-content !important;
+  }
+
+  .cibo-hr-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  /* AUDIT TRAIL */
+  .cibo-hr-audit-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 6px 0 24px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .cibo-hr-audit-page > h1 {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 8px !important;
+    padding: 0 !important;
+    font-size: 25px !important;
+    line-height: 1.2 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .cibo-hr-audit-page > p {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 14px !important;
+    font-size: 16px !important;
+    line-height: 1.45 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .cibo-hr-audit-page > input {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 48px !important;
+    margin: 0 0 14px !important;
+    padding: 0 14px !important;
+    box-sizing: border-box !important;
+    font-size: 15px !important;
+  }
+
+  .cibo-hr-audit-page > div:last-child {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 14px !important;
+  }
+
+  .cibo-hr-audit-page > div:last-child > div {
+    min-width: 760px !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-hr-audit-page > div:last-child > div[style] {
+    grid-template-columns: 170px 105px 130px 235px 160px !important;
+    padding: 13px 14px !important;
+  }
+
+  .cibo-hr-audit-page > div:last-child > div > div {
+    min-width: 0 !important;
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* REGISTER MAINTENANCE SPECIALIST */
+  .cibo-hr-register-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 6px 0 24px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .cibo-hr-register-page > h1 {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 14px !important;
+    padding: 0 4px !important;
+    text-align: center !important;
+    font-size: 22px !important;
+    line-height: 1.25 !important;
+    overflow-wrap: anywhere !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-hr-register-page > div:first-of-type {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 18px !important;
+    box-sizing: border-box !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+  }
+
+  .cibo-hr-register-page .topSection {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 16px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .cibo-hr-register-page .avatarWrapper {
+    width: 160px !important;
+    max-width: 100% !important;
+    gap: 10px !important;
+  }
+
+  .cibo-hr-register-page .avatarBox {
+    width: 160px !important;
+    height: 160px !important;
+    min-width: 160px !important;
+    min-height: 160px !important;
+  }
+
+  .cibo-hr-register-page .cameraWrapper {
+    width: 100% !important;
+    max-width: 320px !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-hr-register-page .cibo-hr-form-grid {
+    width: 100% !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .cibo-hr-register-page .cibo-hr-form-grid > div,
+  .cibo-hr-register-page > div:first-of-type > div > div {
+    min-width: 0 !important;
+  }
+
+  .cibo-hr-register-page input,
+  .cibo-hr-register-page select {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-hr-register-page .cibo-hr-form-grid + div {
+    width: 100% !important;
+    margin-top: 14px !important;
+  }
+
+  .cibo-hr-register-page > div:first-of-type > button:last-child {
+    width: 100% !important;
+    min-height: 46px !important;
+    margin-top: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* EDIT MAINTENANCE SPECIALIST */
+  .cibo-hr-edit-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 6px 0 24px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .cibo-hr-edit-page > h1 {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 14px !important;
+    padding: 0 4px !important;
+    text-align: center !important;
+    font-size: 25px !important;
+    line-height: 1.2 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .cibo-hr-edit-page > div:first-of-type {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    margin-bottom: 14px !important;
+  }
+
+  .cibo-hr-edit-page > div:first-of-type input {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-hr-edit-page > div:nth-of-type(2) {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    gap: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-hr-edit-page > div:nth-of-type(2) > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-hr-edit-page .modalOverlay {
+    padding: 14px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+  }
+
+  .cibo-hr-edit-page .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 28px) !important;
+    box-sizing: border-box !important;
+    padding: 18px !important;
+    overflow-y: auto !important;
+    border-radius: 16px !important;
+  }
+
+  .cibo-hr-edit-page .topSection {
+    width: 100% !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 16px !important;
+  }
+
+  .cibo-hr-edit-page .cibo-hr-form-grid {
+    width: 100% !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .cibo-hr-edit-page .cibo-hr-form-grid > div,
+  .cibo-hr-edit-page .cibo-hr-form-grid + div {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .cibo-hr-edit-page input,
+  .cibo-hr-edit-page select {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-hr-edit-page .actions {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 10px !important;
+    margin-top: 16px !important;
+  }
+
+  .cibo-hr-edit-page .actions button {
+    width: 100% !important;
+    min-height: 44px !important;
+    box-sizing: border-box !important;
+  }
+}
