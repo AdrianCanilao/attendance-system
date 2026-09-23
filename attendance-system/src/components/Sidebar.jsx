@@ -73,7 +73,7 @@ export default function Sidebar({ role }) {
               }}
             >
               <button
-                onClick={() => { setLeaveDropdown(false); navigate("/employee/leave-request"); }}
+                onClick={() => navigate("/employee/leave-request")}
                 style={{
                   ...styles.sublink,
                   ...(isActive("/employee/leave-request") &&
@@ -84,7 +84,7 @@ export default function Sidebar({ role }) {
               </button>
 
               <button
-                onClick={() => { setLeaveDropdown(false); navigate("/employee/myleave"); }}
+                onClick={() => navigate("/employee/myleave")}
                 style={{
                   ...styles.sublink,
                   ...(isActive("/employee/myleave") &&
@@ -156,7 +156,7 @@ export default function Sidebar({ role }) {
     }}
   >
     <button
-      onClick={() => { setOpenEmployee(false); navigate("/manager/register"); }}
+      onClick={() => navigate("/manager/register")}
       style={{
         ...styles.sublink,
         ...(isActive("/manager/register") &&
@@ -167,7 +167,7 @@ export default function Sidebar({ role }) {
     </button>
 
     <button
-      onClick={() => { setOpenEmployee(false); navigate("/manager/edit"); }}
+      onClick={() => navigate("/manager/edit")}
       style={{
         ...styles.sublink,
         ...(isActive("/manger/edit") &&
@@ -178,7 +178,7 @@ export default function Sidebar({ role }) {
     </button>
 
     <button
-  onClick={() => { setOpenEmployee(false); navigate("/manager/employees"); }}
+  onClick={() => navigate("/manager/employees")}
   style={{
     ...styles.sublink,
     ...(isActive("/manager/employees") &&
@@ -211,7 +211,7 @@ export default function Sidebar({ role }) {
         }}
       >
         <button
-          onClick={() => { setLeaveDropdown(false); navigate("/manager/leave"); }}
+          onClick={() => navigate("/manager/leave")}
           style={{
             ...styles.sublink,
             ...(isActive("/manager/leave") &&
@@ -273,7 +273,7 @@ export default function Sidebar({ role }) {
         }}
       >
         <button
-          onClick={() => { setOpenEmployee(false); navigate("/hr/register-manager"); }}
+          onClick={() => navigate("/hr/register-manager")}
           style={{
             ...styles.sublink,
             ...(isActive("/hr/register-manager") &&
@@ -284,7 +284,7 @@ export default function Sidebar({ role }) {
         </button>
 
         <button
-          onClick={() => { setOpenEmployee(false); navigate("/hr/edit-manager"); }}
+          onClick={() => navigate("/hr/edit-manager")}
           style={{
             ...styles.sublink,
             ...(isActive("/hr/edit-manager") &&
@@ -294,7 +294,7 @@ export default function Sidebar({ role }) {
           Edit Maintenance Specialist
         </button>
                 <button
-  onClick={() => { setOpenEmployee(false); navigate("/hr/shift-settings"); }}
+  onClick={() => navigate("/hr/shift-settings")}
   style={{
     ...styles.sublink,
     ...(isActive("/hr/shift-settings") &&
@@ -314,10 +314,10 @@ export default function Sidebar({ role }) {
         <>
           {role === "employee" && leaveDropdown && (
             <div className="cibo-mobile-dropdown-portal">
-              <button onClick={() => navigate("/employee/leave-request")}>
+              <button onClick={() => { setLeaveDropdown(false); navigate("/employee/leave-request"); }}>
                 Leave Request
               </button>
-              <button onClick={() => navigate("/employee/myleave")}>
+              <button onClick={() => { setLeaveDropdown(false); navigate("/employee/myleave"); }}>
                 Leave Records
               </button>
             </div>
@@ -325,13 +325,13 @@ export default function Sidebar({ role }) {
 
           {role === "maintenance" && openEmployee && (
             <div className="cibo-mobile-dropdown-portal">
-              <button onClick={() => navigate("/manager/register")}>
+              <button onClick={() => { setOpenEmployee(false); navigate("/manager/register"); }}>
                 Register Employee
               </button>
-              <button onClick={() => navigate("/manager/edit")}>
+              <button onClick={() => { setOpenEmployee(false); navigate("/manager/edit"); }}>
                 Edit Employee
               </button>
-              <button onClick={() => navigate("/manager/employees")}>
+              <button onClick={() => { setOpenEmployee(false); navigate("/manager/employees"); }}>
                 Employee List
               </button>
             </div>
@@ -339,7 +339,7 @@ export default function Sidebar({ role }) {
 
           {role === "maintenance" && leaveDropdown && (
             <div className="cibo-mobile-dropdown-portal">
-              <button onClick={() => navigate("/manager/leave")}>
+              <button onClick={() => { setLeaveDropdown(false); navigate("/manager/leave"); }}>
                 Leave Approval
               </button>
               <button onClick={() => { setLeaveDropdown(false); navigate("/manager/edit-leave-counts"); }}>
@@ -350,13 +350,13 @@ export default function Sidebar({ role }) {
 
           {role === "hr" && openEmployee && (
             <div className="cibo-mobile-dropdown-portal">
-              <button onClick={() => navigate("/hr/register-manager")}>
+              <button onClick={() => { setOpenEmployee(false); navigate("/hr/register-manager"); }}>
                 Register Maintenance Specialist
               </button>
-              <button onClick={() => navigate("/hr/edit-manager")}>
+              <button onClick={() => { setOpenEmployee(false); navigate("/hr/edit-manager"); }}>
                 Edit Maintenance Specialist
               </button>
-              <button onClick={() => navigate("/hr/shift-settings")}>
+              <button onClick={() => { setOpenEmployee(false); navigate("/hr/shift-settings"); }}>
                 Shift Settings
               </button>
             </div>
