@@ -227,6 +227,8 @@ if (correctionError) {
 
         time_out_face_url:attendanceToday?.time_out_face_url || null,
 
+        location: attendanceToday?.location || null,
+
         status,
 
 correction:
