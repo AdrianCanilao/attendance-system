@@ -253,7 +253,7 @@ code {
     display: none !important;
   }
 
-  .cibo-sidebar .cibo-sidebar-link {
+  .cibo-sidebar > button,\n  .cibo-sidebar > div > button {\n    width: 52px !important;\n    min-width: 52px !important;\n    height: 48px;\n    padding: 10px !important;\n    margin-bottom: 8px !important;\n    justify-content: center !important;\n    gap: 0 !important;\n    font-size: 0 !important;\n    box-sizing: border-box;\n  }\n\n  .cibo-sidebar .cibo-sidebar-link {
     width: 52px !important;
     min-width: 52px !important;
     height: 48px;
