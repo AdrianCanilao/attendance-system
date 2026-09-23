@@ -2048,8 +2048,12 @@ async def kiosk_verify_live(
         # OPEN → CLOSED → OPEN
         # =====================================================
 
-        OPEN_THRESHOLD = 0.23
-        CLOSED_THRESHOLD = 0.22
+        # Slightly more tolerant kiosk blink thresholds.
+        # The kiosk now samples for longer, so require a clear
+        # open -> closed -> open transition without making blinking
+        # unnecessarily difficult to trigger.
+        OPEN_THRESHOLD = 0.22
+        CLOSED_THRESHOLD = 0.20
 
         blink_detected = False
         open_before = False
