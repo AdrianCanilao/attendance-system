@@ -350,6 +350,7 @@ code {
   }
 
   .cibo-sidebar .cibo-sidebar-dropdown {
+    display: none !important;
     position: fixed !important;
     top: 72px !important;
     left: 10px !important;
@@ -363,6 +364,11 @@ code {
     box-shadow: 0 8px 20px rgba(0,0,0,.18);
     opacity: 1 !important;
     overflow-y: auto !important;
+  }
+
+  .cibo-sidebar .cibo-sidebar-dropdown.is-open {
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   .cibo-sidebar .cibo-sidebar-dropdown button {
