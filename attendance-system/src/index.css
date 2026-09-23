@@ -1638,3 +1638,175 @@ code {
     border-radius: 16px !important;
   }
 }
+
+
+/* Employee / Maintenance notification dropdowns on phones */
+@media (max-width: 768px) {
+  .cibo-topbar {
+    position: relative !important;
+    z-index: 3000 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 64px !important;
+    min-height: 64px !important;
+    padding: 0 12px !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+  }
+
+  .cibo-topbar-title {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: 48% !important;
+    font-size: 15px !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .cibo-topbar > div:last-child {
+    flex: 0 0 auto !important;
+    min-width: max-content !important;
+    margin-left: auto !important;
+    gap: 8px !important;
+  }
+
+  .cibo-notification-wrapper {
+    position: relative !important;
+    z-index: 5000 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .cibo-notification-dropdown {
+    position: fixed !important;
+    top: 72px !important;
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: calc(100dvh - 90px) !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+    padding: 14px !important;
+    z-index: 10000 !important;
+    border-radius: 14px !important;
+  }
+
+  .cibo-notification-dropdown h4 {
+    margin: 0 0 10px !important;
+  }
+
+  .cibo-notification-dropdown > div {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin-bottom: 8px !important;
+    padding: 12px !important;
+  }
+
+  /* REGISTER EMPLOYEE */
+  .cibo-register-employee-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 6px 0 24px !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .cibo-register-employee-page > h1 {
+    width: 100% !important;
+    margin: 0 0 14px !important;
+    padding: 0 4px !important;
+    text-align: center !important;
+    font-size: 25px !important;
+    line-height: 1.2 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .cibo-register-employee-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 18px !important;
+    box-sizing: border-box !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+  }
+
+  .cibo-register-employee-topSection {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 16px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .cibo-register-employee-avatarWrapper {
+    width: 160px !important;
+    max-width: 100% !important;
+    gap: 10px !important;
+  }
+
+  .cibo-register-employee-avatarWrapper .cibo-register-employee-avatarBox,
+  .cibo-register-employee-avatarWrapper > div:first-child {
+    width: 160px !important;
+    height: 160px !important;
+    min-width: 160px !important;
+    min-height: 160px !important;
+  }
+
+  .cibo-register-employee-avatarWrapper img {
+    width: 160px !important;
+    height: 160px !important;
+    max-width: 100% !important;
+    object-fit: cover !important;
+  }
+
+  .cibo-register-employee-cameraWrapper {
+    width: 100% !important;
+    max-width: 320px !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    align-items: center !important;
+  }
+
+  .cibo-register-employee-cameraWrapper > div {
+    max-width: 100% !important;
+  }
+
+  .cibo-register-employee-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    gap: 14px !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-register-employee-grid > div {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-register-employee-grid input,
+  .cibo-register-employee-grid select {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-register-employee-card > button:last-child {
+    width: 100% !important;
+    min-height: 46px !important;
+    margin-top: 16px !important;
+    box-sizing: border-box !important;
+  }
+}
