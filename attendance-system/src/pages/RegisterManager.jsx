@@ -365,7 +365,7 @@ shift_id: "",
 
   return (
     <HRLayout>
-      <div style={styles.wrapper}>
+      <div className="cibo-hr-page cibo-hr-register-page" style={styles.wrapper}>
         <h1 style={styles.pageTitle}>Register Maintenance Specialist</h1>
 
         <div style={styles.card}>
