@@ -3,7 +3,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
-import { logAudit } from "../utils/auditLogger";
+import { logAudit } from "../utils/auditlogger";
 
 export default function HRDashboard() {
   const [logs, setLogs] = useState([]);
