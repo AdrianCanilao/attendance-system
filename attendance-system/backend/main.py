@@ -1464,7 +1464,7 @@ def parse_shift_time(value):
     return value
 
 
-async def record_kiosk_attendance(employee, action, face_url=None):
+async def record_kiosk_attendance(employee, action, face_url=None, location=None):
     try:
         employee_id = employee["id"]
         shift_id = employee.get("shift_id")
@@ -1593,7 +1593,8 @@ async def record_kiosk_attendance(employee, action, face_url=None):
                 "scheduled_time_in": scheduled_time_in,
                 "scheduled_time_out": scheduled_time_out,
                 "late_minutes": late_minutes,
-                "overtime_minutes": 0
+                "overtime_minutes": 0,
+                "location": location
             }
 
             # Save the kiosk face photo URL
@@ -1803,6 +1804,9 @@ async def record_kiosk_attendance(employee, action, face_url=None):
             if face_url:
                 update_data["time_out_face_url"] = face_url
 
+            if location:
+                update_data["location"] = location
+
             updated_result = (
                 supabase
                 .table("attendance_logs")
@@ -1966,6 +1970,26 @@ async def kiosk_verify_live(
         print(
             "✅ REGISTERED KIOSK:",
             kiosk.get("kiosk_code"),
+            flush=True
+        )
+
+        KIOSK_LOCATIONS = {
+            "KIOSK-TEST-001": "Cubao"
+        }
+
+        kiosk_location = KIOSK_LOCATIONS.get(
+            kiosk.get("kiosk_code")
+        )
+
+        if not kiosk_location:
+            return {
+                "status": "Error",
+                "message": "No branch location is configured for this kiosk."
+            }
+
+        print(
+            "📍 KIOSK LOCATION:",
+            kiosk_location,
             flush=True
         )
 
@@ -2565,7 +2589,8 @@ async def kiosk_verify_live(
             await record_kiosk_attendance(
                 best_employee,
                 action,
-                face_url
+                face_url,
+                kiosk_location
             )
         )
 
