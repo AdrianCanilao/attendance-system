@@ -22,8 +22,6 @@ export default function Kiosk() {
   const webcamRef = useRef(null);
   const recognitionBusyRef = useRef(false);
   const recognitionInFlightRef = useRef(0);
-  const recognitionSequenceRef = useRef(0);
-  const latestAppliedRecognitionRef = useRef(0);
   const scanStartedRef = useRef(false);
   const recognitionAbortControllersRef = useRef(new Set());
 
@@ -90,7 +88,7 @@ export default function Kiosk() {
 
     const recognizeFace = async () => {
       if (!webcamRef.current) return;
-      if (recognitionInFlightRef.current >= 2) return;
+      if (recognitionBusyRef.current) return;
       if (scanStartedRef.current) return;
       if (attendanceLoading) return;
       if (scanState === "scanning" || scanState === "success") {
@@ -104,7 +102,6 @@ export default function Kiosk() {
 
       recognitionBusyRef.current = true;
       recognitionInFlightRef.current += 1;
-      const requestId = ++recognitionSequenceRef.current;
       const controller = new AbortController();
       recognitionAbortControllersRef.current.add(controller);
 
@@ -136,13 +133,6 @@ export default function Kiosk() {
           "KIOSK LIVE INSIGHTFACE:",
           data
         );
-
-        // Only apply the newest completed frame. This prevents an older
-        // server response from moving the box backward after a newer frame.
-        if (requestId < latestAppliedRecognitionRef.current) {
-          return;
-        }
-        latestAppliedRecognitionRef.current = requestId;
 
         if (!recognitionResponse.ok) {
           setRecognition({
@@ -298,7 +288,7 @@ export default function Kiosk() {
 
     intervalId = setInterval(
       recognizeFace,
-      300
+      700
     );
 
     return () => {
