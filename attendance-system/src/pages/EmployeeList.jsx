@@ -327,14 +327,14 @@ const exportExcel = async () => {
 
   return (
     <ManagerLayout>
-      <div style={styles.wrapper}>
+      <div className="cibo-employee-list-page" style={styles.wrapper}>
         <h1 style={styles.pageTitle}>
           Employee List
         </h1>
 
         {/* SEARCH + EXPORT */}
-        <div style={styles.topBar}>
-          <div style={styles.searchWrapper}>
+        <div className="cibo-employee-list-topbar" style={styles.topBar}>
+          <div className="cibo-employee-list-search" style={styles.searchWrapper}>
             <FaSearch
               size={14}
               color="#6b7280"
@@ -360,10 +360,11 @@ const exportExcel = async () => {
         </div>
 
         {/* EMPLOYEE LIST */}
-        <div style={styles.list}>
+        <div className="cibo-employee-list-cards" style={styles.list}>
           {filteredEmployees.map((employee) => (
             <div
               key={employee.id}
+              className="cibo-employee-list-card"
               style={styles.card}
             >
               <div style={styles.left}>
@@ -416,8 +417,8 @@ const exportExcel = async () => {
 
       {/* MODAL */}
       {showAttendanceModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modal}>
+        <div className="cibo-employee-list-overlay" style={styles.modalOverlay}>
+          <div className="cibo-employee-list-modal" style={styles.modal}>
             <div style={styles.modalHeader}>
               <h2 style={styles.modalTitle}>
                 Attendance Summary
