@@ -900,7 +900,7 @@ const scheduledClockOut = new Date(
               Position your face inside the box
             </p>
 
-            <div style={styles.cameraWrapper}>
+            <div className="cibo-camera-wrapper" style={styles.cameraWrapper}>
 
               <Webcam
                 ref={webcamRef}
