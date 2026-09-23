@@ -268,7 +268,7 @@ code {
   .cibo-main {
     min-width: 0;
     width: 100% !important;
-    padding-top: 136px !important;
+    padding-top: 0 !important;
   }
 
   .cibo-sidebar-logo-text {
@@ -379,7 +379,7 @@ code {
     min-width: 0;
     width: 100%;
     box-sizing: border-box;
-    padding: 14px !important;
+    padding: 86px 14px 14px !important;
     overflow-x: hidden !important;
   }
 
