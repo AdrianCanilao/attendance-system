@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import {
   useNavigate,
   useLocation,
@@ -307,6 +308,62 @@ export default function Sidebar({ role }) {
   </>
 )}
     </div>
+
+    {typeof document !== "undefined" &&
+      createPortal(
+        <>
+          {role === "employee" && leaveDropdown && (
+            <div className="cibo-mobile-dropdown-portal">
+              <button onClick={() => navigate("/employee/leave-request")}>
+                Leave Request
+              </button>
+              <button onClick={() => navigate("/employee/myleave")}>
+                Leave Records
+              </button>
+            </div>
+          )}
+
+          {role === "maintenance" && openEmployee && (
+            <div className="cibo-mobile-dropdown-portal">
+              <button onClick={() => navigate("/manager/register")}>
+                Register Employee
+              </button>
+              <button onClick={() => navigate("/manager/edit")}>
+                Edit Employee
+              </button>
+              <button onClick={() => navigate("/manager/employees")}>
+                Employee List
+              </button>
+            </div>
+          )}
+
+          {role === "maintenance" && leaveDropdown && (
+            <div className="cibo-mobile-dropdown-portal">
+              <button onClick={() => navigate("/manager/leave")}>
+                Leave Approval
+              </button>
+              <button onClick={() => navigate("/manager/edit-leave-counts")}>
+                Edit Leave Counts
+              </button>
+            </div>
+          )}
+
+          {role === "hr" && openEmployee && (
+            <div className="cibo-mobile-dropdown-portal">
+              <button onClick={() => navigate("/hr/register-manager")}>
+                Register Maintenance Specialist
+              </button>
+              <button onClick={() => navigate("/hr/edit-manager")}>
+                Edit Maintenance Specialist
+              </button>
+              <button onClick={() => navigate("/hr/shift-settings")}>
+                Shift Settings
+              </button>
+            </div>
+          )}
+        </>,
+        document.body
+      )}
   );
 }
 
