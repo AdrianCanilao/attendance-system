@@ -1617,3 +1617,24 @@ code {
     box-sizing: border-box !important;
   }
 }
+
+
+@media (max-width: 768px) {
+  .cibo-hr-edit-page .cibo-hr-edit-modal-overlay {
+    padding: 14px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    align-items: flex-start !important;
+  }
+
+  .cibo-hr-edit-page .cibo-hr-edit-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 28px) !important;
+    margin: 14px 0 !important;
+    padding: 18px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    border-radius: 16px !important;
+  }
+}
