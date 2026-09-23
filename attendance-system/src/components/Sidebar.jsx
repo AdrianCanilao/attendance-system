@@ -64,7 +64,7 @@ export default function Sidebar({ role }) {
             </button>
 
             <div
-              className="cibo-sidebar-dropdown"
+              className={`cibo-sidebar-dropdown ${leaveDropdown ? "is-open" : ""}`}
               style={{
                 ...styles.dropdown,
                 maxHeight: leaveDropdown ? "200px" : "0px",
@@ -147,7 +147,7 @@ export default function Sidebar({ role }) {
   </button>
 
   <div
-    className="cibo-sidebar-dropdown"
+    className={`cibo-sidebar-dropdown ${openEmployee ? "is-open" : ""}`}
     style={{
       ...styles.dropdown,
       maxHeight: openEmployee ? "200px" : "0px",
@@ -202,6 +202,7 @@ export default function Sidebar({ role }) {
       </button>
 
       <div
+        className={`cibo-sidebar-dropdown ${leaveDropdown ? "is-open" : ""}`}
         style={{
           ...styles.dropdown,
           maxHeight: leaveDropdown ? "200px" : "0px",
