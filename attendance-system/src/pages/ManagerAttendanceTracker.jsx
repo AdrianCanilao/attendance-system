@@ -283,13 +283,14 @@ correction:
       </div>
 
       <div style={styles.tableCard}>
-        <div style={styles.tableHeader}>
+        <div className="cibo-attendance-table-header" style={styles.tableHeader}>
           <div>
             <h3 style={styles.tableTitle}>
               Daily Attendance Report
             </h3>
 
             <div
+  className="cibo-attendance-date-controls"
   style={{
     display: "flex",
     alignItems: "center",
@@ -316,7 +317,7 @@ correction:
 </div>
           </div>
 
-          <div style={styles.searchWrapper}>
+          <div className="cibo-attendance-search" style={styles.searchWrapper}>
             <svg
               style={styles.searchIcon}
               viewBox="0 0 24 24"
