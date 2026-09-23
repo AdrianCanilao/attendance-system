@@ -379,15 +379,61 @@ const getDeviceLocation = () =>
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
+    let watchId = null;
+    let bestPosition = null;
 
-        resolve({
-          label: `Offsite (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`,
-        });
+    const finish = (position) => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+
+      const { latitude, longitude } = position.coords;
+
+      resolve({
+        label: `Offsite (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`,
+      });
+    };
+
+    const timeoutId = setTimeout(() => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+
+      if (bestPosition && bestPosition.coords.accuracy <= 200) {
+        finish(bestPosition);
+        return;
+      }
+
+      reject(
+        new Error(
+          "Unable to get an accurate location. Please enable Location Services and try again, preferably on a phone with GPS."
+        )
+      );
+    }, 15000);
+
+    watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        if (
+          !bestPosition ||
+          position.coords.accuracy < bestPosition.coords.accuracy
+        ) {
+          bestPosition = position;
+        }
+
+        // Use the first sufficiently accurate reading instead of relying
+        // on the browser's first location estimate.
+        if (position.coords.accuracy <= 100) {
+          clearTimeout(timeoutId);
+          finish(position);
+        }
       },
       (error) => {
+        clearTimeout(timeoutId);
+
+        if (watchId !== null) {
+          navigator.geolocation.clearWatch(watchId);
+        }
+
         reject(
           new Error(
             error.code === 1
