@@ -1810,3 +1810,11 @@ code {
     box-sizing: border-box !important;
   }
 }
+
+
+/* Hide the unused Leave Counts editor panel on mobile until an employee is selected. */
+@media (max-width: 768px) {
+  .leave-counts-edit-panel.empty {
+    display: none !important;
+  }
+}
