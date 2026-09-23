@@ -393,12 +393,12 @@ role: "maintenance",
 
   return (
     <ManagerLayout>
-      <div style={styles.wrapper}>
+      <div className="cibo-register-employee-page" style={styles.wrapper}>
         <h1 style={styles.pageTitle}>Register Employee</h1>
 
-        <div style={styles.card}>
-          <div style={styles.topSection}>
-            <div style={styles.avatarWrapper}>
+        <div className="cibo-register-employee-card" style={styles.card}>
+          <div className="cibo-register-employee-topSection" style={styles.topSection}>
+            <div className="cibo-register-employee-avatarWrapper" style={styles.avatarWrapper}>
               <div style={styles.avatarBox}>
                 <div style={styles.avatarInner}>
                   {imageSrc ? (
@@ -418,7 +418,7 @@ role: "maintenance",
               </button>
             </div>
 
-            <div style={styles.cameraWrapper}>
+            <div className="cibo-register-employee-cameraWrapper" style={styles.cameraWrapper}>
               {showCamera ? (
                 <>
                   <p style={styles.stepText}>
@@ -544,7 +544,7 @@ role: "maintenance",
             </div>
           </div>
 
-          <div style={styles.grid}>
+          <div className="cibo-register-employee-grid" style={styles.grid}>
             <div>
               <label style={styles.label}>Full Name</label>
               <input
