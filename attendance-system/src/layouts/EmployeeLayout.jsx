@@ -237,9 +237,8 @@ export default function EmployeeLayout({ children }) {
 
             {/* NOTIFICATION */}
             <div
-              style={
-                styles.notificationWrapper
-              }
+              className="cibo-notification-wrapper"
+              style={styles.notificationWrapper}
               ref={notificationRef}
             >
 
@@ -269,9 +268,8 @@ export default function EmployeeLayout({ children }) {
               {showNotifications && (
 
                 <div
-                  style={
-                    styles.notificationDropdown
-                  }
+                  className="cibo-notification-dropdown"
+                  style={styles.notificationDropdown}
                 >
 
                   <h4
