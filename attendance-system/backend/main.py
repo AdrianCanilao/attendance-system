@@ -1175,12 +1175,11 @@ async def verify_face(
         recognition_results = []
 
         # Keep the longer 12-frame capture for liveness, but only
-        # send four representative frames to InsightFace. This keeps
-        # recognition responsive and avoids sending duplicate frames
-        # unnecessarily. Matching thresholds and temporal voting remain
-        # unchanged.
+        # send three representative frames to InsightFace. This reduces
+        # recognition time while keeping three matching votes required.
+        # Matching thresholds and identity checks remain unchanged.
         recognition_indices = (
-            [0, 3, 6, 9]
+            [1, 6, 10]
             if len(frames) >= 12
             else list(range(len(frames)))
         )
@@ -1198,7 +1197,7 @@ async def verify_face(
 
         completed_results = []
 
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             futures = [
                 executor.submit(
                     recognize_insightface_frame,
