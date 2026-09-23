@@ -165,9 +165,10 @@ const [recognizingFace, setRecognizingFace] = useState(false);
  const captureFrames = async () => {
   const frames = [];
 
-  // Capture the same 8 verification frames, but sample more frequently
-  // so a quick blink is less likely to be missed.
-  for (let i = 0; i < 8; i++) {
+  // Capture a longer blink window so a natural blink is less likely
+  // to fall between two samples. Recognition still uses the same
+  // InsightFace matching rules on the captured frames.
+  for (let i = 0; i < 12; i++) {
     const image = webcamRef.current.getScreenshot();
 
     if (!image) {
@@ -178,8 +179,8 @@ const [recognizingFace, setRecognizingFace] = useState(false);
 
     frames.push(blob);
 
-    // Capture every 200 ms.
-    await new Promise((res) => setTimeout(res, 200));
+    // Capture every 150 ms (~1.8 seconds total).
+    await new Promise((res) => setTimeout(res, 150));
   }
 
   return frames;
