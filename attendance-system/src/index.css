@@ -374,3 +374,88 @@ code {
     padding: 28px 22px !important;
   }
 }
+
+
+/* Profile page mobile layout */
+@media (max-width: 768px) {
+  .cibo-profile-page {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 8px 0 !important;
+  }
+
+  .cibo-profile-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100%;
+    min-width: 0;
+    gap: 14px !important;
+  }
+
+  .cibo-profile-card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 16px !important;
+    overflow: hidden;
+  }
+
+  .cibo-profile-content {
+    width: 100%;
+    min-width: 0;
+    flex-direction: column !important;
+    gap: 14px !important;
+    align-items: center !important;
+  }
+
+  .cibo-profile-avatar-wrapper {
+    width: 130px !important;
+    height: 130px !important;
+  }
+
+  .cibo-profile-info {
+    width: 100%;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .cibo-profile-info .headerRow {
+    justify-content: center;
+  }
+
+  .cibo-profile-info h1 {
+    font-size: 20px !important;
+    overflow-wrap: anywhere;
+  }
+
+  .cibo-profile-info .infoTwoColumnRow {
+    grid-template-columns: 1fr !important;
+    gap: 4px !important;
+  }
+
+  .cibo-profile-calendar {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .cibo-profile-attendance {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    padding: 14px !important;
+  }
+
+  .cibo-profile-attendance > div {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cibo-profile-attendance table {
+    min-width: 900px !important;
+  }
+}
