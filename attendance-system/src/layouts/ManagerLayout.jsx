@@ -144,6 +144,7 @@ export default function ManagerLayout({ children }) {
           <div style={styles.topRight}>
             {/* NOTIFICATION */}
             <div
+              className="cibo-notification-wrapper"
               style={styles.notificationWrapper}
               ref={notificationRef}
             >
