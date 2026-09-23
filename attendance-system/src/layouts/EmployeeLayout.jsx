@@ -213,18 +213,18 @@ export default function EmployeeLayout({ children }) {
   };
 
   return (
-    <div style={styles.container}>
+    <div className="cibo-layout" style={styles.container}>
 
       {/* SIDEBAR */}
       <Sidebar role="employee" />
 
       {/* MAIN */}
-      <div style={styles.main}>
+      <div className="cibo-main" style={styles.main}>
 
         {/* TOPBAR */}
-        <div style={styles.topbar}>
+        <div className="cibo-topbar" style={styles.topbar}>
 
-          <h3 style={{ margin: 0 }}>
+          <h3 className="cibo-topbar-title" style={{ margin: 0 }}>
 
             Employee Dashboard
 
@@ -310,7 +310,7 @@ export default function EmployeeLayout({ children }) {
             </div>
 
             {/* PROFILE */}
-            <div style={styles.profile}>
+            <div className="cibo-top-profile" style={styles.profile}>
 
               <div style={styles.avatar}>
                 E
@@ -344,7 +344,7 @@ export default function EmployeeLayout({ children }) {
         </div>
 
         {/* CONTENT */}
-        <div style={styles.content}>
+        <div className="cibo-content" style={styles.content}>
           {children}
         </div>
 
