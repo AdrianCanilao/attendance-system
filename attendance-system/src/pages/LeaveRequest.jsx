@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import EmployeeLayout from "../layouts/EmployeeLayout";
-import { logAudit } from "../utils/auditLogger";
+import { logAudit } from "../utils/auditlogger";
 
 export default function LeaveRequest() {
   const [showModal, setShowModal] = useState(false);
