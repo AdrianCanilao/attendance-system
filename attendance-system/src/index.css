@@ -265,46 +265,6 @@ code {
     display: none;
   }
 
-  .cibo-sidebar-logo-text {
-    display: none !important;
-  }
-
-  .cibo-sidebar > button,
-  .cibo-sidebar > div > button {
-    width: 52px !important;
-    min-width: 52px !important;
-    height: 48px;
-    padding: 10px !important;
-    margin-bottom: 8px !important;
-    justify-content: center !important;
-    gap: 0 !important;
-    font-size: 0 !important;
-    box-sizing: border-box;
-  }
-
-  .cibo-sidebar .cibo-sidebar-link {
-    width: 52px !important;
-    min-width: 52px !important;
-    height: 48px;
-    padding: 10px !important;
-    margin-bottom: 8px !important;
-    justify-content: center !important;
-    gap: 0 !important;
-    font-size: 0 !important;
-    box-sizing: border-box;
-  }
-
-  .cibo-sidebar .cibo-sidebar-link svg {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-  }
-
-  .cibo-sidebar .cibo-sidebar-sublink,
-  .cibo-sidebar > div > .cibo-sidebar-sublink {
-    display: none !important;
-  }
-
   .cibo-main {
     min-width: 0;
     width: 100% !important;
