@@ -57,7 +57,7 @@ export default function Sidebar({ role }) {
           {/* LEAVE MANAGEMENT */}
           <div>
             <button
-              onClick={() => setLeaveDropdown(!leaveDropdown)}
+              onClick={() => { setLeaveDropdown(!leaveDropdown); setOpenEmployee(false); }}
               className="cibo-sidebar-link" style={styles.link}
             >
               <FaClipboardList />
@@ -140,7 +140,7 @@ export default function Sidebar({ role }) {
 {/* MANAGER MANAGEMENT */}
 <div>
   <button
-    onClick={() => setOpenEmployee(!openEmployee)}
+    onClick={() => { setOpenEmployee(!openEmployee); setLeaveDropdown(false); }}
     style={styles.link}
   >
     <FaUsers />
@@ -171,7 +171,7 @@ export default function Sidebar({ role }) {
       onClick={() => navigate("/manager/edit")}
       style={{
         ...styles.sublink,
-        ...(isActive("/manger/edit") &&
+        ...(isActive("/manager/edit") &&
           styles.activeSubLink),
       }}
     >
@@ -195,7 +195,7 @@ export default function Sidebar({ role }) {
     {/* LEAVE MANAGEMENT */}
     <div>
       <button
-        onClick={() => setLeaveDropdown(!leaveDropdown)}
+        onClick={() => { setLeaveDropdown(!leaveDropdown); setOpenEmployee(false); }}
         style={styles.link}
       >
         <FaClipboardList />
