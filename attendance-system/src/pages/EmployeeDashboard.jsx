@@ -20,7 +20,6 @@ export default function EmployeeDashboard({
  const [loading, setLoading] = useState(false);
 
 const webcamRef = useRef(null);
-const recognizingFaceRef = useRef(false);
 
 const [showCamera, setShowCamera] = useState(false);
 const [scanAction, setScanAction] = useState(null);
@@ -188,9 +187,7 @@ const [recognizingFace, setRecognizingFace] = useState(false);
 const validateLiveFace = async () => {
   if (!webcamRef.current) return;
 
-  if (recognizingFaceRef.current) return;
-
-  recognizingFaceRef.current = true;
+  if (recognizingFace) return;
 
   const image = webcamRef.current.getScreenshot();
 
@@ -343,7 +340,6 @@ const validateLiveFace = async () => {
 
     setDetectedFace(null);
     setIdentityVerified(false);
-    recognizingFaceRef.current = false;
 
     setFaceStatus({
       valid: false,
@@ -356,11 +352,10 @@ const validateLiveFace = async () => {
 
     setCheckingFace(false);
     setRecognizingFace(false);
-    recognizingFaceRef.current = false;
   }
 };
 useEffect(() => {
-  if (!showCamera || identityVerified) {
+  if (!showCamera) {
     return;
   }
 
@@ -371,7 +366,7 @@ useEffect(() => {
   return () => {
     clearInterval(interval);
   };
-}, [showCamera, currentEmployeeId, identityVerified]);
+}, [showCamera, currentEmployeeId]);
 const openAttendanceCamera = (actionType) => {
   if (loading) return;
 
