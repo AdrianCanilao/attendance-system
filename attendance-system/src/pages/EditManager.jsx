@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
 import Webcam from "react-webcam";
-import { logAudit } from "../utils/auditLogger";
+import { logAudit } from "../utils/auditlogger";
 
 const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
 
