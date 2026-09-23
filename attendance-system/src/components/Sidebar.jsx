@@ -73,7 +73,7 @@ export default function Sidebar({ role }) {
               }}
             >
               <button
-                onClick={() => navigate("/employee/leave-request")}
+                onClick={() => { setLeaveDropdown(false); navigate("/employee/leave-request"); }}
                 style={{
                   ...styles.sublink,
                   ...(isActive("/employee/leave-request") &&
@@ -84,7 +84,7 @@ export default function Sidebar({ role }) {
               </button>
 
               <button
-                onClick={() => navigate("/employee/myleave")}
+                onClick={() => { setLeaveDropdown(false); navigate("/employee/myleave"); }}
                 style={{
                   ...styles.sublink,
                   ...(isActive("/employee/myleave") &&
@@ -156,7 +156,7 @@ export default function Sidebar({ role }) {
     }}
   >
     <button
-      onClick={() => navigate("/manager/register")}
+      onClick={() => { setOpenEmployee(false); navigate("/manager/register"); }}
       style={{
         ...styles.sublink,
         ...(isActive("/manager/register") &&
@@ -167,7 +167,7 @@ export default function Sidebar({ role }) {
     </button>
 
     <button
-      onClick={() => navigate("/manager/edit")}
+      onClick={() => { setOpenEmployee(false); navigate("/manager/edit"); }}
       style={{
         ...styles.sublink,
         ...(isActive("/manger/edit") &&
@@ -178,7 +178,7 @@ export default function Sidebar({ role }) {
     </button>
 
     <button
-  onClick={() => navigate("/manager/employees")}
+  onClick={() => { setOpenEmployee(false); navigate("/manager/employees"); }}
   style={{
     ...styles.sublink,
     ...(isActive("/manager/employees") &&
@@ -211,7 +211,7 @@ export default function Sidebar({ role }) {
         }}
       >
         <button
-          onClick={() => navigate("/manager/leave")}
+          onClick={() => { setLeaveDropdown(false); navigate("/manager/leave"); }}
           style={{
             ...styles.sublink,
             ...(isActive("/manager/leave") &&
@@ -273,7 +273,7 @@ export default function Sidebar({ role }) {
         }}
       >
         <button
-          onClick={() => navigate("/hr/register-manager")}
+          onClick={() => { setOpenEmployee(false); navigate("/hr/register-manager"); }}
           style={{
             ...styles.sublink,
             ...(isActive("/hr/register-manager") &&
@@ -284,7 +284,7 @@ export default function Sidebar({ role }) {
         </button>
 
         <button
-          onClick={() => navigate("/hr/edit-manager")}
+          onClick={() => { setOpenEmployee(false); navigate("/hr/edit-manager"); }}
           style={{
             ...styles.sublink,
             ...(isActive("/hr/edit-manager") &&
@@ -294,7 +294,7 @@ export default function Sidebar({ role }) {
           Edit Maintenance Specialist
         </button>
                 <button
-  onClick={() => navigate("/hr/shift-settings")}
+  onClick={() => { setOpenEmployee(false); navigate("/hr/shift-settings"); }}
   style={{
     ...styles.sublink,
     ...(isActive("/hr/shift-settings") &&
@@ -342,7 +342,7 @@ export default function Sidebar({ role }) {
               <button onClick={() => navigate("/manager/leave")}>
                 Leave Approval
               </button>
-              <button onClick={() => navigate("/manager/edit-leave-counts")}>
+              <button onClick={() => { setLeaveDropdown(false); navigate("/manager/edit-leave-counts"); }}>
                 Edit Leave Counts
               </button>
             </div>
