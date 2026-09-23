@@ -1812,9 +1812,10 @@ code {
 }
 
 
-/* Hide the unused Leave Counts editor panel on mobile until an employee is selected. */
+/* Mobile-only refinements for the two requested pages. */
 @media (max-width: 768px) {
-  .leave-counts-edit-panel.empty {
+  /* EDIT LEAVE COUNTS: remove only the empty editor panel. */
+  .cibo-leave-counts-page > div > .leave-counts-edit-panel.empty {
     display: none !important;
     width: 0 !important;
     height: 0 !important;
@@ -1824,14 +1825,30 @@ code {
     padding: 0 !important;
     border: 0 !important;
     overflow: hidden !important;
+    flex: 0 0 0 !important;
   }
 
+  /* REGISTER EMPLOYEE: tighten spacing only while the camera is open. */
   .cibo-register-employee-topSection.camera-open {
-    gap: 6px !important;
+    gap: 8px !important;
     margin-bottom: 12px !important;
   }
 
-  .cibo-register-employee-topSection.camera-open .cibo-register-employee-cameraWrapper {
+  .cibo-register-employee-topSection.camera-open
+    .cibo-register-employee-avatarWrapper {
     gap: 6px !important;
+  }
+
+  .cibo-register-employee-topSection.camera-open
+    .cibo-register-employee-cameraWrapper {
+    gap: 4px !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+
+  .cibo-register-employee-topSection.camera-open
+    .cibo-register-employee-cameraWrapper p {
+    margin-top: 0 !important;
+    margin-bottom: 4px !important;
   }
 }
