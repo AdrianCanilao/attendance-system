@@ -22,11 +22,11 @@ export default function Sidebar({ role }) {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <div style={styles.sidebar}>
+    <div className="cibo-sidebar" style={styles.sidebar}>
       {/* LOGO */}
       <div style={styles.logoContainer}>
         <div style={styles.logoCircle}>C</div>
-        <h3 style={styles.logoText}>CIBO</h3>
+        <h3 className="cibo-sidebar-logo-text" style={styles.logoText}>CIBO</h3>
       </div>
 
       {/* ================= EMPLOYEE ================= */}
@@ -56,7 +56,7 @@ export default function Sidebar({ role }) {
           <div>
             <button
               onClick={() => setLeaveDropdown(!leaveDropdown)}
-              style={styles.link}
+              className="cibo-sidebar-link" className="cibo-sidebar-link" style={styles.link}
             >
               <FaClipboardList />
               Leave Overview
