@@ -397,7 +397,7 @@ role: "maintenance",
         <h1 style={styles.pageTitle}>Register Employee</h1>
 
         <div className="cibo-register-employee-card" style={styles.card}>
-          <div className="cibo-register-employee-topSection" style={styles.topSection}>
+          <div className={`cibo-register-employee-topSection ${showCamera ? "camera-open" : ""}`} style={styles.topSection}>
             <div className="cibo-register-employee-avatarWrapper" style={styles.avatarWrapper}>
               <div style={styles.avatarBox}>
                 <div style={styles.avatarInner}>
