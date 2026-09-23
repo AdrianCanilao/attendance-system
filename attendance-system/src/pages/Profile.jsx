@@ -257,14 +257,14 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
               </div>
 
               <div className="cibo-profile-info" style={styles.newProfileInfoContainer}>
-                <div style={styles.headerRow}>
+                <div className="cibo-profile-header-row" style={styles.headerRow}>
                   <h1 style={styles.profileName}>
                     {profile?.full_name || "Employee Name"}
                   </h1>
                 </div>
 
                 <div style={styles.infoBody}>
-                  <div style={styles.infoTwoColumnRow}>
+                  <div className="cibo-profile-role-position" style={styles.infoTwoColumnRow}>
                     <div style={styles.infoItem}>
                       <span style={styles.label}>Role: </span>
 
