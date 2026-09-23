@@ -213,13 +213,14 @@ export default function LeaveRequest() {
 
   return (
     <EmployeeLayout>
-      <div style={styles.page}>
+      <div className="cibo-leave-request-page" style={styles.page}>
         <h1 style={styles.pageTitle}>Leave Request</h1>
 
-        <div style={styles.grid}>
+        <div className="cibo-leave-request-grid" style={styles.grid}>
           {leaveCards.map((leave) => (
             <div
               key={leave.key}
+              className="cibo-leave-request-card"
               style={{
                 ...styles.card,
                 borderTop: `6px solid ${leave.color}`,
@@ -248,8 +249,8 @@ export default function LeaveRequest() {
         </div>
 
         {showModal && (
-          <div style={styles.overlay}>
-            <div style={styles.modal}>
+          <div className="cibo-leave-request-overlay" style={styles.overlay}>
+            <div className="cibo-leave-request-modal" style={styles.modal}>
               <div style={styles.modalHeader}>
                 <h2 style={styles.modalTitle}>
                   {selectedLeave}
@@ -265,6 +266,7 @@ export default function LeaveRequest() {
 
               <form
                 onSubmit={submitLeave}
+                className="cibo-leave-request-form"
                 style={styles.form}
               >
                 <div style={styles.formGroup}>
