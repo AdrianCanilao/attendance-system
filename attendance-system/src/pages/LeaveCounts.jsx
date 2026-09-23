@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
-import { logAudit } from "../utils/auditLogger";
+import { logAudit } from "../utils/auditlogger";
 
 export default function LeaveCounts() {
   const [employees, setEmployees] = useState([]);
@@ -121,7 +121,7 @@ export default function LeaveCounts() {
           </div>
 
           {/* RIGHT SIDE */}
-          <div style={styles.editPanel}>
+          <div className={`leave-counts-edit-panel ${selectedEmployee ? "has-selection" : "empty"}`} style={styles.editPanel}>
             {selectedEmployee ? (
               <>
                 <h2 style={styles.editTitle}>
