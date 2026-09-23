@@ -37,6 +37,7 @@ const [identityVerified, setIdentityVerified] = useState(false);
 
 const [recognizingFace, setRecognizingFace] = useState(false);
 const recognizingFaceRef = useRef(false);
+const [deviceLocation, setDeviceLocation] = useState(null);
   const location = window.location.pathname;
 
   const managerMode =
@@ -371,9 +372,44 @@ useEffect(() => {
     clearInterval(interval);
   };
 }, [showCamera, currentEmployeeId]);
-const openAttendanceCamera = (actionType) => {
+const getDeviceLocation = () =>
+  new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Location services are not available on this device."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+
+        resolve({
+          label: `Offsite (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`,
+        });
+      },
+      (error) => {
+        reject(
+          new Error(
+            error.code === 1
+              ? "Location permission is required to take attendance."
+              : "Unable to get your current location."
+          )
+        );
+      },
+      {
+        enableHighAccuracy: false,
+        maximumAge: 30000,
+        timeout: 10000,
+      }
+    );
+  });
+
+const openAttendanceCamera = async (actionType) => {
   if (loading) return;
 
+  try {
+    const locationData = await getDeviceLocation();
+    setDeviceLocation(locationData);
     setScanAction(actionType);
 
     setDetectedFace(null);
@@ -387,6 +423,9 @@ const openAttendanceCamera = (actionType) => {
     });
 
     setShowCamera(true);
+  } catch (locationError) {
+    alert(locationError.message);
+  }
 };
 
 const handleScan = async (
@@ -627,6 +666,7 @@ const scheduledClockOut = new Date(
               overtime_minutes: 0,
               status: attendanceStatus,
               time_in_face_url: faceUrl,
+              location: deviceLocation?.label || null,
             });
 
         if (attendanceInsertError) {
@@ -667,6 +707,7 @@ const scheduledClockOut = new Date(
         time_out: now.toISOString(),
         overtime_minutes: overtimeMinutes,
         time_out_face_url: faceUrl,
+        location: deviceLocation?.label || null,
       })
       .eq("employee_id", employeeId)
       .eq("log_date", today)
@@ -698,6 +739,7 @@ const scheduledClockOut = new Date(
 
       setShowCamera(false);
       setScanAction(null);
+      setDeviceLocation(null);
       setFaceStatus({
         valid: false,
         message: "Position your face inside the camera.",
