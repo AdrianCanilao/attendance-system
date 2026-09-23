@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import HRLayout from "../layouts/HRLayout";
 import { supabase } from "../supabaseClient";
-import { logAudit } from "../utils/auditLogger";
+import { logAudit } from "../utils/auditlogger";
 
 const searchPlaceholderStyle = `
 .searchInput::placeholder {
