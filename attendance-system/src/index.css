@@ -963,3 +963,282 @@ code {
     margin-top: 4px !important;
   }
 }
+
+
+/* HR mobile dashboard and page layout fixes */
+@media (max-width: 768px) {
+  /* HR HEADER: keep notification, profile and LOGOUT visible */
+  .cibo-hr-topbar {
+    position: relative !important;
+    z-index: 3000 !important;
+    width: 100% !important;
+    height: 64px !important;
+    min-height: 64px !important;
+    box-sizing: border-box !important;
+    padding: 0 12px !important;
+    gap: 8px !important;
+    overflow: visible !important;
+  }
+
+  .cibo-hr-topbar > h3 {
+    min-width: 0 !important;
+    max-width: 46% !important;
+    font-size: 15px !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .cibo-hr-topbar > .cibo-topRight,
+  .cibo-hr-topbar > div:last-child {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .cibo-hr-topbar .cibo-hr-notification {
+    position: relative !important;
+    flex-shrink: 0 !important;
+  }
+
+  .cibo-hr-topbar .cibo-hr-notification-dropdown {
+    position: fixed !important;
+    top: 70px !important;
+    right: 10px !important;
+    left: 10px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: calc(100dvh - 90px) !important;
+    overflow-y: auto !important;
+    z-index: 5000 !important;
+    box-sizing: border-box !important;
+    border-radius: 12px !important;
+  }
+
+  .cibo-hr-topbar .cibo-hr-notification-dropdown .notificationItem {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-hr-topbar .cibo-hr-topRight {
+    gap: 8px !important;
+  }
+
+  .cibo-hr-topbar button {
+    min-height: 40px !important;
+  }
+
+  /* The HR layout uses the same mobile navigation spacing as the other roles. */
+  .cibo-hr-content {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 86px 14px 24px !important;
+    overflow-x: hidden !important;
+  }
+
+  .cibo-hr-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* EDIT LEAVE COUNTS */
+  .cibo-leave-counts-page {
+    padding: 8px 0 24px !important;
+  }
+
+  .cibo-leave-counts-page > h1 {
+    margin: 0 0 18px !important;
+    text-align: center !important;
+    font-size: 25px !important;
+    line-height: 1.2 !important;
+  }
+
+  .cibo-leave-counts-page .cibo-leave-counts-wrapper,
+  .cibo-leave-counts-page > div {
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-leave-counts-page > div {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    width: 100% !important;
+  }
+
+  .cibo-leave-counts-page > div > div {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    border-radius: 16px !important;
+    padding: 16px !important;
+  }
+
+  .cibo-leave-counts-page input {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-leave-counts-page > div > div:first-child {
+    max-height: 46dvh !important;
+    overflow-y: auto !important;
+  }
+
+  .cibo-leave-counts-page > div > div:last-child {
+    overflow: hidden !important;
+  }
+
+  .cibo-leave-counts-page h2 {
+    font-size: 24px !important;
+    line-height: 1.2 !important;
+    overflow-wrap: anywhere !important;
+    margin-bottom: 18px !important;
+  }
+
+  .cibo-leave-counts-page .saveButton {
+    width: 100% !important;
+  }
+
+  /* HR AUDIT TRAIL */
+  .cibo-hr-audit-page {
+    padding: 8px 0 24px !important;
+  }
+
+  .cibo-hr-audit-page > h1 {
+    margin: 0 0 8px !important;
+    font-size: 25px !important;
+    line-height: 1.2 !important;
+  }
+
+  .cibo-hr-audit-page > p {
+    margin: 0 0 16px !important;
+    line-height: 1.4 !important;
+  }
+
+  .cibo-hr-audit-page input {
+    width: 100% !important;
+    max-width: none !important;
+    height: 46px !important;
+    box-sizing: border-box !important;
+    margin-bottom: 16px !important;
+  }
+
+  .cibo-hr-audit-page > div:last-child {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cibo-hr-audit-page > div:last-child > div {
+    min-width: 850px !important;
+  }
+
+  /* REGISTER / EDIT MAINTENANCE SPECIALIST */
+  .cibo-hr-register-page,
+  .cibo-hr-edit-page {
+    padding: 8px 0 24px !important;
+  }
+
+  .cibo-hr-register-page > h1,
+  .cibo-hr-edit-page > h1 {
+    margin: 0 0 16px !important;
+    text-align: center !important;
+    font-size: 25px !important;
+    line-height: 1.2 !important;
+  }
+
+  .cibo-hr-register-page > div,
+  .cibo-hr-edit-page > div {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-hr-register-page > div:first-of-type,
+  .cibo-hr-edit-page > div:first-of-type {
+    padding: 18px !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+  }
+
+  .cibo-hr-register-page input,
+  .cibo-hr-register-page select,
+  .cibo-hr-edit-page input,
+  .cibo-hr-edit-page select {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-hr-register-page .grid,
+  .cibo-hr-edit-page .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* SHIFT SETTINGS */
+  .cibo-hr-shift-page {
+    padding: 8px 0 24px !important;
+    min-height: auto !important;
+  }
+
+  .cibo-hr-shift-page > div:first-child {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .cibo-hr-shift-page > div:first-child button {
+    width: 100% !important;
+  }
+
+  .cibo-hr-shift-page > div:nth-child(2),
+  .cibo-hr-shift-page > div:nth-child(3) {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-hr-shift-page > div:nth-child(3) {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .cibo-hr-shift-page > div:nth-child(2) {
+    padding: 16px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .cibo-hr-shift-page > div:nth-child(3) > div {
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 18px !important;
+    border-radius: 16px !important;
+  }
+
+  /* HR ATTENDANCE DASHBOARD */
+  .cibo-hr-dashboard-page {
+    padding: 8px 0 24px !important;
+  }
+
+  .cibo-hr-dashboard-page .cards {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .cibo-hr-dashboard-page .tableCard {
+    width: 100% !important;
+    overflow-x: auto !important;
+  }
+}
