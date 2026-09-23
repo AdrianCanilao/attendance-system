@@ -615,7 +615,7 @@ code {
     flex-direction: column !important;
     align-items: stretch !important;
     justify-content: flex-start !important;
-    gap: 14px !important;
+    gap: 18px !important;
     width: 100%;
     box-sizing: border-box;
   }
@@ -623,21 +623,29 @@ code {
   .cibo-attendance-table-header > div:first-child {
     width: 100%;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .cibo-attendance-date-controls {
     display: flex !important;
     flex-direction: column !important;
-    align-items: flex-start !important;
+    align-items: stretch !important;
     gap: 8px !important;
     width: 100%;
-    margin-top: 8px !important;
+    margin-top: 0 !important;
+  }
+
+  .cibo-attendance-date-controls p {
+    margin: 0 !important;
+    line-height: 1.35;
   }
 
   .cibo-attendance-date-controls .react-datepicker-wrapper,
   .cibo-attendance-date-controls .react-datepicker__input-container {
     width: 100% !important;
-    max-width: 100% !important;
+    max-width: 280px !important;
   }
 
   .cibo-attendance-date-controls .calendar-input {
@@ -645,13 +653,16 @@ code {
     max-width: 280px !important;
     height: 40px !important;
     box-sizing: border-box;
+    padding: 0 10px !important;
   }
 
   .cibo-attendance-search {
     position: relative;
     width: 100% !important;
     min-width: 0;
+    max-width: 100% !important;
     box-sizing: border-box;
+    margin: 0 !important;
   }
 
   .cibo-attendance-search input {
@@ -660,5 +671,27 @@ code {
     min-width: 0 !important;
     height: 42px;
     box-sizing: border-box;
+    padding-left: 40px !important;
+  }
+
+  /* Keep profile Role and Position proportional on phones */
+  .cibo-profile-role-position {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .cibo-profile-role-position .infoItem {
+    width: 100% !important;
+    max-width: 100% !important;
+    text-align: center !important;
+    line-height: 1.35 !important;
+    overflow-wrap: anywhere;
+  }
+
+  .cibo-profile-role-position .value {
+    overflow-wrap: anywhere;
   }
 }
