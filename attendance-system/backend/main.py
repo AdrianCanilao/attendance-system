@@ -71,7 +71,7 @@ def recognize_insightface_frame(index, img):
                     "image/jpeg"
                 )
             },
-            timeout=10
+            timeout=15
         )
 
         if response.status_code != 200:
@@ -992,7 +992,7 @@ async def verify_face(
 
         frames = []
 
-        for file in files[:8]:
+        for file in files[:12]:
 
             contents = await file.read()
 
@@ -1099,8 +1099,24 @@ async def verify_face(
         # OPEN → CLOSED → OPEN
         # =====================================================
 
-        OPEN_THRESHOLD = 0.23
-        CLOSED_THRESHOLD = 0.22
+        # Use the user's observed open-eye EAR as a baseline.
+        # This keeps the liveness check tolerant of camera distance,
+        # face size, and natural differences in eye shape while still
+        # requiring a real OPEN -> CLOSED -> OPEN transition.
+        sorted_ears = sorted(ear_values, reverse=True)
+        open_reference = float(
+            np.median(sorted_ears[:min(4, len(sorted_ears))])
+        )
+
+        OPEN_THRESHOLD = max(
+            0.20,
+            open_reference * 0.72
+        )
+
+        CLOSED_THRESHOLD = min(
+            0.20,
+            open_reference * 0.68
+        )
 
         blink_detected = False
         open_before = False
@@ -1108,22 +1124,22 @@ async def verify_face(
 
         for ear in ear_values:
 
-            # Eyes must start open
+            # Eyes start/open normally.
             if not open_before:
 
-                if ear > OPEN_THRESHOLD:
+                if ear >= OPEN_THRESHOLD:
                     open_before = True
 
-            # Eyes must close
+            # Eyes close enough relative to the user's normal open-eye EAR.
             elif not closed_during:
 
-                if ear < CLOSED_THRESHOLD:
+                if ear <= CLOSED_THRESHOLD:
                     closed_during = True
 
-            # Eyes must open again
+            # Eyes must open again after the closed state.
             else:
 
-                if ear > OPEN_THRESHOLD:
+                if ear >= OPEN_THRESHOLD:
                     blink_detected = True
                     break
 
@@ -1158,8 +1174,28 @@ async def verify_face(
 
         recognition_results = []
 
-        # Run frame requests concurrently. Recognition thresholds and
-        # temporal voting remain unchanged.
+        # Keep the longer 12-frame capture for liveness, but only
+        # send four representative frames to InsightFace. This keeps
+        # recognition responsive and avoids sending duplicate frames
+        # unnecessarily. Matching thresholds and temporal voting remain
+        # unchanged.
+        recognition_indices = (
+            [0, 3, 6, 9]
+            if len(frames) >= 12
+            else list(range(len(frames)))
+        )
+
+        recognition_frames = [
+            (index, frames[index])
+            for index in recognition_indices
+        ]
+
+        print(
+            "🧠 WEB INSIGHTFACE RECOGNITION FRAMES:",
+            [index + 1 for index, _ in recognition_frames],
+            flush=True
+        )
+
         completed_results = []
 
         with ThreadPoolExecutor(max_workers=4) as executor:
@@ -1169,7 +1205,7 @@ async def verify_face(
                     index,
                     img
                 )
-                for index, img in enumerate(frames)
+                for index, img in recognition_frames
             ]
 
             for future in as_completed(futures):
