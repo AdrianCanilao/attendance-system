@@ -1108,15 +1108,13 @@ async def verify_face(
             np.median(sorted_ears[:min(4, len(sorted_ears))])
         )
 
-        OPEN_THRESHOLD = max(
-            0.20,
-            open_reference * 0.72
-        )
-
-        CLOSED_THRESHOLD = min(
-            0.20,
-            open_reference * 0.68
-        )
+        # The current camera/MediaPipe EAR values are typically
+        # below 0.20 on mobile devices, so a fixed 0.20 floor
+        # can prevent the OPEN state from ever being detected.
+        # Use relative thresholds based on the observed open-eye
+        # baseline instead.
+        OPEN_THRESHOLD = open_reference * 0.85
+        CLOSED_THRESHOLD = open_reference * 0.70
 
         blink_detected = False
         open_before = False
