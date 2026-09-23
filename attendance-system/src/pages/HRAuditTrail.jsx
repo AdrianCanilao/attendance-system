@@ -34,7 +34,7 @@ const [search, setSearch] = useState("");
 
   return (
     <HRLayout>
-      <div style={styles.container}>
+      <div className="cibo-hr-page cibo-hr-audit-page" style={styles.container}>
         <h1 style={styles.title}>
           HR Audit Trail
         </h1>
