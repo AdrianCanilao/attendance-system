@@ -351,6 +351,7 @@ correction:
                 <th style={styles.th}>Position</th>
                 <th style={styles.th}>Time In</th>
                 <th style={styles.th}>Time Out</th>
+                <th style={styles.th}>Location</th>
                 <th style={styles.th}>Late</th>
                 <th style={styles.th}>Overtime</th>
                 <th style={styles.th}>Hours Worked</th>
@@ -408,6 +409,10 @@ correction:
 
                       <span>{log.time_out}</span>
                     </div>
+                  </td>
+
+                  <td style={styles.td}>
+                    {log.location || "-"}
                   </td>
 
                   <td style={styles.td}>
