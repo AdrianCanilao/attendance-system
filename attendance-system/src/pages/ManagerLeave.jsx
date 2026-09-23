@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
-import { logAudit } from "../utils/auditLogger";
+import { logAudit } from "../utils/auditlogger";
 
 export default function ManagerLeave() {
   const [requests, setRequests] = useState([]);
