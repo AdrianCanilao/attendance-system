@@ -36,6 +36,7 @@ const [detectedFace, setDetectedFace] = useState(null);
 const [identityVerified, setIdentityVerified] = useState(false);
 
 const [recognizingFace, setRecognizingFace] = useState(false);
+const recognizingFaceRef = useRef(false);
   const location = window.location.pathname;
 
   const managerMode =
@@ -188,7 +189,7 @@ const [recognizingFace, setRecognizingFace] = useState(false);
 const validateLiveFace = async () => {
   if (!webcamRef.current) return;
 
-  if (recognizingFace) return;
+  if (recognizingFaceRef.current) return;
 
   const image = webcamRef.current.getScreenshot();
 
@@ -197,6 +198,7 @@ const validateLiveFace = async () => {
   try {
     setCheckingFace(true);
     setRecognizingFace(true);
+    recognizingFaceRef.current = true;
 
     const blob = await fetch(image).then((res) =>
       res.blob()
@@ -353,6 +355,7 @@ const validateLiveFace = async () => {
 
     setCheckingFace(false);
     setRecognizingFace(false);
+    recognizingFaceRef.current = false;
   }
 };
 useEffect(() => {
