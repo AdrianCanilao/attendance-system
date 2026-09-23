@@ -222,3 +222,142 @@ code {
 .react-datepicker__day:hover {
   border-radius: 50% !important;
 }
+
+/* CIBO mobile-only UI. Desktop layout is unchanged. */
+@media (max-width: 768px) {
+  html, body, #root {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .cibo-layout {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .cibo-sidebar {
+    width: 68px !important;
+    min-width: 68px !important;
+    max-width: 68px !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    box-sizing: border-box;
+    padding: 14px 8px !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .cibo-sidebar-logo-text {
+    display: none !important;
+  }
+
+  .cibo-sidebar .cibo-sidebar-link {
+    width: 52px !important;
+    min-width: 52px !important;
+    height: 48px;
+    padding: 10px !important;
+    margin-bottom: 8px !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    font-size: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .cibo-sidebar .cibo-sidebar-link svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .cibo-sidebar .cibo-sidebar-sublink,
+  .cibo-sidebar > div > .cibo-sidebar-sublink {
+    display: none !important;
+  }
+
+  .cibo-main {
+    min-width: 0;
+    width: calc(100% - 68px);
+  }
+
+  .cibo-topbar {
+    height: 64px !important;
+    min-height: 64px !important;
+    padding: 0 12px !important;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .cibo-topbar-title {
+    min-width: 0;
+    max-width: 62%;
+    font-size: 15px !important;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cibo-top-profile-name,
+  .cibo-top-logout {
+    display: none !important;
+  }
+
+  .cibo-top-profile {
+    gap: 0 !important;
+  }
+
+  .cibo-topbar .cibo-top-profile > div:first-child {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .cibo-content {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px !important;
+    overflow-x: hidden !important;
+  }
+
+  .cibo-content .pageTitle,
+  .cibo-content h1 {
+    max-width: 100%;
+    font-size: 25px !important;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .cibo-content table {
+    min-width: 650px;
+  }
+
+  .cibo-camera-wrapper {
+    width: min(320px, calc(100vw - 110px)) !important;
+    height: auto !important;
+    aspect-ratio: 4 / 3;
+  }
+
+  .cibo-camera-video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+  }
+
+  .cibo-login {
+    width: 100vw !important;
+    min-height: 100dvh;
+    height: 100dvh !important;
+    padding: 16px !important;
+    box-sizing: border-box;
+  }
+
+  .cibo-login-card {
+    width: min(360px, calc(100vw - 32px)) !important;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 28px 22px !important;
+  }
+}
