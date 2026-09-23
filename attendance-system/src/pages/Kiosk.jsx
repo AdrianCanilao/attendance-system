@@ -194,7 +194,7 @@ export default function Kiosk() {
 
             setTimeout(() => {
               startAttendanceScan();
-            }, 300);
+            }, 1200);
           }
 
         } else if (data.status === "No Face") {
@@ -317,7 +317,7 @@ export default function Kiosk() {
   const captureFrames = async () => {
     const capturedFrames = [];
 
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 12; i++) {
       if (!webcamRef.current) break;
 
       const imageSrc =
@@ -327,8 +327,8 @@ export default function Kiosk() {
         capturedFrames.push(imageSrc);
       }
 
-      // Keep the same 8-frame verification, but give the blink
-      // a slightly longer sampling window.
+      // Use a longer 12-frame sampling window so the user has enough time
+      // to blink naturally without changing the recognition algorithm.
       await new Promise((resolve) =>
         setTimeout(resolve, 200)
       );
