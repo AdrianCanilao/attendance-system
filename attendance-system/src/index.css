@@ -695,3 +695,271 @@ code {
     overflow-wrap: anywhere;
   }
 }
+
+
+/* Mobile-only fixes for employee management and leave request pages */
+@media (max-width: 768px) {
+  /* EDIT EMPLOYEE */
+  .cibo-edit-employee-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 8px 0 24px !important;
+  }
+
+  .cibo-edit-employee-page > h1 {
+    margin: 0 0 14px !important;
+    padding: 0 !important;
+  }
+
+  .cibo-edit-employee-page > div:not(.cibo-edit-employee-list):not(.cibo-edit-employee-overlay) {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-edit-employee-list {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-top: 14px !important;
+    gap: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-edit-employee-card {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 14px 16px !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 14px !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .cibo-edit-employee-card > div:last-child {
+    min-width: 0 !important;
+  }
+
+  .cibo-edit-employee-card img {
+    max-width: 100% !important;
+  }
+
+  .cibo-edit-employee-overlay {
+    padding: 14px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+  }
+
+  .cibo-edit-employee-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 28px) !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+    padding: 18px !important;
+    border-radius: 16px !important;
+  }
+
+  /* EMPLOYEE LIST */
+  .cibo-employee-list-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 8px 0 24px !important;
+  }
+
+  .cibo-employee-list-page > h1 {
+    margin: 0 0 18px !important;
+    padding: 0 !important;
+  }
+
+  .cibo-employee-list-topbar {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    margin-bottom: 18px !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-employee-list-search {
+    width: 100% !important;
+    max-width: none !important;
+    height: 48px !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 0 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .cibo-employee-list-search input {
+    min-width: 0 !important;
+    width: 100% !important;
+    font-size: 16px !important;
+  }
+
+  .cibo-employee-list-topbar > button {
+    width: 100% !important;
+    min-height: 48px !important;
+    box-sizing: border-box !important;
+    border-radius: 12px !important;
+    font-size: 15px !important;
+  }
+
+  .cibo-employee-list-cards {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    gap: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-employee-list-card {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 14px !important;
+    gap: 12px !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 14px !important;
+    align-items: center !important;
+    overflow: hidden !important;
+  }
+
+  .cibo-employee-list-card > div:first-child {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  .cibo-employee-list-card > div:first-child > div:last-child {
+    min-width: 0 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .cibo-employee-list-card img {
+    width: 64px !important;
+    height: 64px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .cibo-employee-list-card button {
+    flex: 0 0 126px !important;
+    max-width: 126px !important;
+    padding: 10px 8px !important;
+    line-height: 1.2 !important;
+    font-size: 13px !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-employee-list-overlay {
+    padding: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-employee-list-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    padding: 18px !important;
+    border-radius: 16px !important;
+  }
+
+  .cibo-employee-list-modal .cibo-profile-attendance,
+  .cibo-employee-list-modal table {
+    min-width: 700px;
+  }
+
+  /* LEAVE REQUEST */
+  .cibo-leave-request-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 8px 0 24px !important;
+  }
+
+  .cibo-leave-request-page > h1 {
+    margin: 0 0 18px !important;
+    padding: 0 !important;
+  }
+
+  .cibo-leave-request-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    max-width: none !important;
+    gap: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-leave-request-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 16px !important;
+    border-radius: 14px !important;
+    margin: 0 !important;
+  }
+
+  .cibo-leave-request-card .circle {
+    margin: 14px auto !important;
+  }
+
+  .cibo-leave-request-overlay {
+    padding: 12px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    z-index: 3000 !important;
+  }
+
+  .cibo-leave-request-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+    padding: 18px !important;
+    border-radius: 18px !important;
+  }
+
+  .cibo-leave-request-modal .modalHeader {
+    margin-bottom: 14px !important;
+  }
+
+  .cibo-leave-request-form {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    gap: 14px !important;
+  }
+
+  .cibo-leave-request-form .formGroup {
+    width: 100% !important;
+  }
+
+  .cibo-leave-request-form input,
+  .cibo-leave-request-form textarea,
+  .cibo-leave-request-form .fileInput {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-leave-request-form textarea {
+    min-height: 130px !important;
+  }
+
+  .cibo-leave-request-form .submitButton {
+    width: 100% !important;
+    margin-top: 4px !important;
+  }
+}
