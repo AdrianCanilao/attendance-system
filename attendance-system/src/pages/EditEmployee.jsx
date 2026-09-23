@@ -506,7 +506,7 @@ const handleDelete = async () => {
 
   return (
     <ManagerLayout>
-      <div style={styles.wrapper}>
+      <div className="cibo-edit-employee-page" style={styles.wrapper}>
         <h1 style={styles.pageTitle}>Edit Employee</h1>
 
         <div style={styles.searchWrapper}>
@@ -524,9 +524,9 @@ const handleDelete = async () => {
           />
         </div>
 
-        <div style={styles.list}>
+        <div className="cibo-edit-employee-list" style={styles.list}>
           {filtered.map((emp) => (
-            <div key={emp.id} style={styles.card} onClick={() => openModal(emp)}>
+            <div key={emp.id} className="cibo-edit-employee-card" style={styles.card} onClick={() => openModal(emp)}>
               <div style={styles.avatar}>
                 {emp.face_url ? (
                   <img src={emp.face_url} style={styles.avatarImg} />
@@ -546,8 +546,8 @@ const handleDelete = async () => {
         </div>
 
         {selected && (
-          <div style={styles.modalOverlay}>
-            <div style={styles.modal}>
+          <div className="cibo-edit-employee-overlay" style={styles.modalOverlay}>
+            <div className="cibo-edit-employee-modal" style={styles.modal}>
               <h3>Edit Employee</h3>
 
               <div style={styles.topSection}>
