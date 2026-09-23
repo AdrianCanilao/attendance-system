@@ -1816,5 +1816,22 @@ code {
 @media (max-width: 768px) {
   .leave-counts-edit-panel.empty {
     display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .cibo-register-employee-topSection.camera-open {
+    gap: 6px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .cibo-register-employee-topSection.camera-open .cibo-register-employee-cameraWrapper {
+    gap: 6px !important;
   }
 }
