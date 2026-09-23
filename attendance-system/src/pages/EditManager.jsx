@@ -610,7 +610,7 @@ const uploadFaces = async () => {
                 )}
               </div>
 
-              <div style={styles.grid}>
+              <div className="cibo-hr-form-grid" style={styles.grid}>
                 <div>
                   <label style={styles.label}>Full Name</label>
                   <input name="name" value={form.name} onChange={handleChange} style={styles.input} />
