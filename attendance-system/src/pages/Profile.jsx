@@ -235,14 +235,14 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
 
   return (
     <Layout>
-      <div style={styles.container}>
+      <div className="cibo-profile-page" style={styles.container}>
         <h1 style={styles.pageTitle}>Profile</h1>
 
-        <div style={styles.grid}>
+        <div className="cibo-profile-grid" style={styles.grid}>
           {/* PROFILE CARD */}
-          <div style={styles.card}>
-            <div style={styles.newProfileContent}>
-              <div style={styles.newAvatarWrapper}>
+          <div className="cibo-profile-card" style={styles.card}>
+            <div className="cibo-profile-content" style={styles.newProfileContent}>
+              <div className="cibo-profile-avatar-wrapper" style={styles.newAvatarWrapper}>
                 {imageUrl ? (
                   <img
                     src={imageUrl}
@@ -256,7 +256,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                 )}
               </div>
 
-              <div style={styles.newProfileInfoContainer}>
+              <div className="cibo-profile-info" style={styles.newProfileInfoContainer}>
                 <div style={styles.headerRow}>
                   <h1 style={styles.profileName}>
                     {profile?.full_name || "Employee Name"}
@@ -312,7 +312,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
           </div>
 
           {/* CALENDAR */}
-          <div style={styles.calendarCard}>
+          <div className="cibo-profile-calendar" style={styles.calendarCard}>
             <h4 style={styles.calendarTitle}>
               {today.toLocaleString("default", {
                 month: "long",
@@ -352,8 +352,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
           </div>
         </div>
 
-        <div
-  style={{
+        <div className="cibo-profile-attendance" style={{
     ...styles.statCard,
     minHeight: "calc(100vh - 420px)",
     display: "flex",
