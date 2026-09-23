@@ -205,11 +205,7 @@ export default function LeaveCounts() {
                   Save Changes
                 </button>
               </>
-            ) : (
-              <div style={styles.emptyState}>
-                Select an employee to edit leave counts
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
