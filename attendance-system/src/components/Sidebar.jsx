@@ -23,7 +23,8 @@ export default function Sidebar({ role }) {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <div className="cibo-sidebar" style={styles.sidebar}>
+    <>
+      <div className="cibo-sidebar" style={styles.sidebar}>
       {/* LOGO */}
       <div style={styles.logoContainer}>
         <div style={styles.logoCircle}>C</div>
@@ -307,9 +308,9 @@ export default function Sidebar({ role }) {
     </div>
   </>
 )}
-    </div>
+      </div>
 
-    {typeof document !== "undefined" &&
+      {typeof document !== "undefined" &&
       createPortal(
         <>
           {role === "employee" && leaveDropdown && (
@@ -362,8 +363,9 @@ export default function Sidebar({ role }) {
             </div>
           )}
         </>,
-        document.body
-      )}
+          document.body
+        )}
+    </>
   );
 }
 
