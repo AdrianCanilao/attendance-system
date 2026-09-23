@@ -128,15 +128,15 @@ export default function ManagerLayout({ children }) {
   }
 
   return (
-    <div style={styles.container}>
+    <div className="cibo-layout" style={styles.container}>
       {/* SIDEBAR */}
       <Sidebar role="maintenance" />
 
       {/* MAIN */}
-      <div style={styles.main}>
+      <div className="cibo-main" style={styles.main}>
         {/* TOPBAR */}
-        <div style={styles.topbar}>
-          <h3 style={{ margin: 0 }}>
+        <div className="cibo-topbar" style={styles.topbar}>
+          <h3 className="cibo-topbar-title" style={{ margin: 0 }}>
             Maintenance Specialist Dashboard
             {branchName && ` - ${branchName}`}
           </h3>
@@ -202,7 +202,7 @@ export default function ManagerLayout({ children }) {
             </div>
 
             {/* PROFILE */}
-            <div style={styles.profile}>
+            <div className="cibo-top-profile" style={styles.profile}>
               <div style={styles.avatar}>M</div>
 
               <div>
@@ -228,7 +228,7 @@ export default function ManagerLayout({ children }) {
         </div>
 
         {/* CONTENT */}
-        <div style={styles.content}>
+        <div className="cibo-content" style={styles.content}>
           {children}
         </div>
       </div>
