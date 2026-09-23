@@ -168,7 +168,7 @@ export default function ManagerLayout({ children }) {
 
               {/* DROPDOWN */}
               {showNotifications && (
-                <div style={styles.notificationDropdown}>
+                <div className="cibo-notification-dropdown" style={styles.notificationDropdown}>
                   <h4 style={styles.notificationTitle}>
                     Notifications
                   </h4>
