@@ -1852,3 +1852,27 @@ code {
     margin-bottom: 4px !important;
   }
 }
+
+
+/* Register Maintenance Specialist: match Register Employee camera-open spacing on mobile. */
+@media (max-width: 768px) {
+  .cibo-hr-register-page .topSection.camera-open {
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .cibo-hr-register-page .topSection.camera-open .avatarWrapper {
+    gap: 6px !important;
+  }
+
+  .cibo-hr-register-page .topSection.camera-open .cameraWrapper {
+    gap: 4px !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+
+  .cibo-hr-register-page .topSection.camera-open .cameraWrapper p {
+    margin-top: 0 !important;
+    margin-bottom: 4px !important;
+  }
+}
