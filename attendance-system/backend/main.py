@@ -1974,6 +1974,7 @@ async def kiosk_verify_live(
         # =====================================================
 
         frames = []
+        original_frames = []
 
         # Allow the full 12-frame kiosk blink window to reach MediaPipe.
         for file in files[:12]:
@@ -1993,8 +1994,10 @@ async def kiosk_verify_live(
             if img is None:
                 continue
 
-            # Keep the same processing size used
-            # by the employee web verification.
+            # Keep the original camera frame for the attendance photo.
+            original_frames.append(img.copy())
+
+            # Use 320x240 only for recognition/liveness processing.
             img = cv2.resize(
                 img,
                 (320, 240)
@@ -2212,7 +2215,7 @@ async def kiosk_verify_live(
         recognition_results = [
             {
                 "result": result,
-                "frame": frames[index]
+                "frame": original_frames[index]
             }
             for index, result in completed_results
         ]
