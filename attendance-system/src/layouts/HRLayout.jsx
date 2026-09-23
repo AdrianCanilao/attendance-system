@@ -59,14 +59,14 @@ export default function HRLayout({ children }) {
   ];
 
   return (
-    <div style={styles.container}>
+    <div className="cibo-hr-layout" style={styles.container}>
       {/* SIDEBAR */}
       <Sidebar role="hr" />
 
       {/* MAIN */}
-      <div style={styles.main}>
+      <div className="cibo-hr-main" style={styles.main}>
         {/* TOPBAR */}
-        <div style={styles.topbar}>
+        <div className="cibo-hr-topbar" style={styles.topbar}>
           <h3 style={{ margin: 0 }}>
             HR Dashboard
           </h3>
@@ -74,7 +74,7 @@ export default function HRLayout({ children }) {
           <div style={styles.topRight}>
             {/* NOTIFICATION */}
             <div
-              style={styles.notificationWrapper}
+              className="cibo-hr-notification" style={styles.notificationWrapper}
               ref={notificationRef}
             >
               <div
@@ -98,7 +98,7 @@ export default function HRLayout({ children }) {
 
               {/* DROPDOWN */}
               {showNotifications && (
-                <div style={styles.notificationDropdown}>
+                <div className="cibo-hr-notification-dropdown" style={styles.notificationDropdown}>
                   <h4 style={styles.notificationTitle}>
                     Notifications
                   </h4>
@@ -152,7 +152,7 @@ export default function HRLayout({ children }) {
         </div>
 
         {/* CONTENT */}
-        <div style={styles.content}>
+        <div className="cibo-hr-content" style={styles.content}>
           {children}
         </div>
       </div>
