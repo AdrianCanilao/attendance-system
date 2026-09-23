@@ -369,8 +369,8 @@ shift_id: "",
         <h1 style={styles.pageTitle}>Register Maintenance Specialist</h1>
 
         <div style={styles.card}>
-          <div style={styles.topSection}>
-            <div style={styles.avatarWrapper}>
+          <div className={`cibo-hr-register-page-topSection ${showCamera ? "camera-open" : ""}`} style={styles.topSection}>
+            <div className="cibo-hr-register-page-avatarWrapper" style={styles.avatarWrapper}>
               <div style={styles.avatarBox}>
                 <div style={styles.avatarInner}>
                   {imageSrc ? (
@@ -390,7 +390,7 @@ shift_id: "",
               </button>
             </div>
 
-            <div style={styles.cameraWrapper}>
+            <div className="cibo-hr-register-page-cameraWrapper" style={styles.cameraWrapper}>
               {showCamera ? (
                 <>
                   <p style={styles.stepText}>
