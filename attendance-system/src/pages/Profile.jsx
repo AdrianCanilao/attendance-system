@@ -389,6 +389,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
           "Date",
   "Time In",
   "Time Out",
+  "Location",
   "Late",
   "Overtime",
   "Hours Worked",
@@ -561,6 +562,17 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                   : "-"}
               </span>
             </div>
+          </td>
+
+          {/* LOCATION */}
+          <td
+            style={{
+              padding: "16px",
+              textAlign: "center",
+              verticalAlign: "middle",
+            }}
+          >
+            {log.location || "-"}
           </td>
 
           {/* LATE */}
