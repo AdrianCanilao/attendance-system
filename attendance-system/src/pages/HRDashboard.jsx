@@ -259,7 +259,7 @@ export default function HRDashboard() {
         </h2>
       </div>
 
-      <div style={styles.cards}>
+      <div className="cibo-hr-dashboard-cards" style={styles.cards}>
         <div style={styles.card}>
           <p style={styles.cardLabel}>
             Total Employees
@@ -286,7 +286,7 @@ export default function HRDashboard() {
         </div>
       </div>
 
-      <div style={styles.tableCard}>
+      <div className="cibo-hr-dashboard-table" style={styles.tableCard}>
         <div style={styles.tableHeader}>
           <div>
             <h3 style={styles.tableTitle}>
