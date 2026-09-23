@@ -514,7 +514,7 @@ shift_id: "",
             </div>
           </div>
 
-          <div style={styles.grid}>
+          <div className="cibo-hr-form-grid" style={styles.grid}>
             <div>
               <label style={styles.label}>Full Name</label>
               <input
