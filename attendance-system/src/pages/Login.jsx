@@ -48,6 +48,14 @@ export default function Login() {
         !data ||
         !data.user
       ) {
+        await logAudit({
+          user_id: null,
+          user_name: email,
+          role: "unknown",
+          action: "LOGIN_FAILED",
+          description: `Failed login attempt for ${email}${error?.message ? `: ${error.message}` : ""}`,
+        });
+
         alert(
           error?.message ||
             "Invalid login credentials"
@@ -77,6 +85,14 @@ export default function Login() {
         profileError ||
         !profile
       ) {
+        await logAudit({
+          user_id: user.id,
+          user_name: user.email,
+          role: "unknown",
+          action: "LOGIN_PROFILE_FAILED",
+          description: `Login succeeded but employee profile was not found for ${user.email}`,
+        });
+
         alert(
           "Profile not found. Contact admin."
         );
@@ -103,6 +119,14 @@ export default function Login() {
         roleError ||
         !roleData
       ) {
+        await logAudit({
+          user_id: user.id,
+          user_name: user.email,
+          role: "unknown",
+          action: "LOGIN_ROLE_FAILED",
+          description: `Login succeeded but role could not be resolved for ${user.email}`,
+        });
+
         alert("Role not found.");
         return;
       }
