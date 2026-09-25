@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
 import Webcam from "react-webcam";
-import { logAudit } from "../utils/auditlogger";
+import { logCurrentUserAudit } from "../utils/auditlogger";
 
 const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
 
@@ -413,6 +413,11 @@ const uploadFaces = async () => {
         await uploadFaces();
       }
 
+      await logCurrentUserAudit({
+        action: "UPDATE_MAINTENANCE_SPECIALIST",
+        description: `Updated maintenance specialist: ${form.name}`,
+      });
+
       alert("✅ Updated!");
       closeModal();
       fetchEmployees();
@@ -430,6 +435,11 @@ const uploadFaces = async () => {
       .from("employee_profiles")
       .delete()
       .eq("id", selected.id);
+
+    await logCurrentUserAudit({
+      action: "DELETE_MAINTENANCE_SPECIALIST",
+      description: `Deleted maintenance specialist: ${selected.full_name}`,
+    });
 
     alert("Deleted");
     closeModal();
