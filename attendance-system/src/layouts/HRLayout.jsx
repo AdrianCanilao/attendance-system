@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { logCurrentUserAudit } from "../utils/auditlogger";
 import { FaBell } from "react-icons/fa";
 import Sidebar from "../components/Sidebar";
 import { useEffect, useRef, useState } from "react";
@@ -13,6 +14,12 @@ export default function HRLayout({ children }) {
   const notificationRef = useRef(null);
 
   const handleLogout = async () => {
+    await logCurrentUserAudit({
+      action: "LOGOUT",
+      description: "User logged out of the system",
+      role: "hr",
+    });
+
     await supabase.auth.signOut();
     localStorage.removeItem("role");
     navigate("/");
