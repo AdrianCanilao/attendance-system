@@ -819,6 +819,14 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
       return;
     }
 
+    await logAudit({
+      user_id: profile.id,
+      user_name: profile.full_name,
+      role: "employee",
+      action: "ATTENDANCE_CORRECTION_REQUEST",
+      description: `Requested attendance correction: ${correctionReason}`,
+    });
+
     alert("Correction request submitted");
 
     setShowCorrectionModal(false);
