@@ -1876,3 +1876,61 @@ code {
     margin-bottom: 4px !important;
   }
 }
+
+
+/* BRANCH SETTINGS */
+@media (max-width: 768px) {
+  .cibo-hr-branch-page {
+    padding: 18px 14px 24px !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .cibo-branch-page-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+    margin-bottom: 18px !important;
+  }
+
+  .cibo-branch-page-header > button {
+    width: 100% !important;
+  }
+
+  .cibo-hr-branch-page .cibo-branch-list {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .cibo-branch-card {
+    padding: 18px !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-branch-actions {
+    flex-direction: column !important;
+  }
+
+  .cibo-branch-actions button {
+    width: 100% !important;
+  }
+
+  .cibo-branch-modal-overlay {
+    align-items: flex-start !important;
+    padding: 14px !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+  }
+
+  .cibo-branch-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 14px 0 !important;
+    padding: 18px !important;
+  }
+
+  .cibo-branch-modal .cibo-branch-modal-actions {
+    flex-direction: column !important;
+  }
+}
