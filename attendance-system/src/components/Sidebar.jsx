@@ -294,6 +294,17 @@ export default function Sidebar({ role }) {
         >
           Edit Maintenance Specialist
         </button>
+        <button
+  onClick={() => navigate("/hr/branch-settings")}
+  style={{
+    ...styles.sublink,
+    ...(isActive("/hr/branch-settings") &&
+      styles.activeSubLink),
+  }}
+>
+  Branch Settings
+</button>
+
                 <button
   onClick={() => navigate("/hr/shift-settings")}
   style={{
@@ -356,6 +367,9 @@ export default function Sidebar({ role }) {
               </button>
               <button onClick={() => { setOpenEmployee(false); navigate("/hr/edit-manager"); }}>
                 Edit Maintenance Specialist
+              </button>
+              <button onClick={() => { setOpenEmployee(false); navigate("/hr/branch-settings"); }}>
+                Branch Settings
               </button>
               <button onClick={() => { setOpenEmployee(false); navigate("/hr/shift-settings"); }}>
                 Shift Settings
