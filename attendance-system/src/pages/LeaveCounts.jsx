@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
-import { logAudit } from "../utils/auditlogger";
+import { logCurrentUserAudit } from "../utils/auditlogger";
 
 export default function LeaveCounts() {
   const [employees, setEmployees] = useState([]);
@@ -65,6 +65,11 @@ export default function LeaveCounts() {
       .eq("id", selectedEmployee.id);
 
     if (!error) {
+      await logCurrentUserAudit({
+        action: "UPDATE_LEAVE_COUNTS",
+        description: `Updated leave counts for ${selectedEmployee.full_name}`,
+      });
+
       alert("Leave counts updated successfully");
       fetchEmployees();
     }
