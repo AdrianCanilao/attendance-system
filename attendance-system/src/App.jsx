@@ -22,6 +22,7 @@ import EditManager from "./pages/EditManager";
 
 import ManagerAttendanceTracker from "./pages/ManagerAttendanceTracker";
 import ShiftSettings from "./pages/ShiftSettings";
+import BranchSettings from "./pages/BranchSettings";
 
 import Kiosk from "./pages/Kiosk";
 
@@ -157,6 +158,15 @@ export default function App() {
         <Route
           path="/hr/edit-manager"
           element={<EditManager />}
+        />
+
+        <Route
+          path="/hr/branch-settings"
+          element={
+            <ProtectedRoute role="hr">
+              <BranchSettings />
+            </ProtectedRoute>
+          }
         />
 
         <Route
