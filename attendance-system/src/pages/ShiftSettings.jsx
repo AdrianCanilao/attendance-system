@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import HRLayout from "../layouts/HRLayout";
 import { supabase } from "../supabaseClient";
+import { logCurrentUserAudit } from "../utils/auditlogger";
 
 export default function ShiftSettings() {
   const [branches, setBranches] = useState([]);
@@ -121,6 +122,14 @@ export default function ShiftSettings() {
         return;
       }
 
+      const branch = branches.find((item) => item.id === selectedBranch);
+
+      await logCurrentUserAudit({
+        action: "UPDATE_SHIFT",
+        description: `Updated shift: ${formData.shift_name} for ${branch?.branch_name || "selected branch"}`,
+        role: "hr",
+      });
+
       alert("Shift updated successfully.");
     } else {
       const { error } = await supabase
@@ -138,6 +147,14 @@ export default function ShiftSettings() {
         alert(error.message);
         return;
       }
+
+      const branch = branches.find((item) => item.id === selectedBranch);
+
+      await logCurrentUserAudit({
+        action: "REGISTER_SHIFT",
+        description: `Added shift: ${formData.shift_name} for ${branch?.branch_name || "selected branch"}`,
+        role: "hr",
+      });
 
       alert("Shift added successfully.");
     }
@@ -161,6 +178,15 @@ export default function ShiftSettings() {
     alert(error.message);
     return;
   }
+
+  const branch = branches.find((item) => item.id === selectedBranch);
+  const deletedShift = shifts.find((item) => item.id === id);
+
+  await logCurrentUserAudit({
+    action: "DELETE_SHIFT",
+    description: `Deleted shift: ${deletedShift?.shift_name || "shift"} from ${branch?.branch_name || "selected branch"}`,
+    role: "hr",
+  });
 
   alert("Shift deleted successfully.");
 
