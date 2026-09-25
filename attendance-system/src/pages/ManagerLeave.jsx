@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
-import { logAudit } from "../utils/auditlogger";
+import { logCurrentUserAudit } from "../utils/auditlogger";
 
 export default function ManagerLeave() {
   const [requests, setRequests] = useState([]);
@@ -45,6 +45,13 @@ export default function ManagerLeave() {
       alert("Error updating status");
       return;
     }
+
+    const request = requests.find((item) => item.id === id);
+
+    await logCurrentUserAudit({
+      action: status === "Approved" ? "LEAVE_APPROVED" : "LEAVE_REJECTED",
+      description: `${status} leave request${request?.leave_type ? ` (${request.leave_type})` : ""}`,
+    });
 
     fetchRequests();
   };
