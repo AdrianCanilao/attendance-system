@@ -490,6 +490,13 @@ const handleScan = async (
       const frames =
         await captureFrames();
         if (frames.length < 2) {
+  await logAudit({
+    user_id: user?.id || null,
+    user_name: user?.email || "Unknown user",
+    role: managerMode ? "maintenance" : "employee",
+    action: "ATTENDANCE_FAILED_WEB",
+    description: `Web ${actionType.toUpperCase()} failed: unable to capture enough frames`,
+  });
   alert("Unable to capture enough frames.");
   return;
 }
@@ -564,6 +571,13 @@ const scheduledClockOut = new Date(
         actionType === "time_in" &&
         existing?.time_in
       ) {
+        await logAudit({
+          user_id: user.id,
+          user_name: profile.full_name,
+          role: managerMode ? "maintenance" : "employee",
+          action: "ATTENDANCE_REJECTED_WEB",
+          description: "Web TIME_IN rejected: employee already timed in today",
+        });
         alert("Already timed in today");
         return;
       }
@@ -572,6 +586,13 @@ const scheduledClockOut = new Date(
         actionType === "time_out" &&
         !existing?.time_in
       ) {
+        await logAudit({
+          user_id: user.id,
+          user_name: profile.full_name,
+          role: managerMode ? "maintenance" : "employee",
+          action: "ATTENDANCE_REJECTED_WEB",
+          description: "Web TIME_OUT rejected: employee has no time-in today",
+        });
         alert("You must time-in first");
         return;
       }
@@ -580,6 +601,13 @@ const scheduledClockOut = new Date(
         actionType === "time_out" &&
         existing?.time_out
       ) {
+        await logAudit({
+          user_id: user.id,
+          user_name: profile.full_name,
+          role: managerMode ? "maintenance" : "employee",
+          action: "ATTENDANCE_REJECTED_WEB",
+          description: "Web TIME_OUT rejected: employee already timed out today",
+        });
         alert("Already timed out today");
         return;
       }
@@ -618,6 +646,14 @@ const scheduledClockOut = new Date(
       );
 
       if (!res.ok) {
+        await logAudit({
+          user_id: user.id,
+          user_name: profile.full_name,
+          role: managerMode ? "maintenance" : "employee",
+          action: "ATTENDANCE_ERROR_WEB",
+          description: `Web ${actionType.toUpperCase()} failed: face verification server error`,
+        });
+
         alert(
           "FastAPI server error"
         );
@@ -638,6 +674,14 @@ const scheduledClockOut = new Date(
       if (
         result.status !== "Match"
       ) {
+        await logAudit({
+          user_id: user.id,
+          user_name: profile.full_name,
+          role: managerMode ? "maintenance" : "employee",
+          action: "ATTENDANCE_REJECTED_WEB",
+          description: `Web ${actionType.toUpperCase()} rejected: ${result.status || "Face not recognized"}`,
+        });
+
         alert(
           "Face not recognized"
         );
@@ -665,6 +709,14 @@ const scheduledClockOut = new Date(
 
       if (uploadError) {
         console.log(uploadError);
+
+        await logAudit({
+          user_id: user.id,
+          user_name: profile.full_name,
+          role: managerMode ? "maintenance" : "employee",
+          action: "ATTENDANCE_ERROR_WEB",
+          description: `Web ${actionType.toUpperCase()} failed: attendance photo upload failed`,
+        });
 
         alert("Upload failed");
 
@@ -716,6 +768,14 @@ const scheduledClockOut = new Date(
             });
 
         if (attendanceInsertError) {
+          await logAudit({
+            user_id: employeeId,
+            user_name: profile.full_name,
+            role: managerMode ? "maintenance" : "employee",
+            action: "ATTENDANCE_ERROR_WEB",
+            description: `Web TIME_IN database error: ${attendanceInsertError.message}`,
+          });
+
           throw new Error(
             "Attendance Time In could not be saved: " +
             attendanceInsertError.message
@@ -760,6 +820,14 @@ const scheduledClockOut = new Date(
       .is("time_out", null);
 
   if (attendanceUpdateError) {
+    await logAudit({
+      user_id: employeeId,
+      user_name: profile.full_name,
+      role: managerMode ? "maintenance" : "employee",
+      action: "ATTENDANCE_ERROR_WEB",
+      description: `Web TIME_OUT database error: ${attendanceUpdateError.message}`,
+    });
+
     throw new Error(
       "Attendance Time Out could not be saved: " +
       attendanceUpdateError.message
