@@ -794,7 +794,7 @@ const scheduledClockOut = new Date(
 
           action: "TIME_IN",
 
-          description: `${profile.full_name} timed in`,
+          description: `${profile.full_name} timed in with status ${attendanceStatus}${lateMinutes > 0 ? ` (${lateMinutes} minutes late)` : ""}`,
         });
       } else {
 
@@ -847,7 +847,7 @@ const scheduledClockOut = new Date(
 
           action: "TIME_OUT",
 
-          description: `${profile.full_name} timed out`,
+          description: `${profile.full_name} timed out${overtimeMinutes > 0 ? ` with ${overtimeMinutes} minutes overtime` : ""}`,
         });
       }
 
