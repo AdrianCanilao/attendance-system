@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import HRLayout from "../layouts/HRLayout";
 import { supabase } from "../supabaseClient";
+import { logCurrentUserAudit } from "../utils/auditlogger";
 
 export default function BranchSettings() {
   const [branches, setBranches] = useState([]);
@@ -92,6 +93,13 @@ export default function BranchSettings() {
           .eq("id", editingBranch.id);
 
         if (error) throw error;
+
+        await logCurrentUserAudit({
+          action: "UPDATE_BRANCH",
+          description: `Updated branch: ${branchName} (${branchCode})`,
+          role: "hr",
+        });
+
         alert("Branch updated successfully.");
       } else {
         const { error } = await supabase
@@ -104,6 +112,13 @@ export default function BranchSettings() {
           });
 
         if (error) throw error;
+
+        await logCurrentUserAudit({
+          action: "REGISTER_BRANCH",
+          description: `Registered branch: ${branchName} (${branchCode})`,
+          role: "hr",
+        });
+
         alert("Branch added successfully.");
       }
 
@@ -129,6 +144,12 @@ export default function BranchSettings() {
       alert(error.message);
       return;
     }
+
+    await logCurrentUserAudit({
+      action: nextStatus ? "ACTIVATE_BRANCH" : "DEACTIVATE_BRANCH",
+      description: `${nextStatus ? "Activated" : "Deactivated"} branch: ${branch.branch_name} (${branch.branch_code})`,
+      role: "hr",
+    });
 
     await loadBranches();
   }
