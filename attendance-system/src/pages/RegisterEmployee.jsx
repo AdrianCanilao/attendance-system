@@ -321,17 +321,17 @@ if (!selectedShift) {
             .update({ face_url: data.url })
             .eq("id", userId);
         }
-        const { data: currentUser } =
-  await supabase.auth.getUser();
-
-await logAudit({
-  user_id: currentUser.user.id,
-  user_name: currentUser.user.email,
-role: "maintenance",
-  action: "REGISTER_EMPLOYEE",
-  description: `Registered employee: ${name}`,
-});
       }
+      const { data: currentUser } = await supabase.auth.getUser();
+
+      await logAudit({
+        user_id: currentUser.user.id,
+        user_name: currentUser.user.email,
+        role: "maintenance",
+        action: "REGISTER_EMPLOYEE",
+        description: `Registered employee: ${name}`,
+      });
+
             // =====================================================
       // 🔄 RELOAD INSIGHTFACE EMPLOYEE TEMPLATES
       // =====================================================
