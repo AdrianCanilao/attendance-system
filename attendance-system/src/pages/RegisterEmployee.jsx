@@ -3,6 +3,7 @@ import Webcam from "react-webcam";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
 import { logAudit } from "../utils/auditlogger";
+import { isValidEmail } from "../utils/emailValidation";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
@@ -242,6 +243,11 @@ const captureFace = () => {
           alert("Please fill all fields");
           return;
         }
+
+    if (!isValidEmail(email)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
 
     if (capturedImages.length < 3) {
       alert("Complete all face steps");
@@ -559,6 +565,7 @@ if (!selectedShift) {
             <div>
               <label style={styles.label}>Email</label>
               <input
+                type="email"
                 name="email"
                 placeholder="Enter email address"
                 value={form.email}
