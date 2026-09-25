@@ -116,6 +116,7 @@ const claimNotification = async (key: string, email: string) => {
     .insert({
       notification_key: key,
       recipient_email: email.toLowerCase(),
+      status: "sending",
     });
 
   if (!error) return true;
@@ -165,12 +166,30 @@ const sendEmail = async ({
 
   if (error) {
     console.error("Resend email failed:", error);
+
+    // Allow a later retry if Resend rejected the email.
+    await supabaseAdmin
+      .from("email_notification_log")
+      .delete()
+      .eq("notification_key", idempotencyKey)
+      .eq("recipient_email", to.toLowerCase());
+
     return {
       sent: false,
       skipped: false,
       error,
     };
   }
+
+  await supabaseAdmin
+    .from("email_notification_log")
+    .update({
+      status: "sent",
+      sent_at: new Date().toISOString(),
+      resend_email_id: data?.id || null,
+    })
+    .eq("notification_key", idempotencyKey)
+    .eq("recipient_email", to.toLowerCase());
 
   return {
     sent: true,
@@ -595,6 +614,27 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // This function is used by Supabase Database Webhooks and Supabase Cron.
+    // Both must authenticate with a Supabase secret key in the "apikey" header.
+    const apiKey = req.headers.get("apikey");
+    const authorization = req.headers.get("authorization");
+    const bearerKey = authorization?.startsWith("Bearer ")
+      ? authorization.slice("Bearer ".length)
+      : null;
+
+    if (
+      apiKey !== SUPABASE_SECRET_KEY &&
+      bearerKey !== SUPABASE_SECRET_KEY
+    ) {
+      return Response.json(
+        { ok: false, error: "Unauthorized" },
+        {
+          status: 401,
+          headers: corsHeaders,
+        }
+      );
+    }
+
     const payload = (await req.json()) as WebhookPayload;
 
     if (
