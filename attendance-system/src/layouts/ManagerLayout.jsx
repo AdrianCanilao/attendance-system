@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { logCurrentUserAudit } from "../utils/auditlogger";
 import { FaBell } from "react-icons/fa";
 import Sidebar from "../components/Sidebar";
 
@@ -13,6 +14,12 @@ export default function ManagerLayout({ children }) {
   const [branchName, setBranchName] = useState("");
 
   const handleLogout = async () => {
+    await logCurrentUserAudit({
+      action: "LOGOUT",
+      description: "User logged out of the system",
+      role: "manager",
+    });
+
     await supabase.auth.signOut();
     localStorage.removeItem("role");
     navigate("/");
