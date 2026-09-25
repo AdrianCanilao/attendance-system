@@ -491,8 +491,8 @@ const handleScan = async (
         await captureFrames();
         if (frames.length < 2) {
   await logAudit({
-    user_id: user?.id || null,
-    user_name: user?.email || "Unknown user",
+    user_id: null,
+    user_name: "Unknown user",
     role: managerMode ? "maintenance" : "employee",
     action: "ATTENDANCE_FAILED_WEB",
     description: `Web ${actionType.toUpperCase()} failed: unable to capture enough frames`,
