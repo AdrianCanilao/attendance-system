@@ -17,3 +17,12 @@ comment on column public.email_notification_log.notification_key is
 
 comment on column public.email_notification_log.recipient_email is
   'Email address that received or claimed the notification.';
+
+alter table public.email_notification_log
+  add column if not exists status text not null default 'sending';
+
+alter table public.email_notification_log
+  add column if not exists sent_at timestamptz;
+
+alter table public.email_notification_log
+  add column if not exists resend_email_id text;
