@@ -1116,6 +1116,25 @@ async def verify_face(
     try:
 
         # =====================================================
+        # 0. CHECK ATTENDANCE VERIFICATION LOCK
+        # =====================================================
+
+        lock_state = get_verification_lock(user_id)
+
+        if lock_state.get("is_locked"):
+            return {
+                "status": "Locked",
+                "message": (
+                    "Attendance verification is temporarily locked. "
+                    "Please try again after the break."
+                ),
+                "failed_attempts": lock_state.get("failed_attempts", 5),
+                "locked_until": lock_state.get("locked_until"),
+                "remaining_seconds": lock_state.get("remaining_seconds", 0),
+                "just_locked": False
+            }
+
+        # =====================================================
         # 1. LOAD CAPTURED FRAMES
         # =====================================================
 
@@ -1210,9 +1229,17 @@ async def verify_face(
         # Make sure MediaPipe detected enough frames
         if len(ear_values) < 2:
 
+            failure = record_verification_failure(user_id)
+
             return {
-                "status": "Fake",
-                "message": "Face not detected properly"
+                "status": "Locked" if failure.get("just_locked") else "Fake",
+                "message": (
+                    "Too many unsuccessful verification attempts. "
+                    "Please try again after the 5-minute break."
+                    if failure.get("just_locked")
+                    else "Face not detected properly"
+                ),
+                **failure
             }
 
 
@@ -1282,9 +1309,17 @@ async def verify_face(
 
         if not blink_detected:
 
+            failure = record_verification_failure(user_id)
+
             return {
-                "status": "Fake",
-                "message": "Please blink once naturally during scanning."
+                "status": "Locked" if failure.get("just_locked") else "Fake",
+                "message": (
+                    "Too many unsuccessful verification attempts. "
+                    "Please try again after the 5-minute break."
+                    if failure.get("just_locked")
+                    else "Please blink once naturally during scanning."
+                ),
+                **failure
             }
 
 
@@ -1429,9 +1464,17 @@ async def verify_face(
                 flush=True
             )
 
+            failure = record_verification_failure(user_id)
+
             return {
-                "status": "No Match",
-                "message": "Face was not recognized."
+                "status": "Locked" if failure.get("just_locked") else "No Match",
+                "message": (
+                    "Too many unsuccessful verification attempts. "
+                    "Please try again after the 5-minute break."
+                    if failure.get("just_locked")
+                    else "Face was not recognized."
+                ),
+                **failure
             }
 
 
@@ -1509,12 +1552,20 @@ async def verify_face(
                 flush=True
             )
 
+            failure = record_verification_failure(user_id)
+
             return {
-                "status": "No Match",
+                "status": "Locked" if failure.get("just_locked") else "No Match",
                 "message": (
-                    "Face recognition was not consistent "
-                    "enough. Please try again."
-                )
+                    "Too many unsuccessful verification attempts. "
+                    "Please try again after the 5-minute break."
+                    if failure.get("just_locked")
+                    else (
+                        "Face recognition was not consistent "
+                        "enough. Please try again."
+                    )
+                ),
+                **failure
             }
 
 
@@ -1538,12 +1589,20 @@ async def verify_face(
                 flush=True
             )
 
+            failure = record_verification_failure(user_id)
+
             return {
-                "status": "No Match",
+                "status": "Locked" if failure.get("just_locked") else "No Match",
                 "message": (
-                    "Face does not belong to the "
-                    "logged-in employee."
-                )
+                    "Too many unsuccessful verification attempts. "
+                    "Please try again after the 5-minute break."
+                    if failure.get("just_locked")
+                    else (
+                        "Face does not belong to the "
+                        "logged-in employee."
+                    )
+                ),
+                **failure
             }
 
 
@@ -1557,6 +1616,8 @@ async def verify_face(
             flush=True
         )
 
+        # Successful verification clears previous failures.
+        clear_verification_failures(user_id)
 
         return {
             "status": "Match",
