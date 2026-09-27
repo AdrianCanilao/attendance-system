@@ -453,7 +453,31 @@ const getDeviceLocation = () =>
 const openAttendanceCamera = async (actionType) => {
   if (loading) return;
 
+  if (!currentEmployeeId) {
+    alert("Employee profile is not ready. Please try again.");
+    return;
+  }
+
   try {
+    const lockResponse = await fetch(
+      `${API_URL}/attendance-verification-lock/${currentEmployeeId}`
+    );
+
+    if (lockResponse.ok) {
+      const lockData = await lockResponse.json();
+
+      if (lockData.is_locked) {
+        const remainingMinutes = Math.ceil(
+          (lockData.remaining_seconds || 0) / 60
+        );
+
+        alert(
+          `Attendance verification is temporarily locked. Please try again in ${remainingMinutes} minute${remainingMinutes === 1 ? "" : "s"}.`
+        );
+        return;
+      }
+    }
+
     const locationData = await getDeviceLocation();
     setDeviceLocation(locationData);
     setScanAction(actionType);
@@ -671,6 +695,29 @@ const scheduledClockOut = new Date(
         result
       );
 
+      if (result.status === "Locked") {
+        setShowCamera(false);
+        setScanAction(null);
+
+        const remainingMinutes = Math.ceil(
+          (result.remaining_seconds || 300) / 60
+        );
+
+        await logAudit({
+          user_id: user.id,
+          user_name: profile.full_name,
+          role: managerMode ? "maintenance" : "employee",
+          action: "ATTENDANCE_REJECTED_WEB",
+          description: `Web ${actionType.toUpperCase()} locked after repeated face/blink verification failures`,
+        });
+
+        alert(
+          `Attendance verification is temporarily locked. Please try again in ${remainingMinutes} minutes.`
+        );
+
+        return;
+      }
+
       if (
         result.status !== "Match"
       ) {
@@ -683,7 +730,7 @@ const scheduledClockOut = new Date(
         });
 
         alert(
-          "Face not recognized"
+          result.message || "Face not recognized"
         );
 
         return;
