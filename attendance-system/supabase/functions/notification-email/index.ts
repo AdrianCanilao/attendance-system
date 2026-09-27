@@ -597,8 +597,8 @@ const handleMaintenanceNotifications = async () => {
         `
           <p>Hello <strong>${escapeHtml(user.full_name)}</strong>,</p>
           <p>${escapeHtml(payroll.message)}</p>
-          ${payroll.level !== "normal"
-            ? "<p>Please review the relevant attendance and payroll information in the CIBO system.</p>"
+          ${payroll.level === "warning"
+            ? "<p>Prepare employee salaries and attendance reports.</p>"
             : ""}
         `
       ),
