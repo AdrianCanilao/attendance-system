@@ -40,6 +40,135 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
+# ============================================================
+# ATTENDANCE VERIFICATION LOCK
+# Shared by Web and Raspberry Pi Kiosk.
+# This layer does not change existing recognition rules.
+# ============================================================
+
+def get_verification_lock(employee_id: str):
+    response = (
+        supabase
+        .rpc(
+            "get_attendance_verification_lock",
+            {"p_employee_id": employee_id}
+        )
+        .execute()
+    )
+
+    rows = response.data or []
+
+    if not rows:
+        return {
+            "failed_attempts": 0,
+            "locked_until": None,
+            "is_locked": False,
+            "remaining_seconds": 0
+        }
+
+    return rows[0]
+
+
+def record_verification_failure(employee_id: str):
+    response = (
+        supabase
+        .rpc(
+            "record_attendance_verification_failure",
+            {"p_employee_id": employee_id}
+        )
+        .execute()
+    )
+
+    rows = response.data or []
+
+    if not rows:
+        raise RuntimeError(
+            "Unable to record attendance verification failure."
+        )
+
+    return rows[0]
+
+
+def clear_verification_failures(employee_id: str):
+    (
+        supabase
+        .rpc(
+            "clear_attendance_verification_failures",
+            {"p_employee_id": employee_id}
+        )
+        .execute()
+    )
+
+
+@app.get("/attendance-verification-lock/{employee_id}")
+async def attendance_verification_lock(employee_id: str):
+    try:
+        return {
+            "status": "OK",
+            **get_verification_lock(employee_id)
+        }
+
+    except Exception as e:
+        print(
+            "❌ ATTENDANCE LOCK CHECK ERROR:",
+            str(e),
+            flush=True
+        )
+
+        return {
+            "status": "Error",
+            "message": "Unable to check attendance verification lock."
+        }
+
+
+@app.post("/attendance-verification-failure/{employee_id}")
+async def attendance_verification_failure(employee_id: str):
+    try:
+        result = record_verification_failure(employee_id)
+
+        return {
+            "status": "OK",
+            **result
+        }
+
+    except Exception as e:
+        print(
+            "❌ ATTENDANCE FAILURE RECORD ERROR:",
+            str(e),
+            flush=True
+        )
+
+        return {
+            "status": "Error",
+            "message": "Unable to record attendance verification failure."
+        }
+
+
+@app.post("/attendance-verification-success/{employee_id}")
+async def attendance_verification_success(employee_id: str):
+    try:
+        clear_verification_failures(employee_id)
+
+        return {
+            "status": "OK",
+            "failed_attempts": 0,
+            "locked_until": None,
+            "is_locked": False,
+            "remaining_seconds": 0
+        }
+
+    except Exception as e:
+        print(
+            "❌ ATTENDANCE FAILURE RESET ERROR:",
+            str(e),
+            flush=True
+        )
+
+        return {
+            "status": "Error",
+            "message": "Unable to reset attendance verification failures."
+        }
+
 # 🔥 BLINK SETUP
 face_mesh = mp_face_mesh.FaceMesh()
 
