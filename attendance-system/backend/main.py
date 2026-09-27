@@ -2096,7 +2096,8 @@ async def record_kiosk_attendance(employee, action, face_url=None, location=None
 async def kiosk_verify_live(
     files: List[UploadFile] = File(...),
     action: str = Form(...),
-    kiosk_code: str = Form(...)
+    kiosk_code: str = Form(...),
+    recognized_employee_id: str = Form("")
 ):
     print("🔥 KIOSK LIVE VERIFICATION STARTED", flush=True)
     print("ACTION:", action, flush=True)
@@ -2182,7 +2183,45 @@ async def kiosk_verify_live(
         )
 
         # =====================================================
-        # 3. LOAD CAMERA FRAMES
+        # 3. CHECK ATTENDANCE VERIFICATION LOCK
+        #
+        # The kiosk has no login session. The employee ID comes
+        # from the live face recognition that already identified
+        # the person before the blink/attendance scan starts.
+        # =====================================================
+
+        recognized_employee_id = (
+            recognized_employee_id.strip()
+            if recognized_employee_id
+            else ""
+        )
+
+        if recognized_employee_id:
+            lock_state = get_verification_lock(
+                recognized_employee_id
+            )
+
+            if lock_state.get("is_locked"):
+                return {
+                    "status": "Locked",
+                    "message": (
+                        "Attendance verification is temporarily locked. "
+                        "Please try again after the 5-minute break."
+                    ),
+                    "failed_attempts": lock_state.get(
+                        "failed_attempts", 5
+                    ),
+                    "locked_until": lock_state.get(
+                        "locked_until"
+                    ),
+                    "remaining_seconds": lock_state.get(
+                        "remaining_seconds", 0
+                    ),
+                    "just_locked": False
+                }
+
+        # =====================================================
+        # 4. LOAD CAMERA FRAMES
         # =====================================================
 
         frames = []
@@ -2286,6 +2325,29 @@ async def kiosk_verify_live(
         )
 
         if len(ear_values) < 2:
+            if recognized_employee_id:
+                failure = record_verification_failure(
+                    recognized_employee_id
+                )
+
+                return {
+                    "status": (
+                        "Locked"
+                        if failure.get("just_locked")
+                        else "Fake"
+                    ),
+                    "message": (
+                        "Too many unsuccessful verification attempts. "
+                        "Please try again after the 5-minute break."
+                        if failure.get("just_locked")
+                        else (
+                            "Face was not detected properly. "
+                            "Please position your face in the camera."
+                        )
+                    ),
+                    **failure
+                }
+
             return {
                 "status": "Fake",
                 "message": (
@@ -2353,6 +2415,29 @@ async def kiosk_verify_live(
         )
 
         if not blink_detected:
+            if recognized_employee_id:
+                failure = record_verification_failure(
+                    recognized_employee_id
+                )
+
+                return {
+                    "status": (
+                        "Locked"
+                        if failure.get("just_locked")
+                        else "Fake"
+                    ),
+                    "message": (
+                        "Too many unsuccessful verification attempts. "
+                        "Please try again after the 5-minute break."
+                        if failure.get("just_locked")
+                        else (
+                            "Please blink once naturally "
+                            "during scanning."
+                        )
+                    ),
+                    **failure
+                }
+
             return {
                 "status": "Fake",
                 "message": (
@@ -2536,6 +2621,26 @@ async def kiosk_verify_live(
                 flush=True
             )
 
+            if recognized_employee_id:
+                failure = record_verification_failure(
+                    recognized_employee_id
+                )
+
+                return {
+                    "status": (
+                        "Locked"
+                        if failure.get("just_locked")
+                        else "No Match"
+                    ),
+                    "message": (
+                        "Too many unsuccessful verification attempts. "
+                        "Please try again after the 5-minute break."
+                        if failure.get("just_locked")
+                        else "Face was not recognized."
+                    ),
+                    **failure
+                }
+
             return {
                 "status": "No Match",
                 "message": "Face was not recognized."
@@ -2619,6 +2724,29 @@ async def kiosk_verify_live(
                 flush=True
             )
 
+            if recognized_employee_id:
+                failure = record_verification_failure(
+                    recognized_employee_id
+                )
+
+                return {
+                    "status": (
+                        "Locked"
+                        if failure.get("just_locked")
+                        else "No Match"
+                    ),
+                    "message": (
+                        "Too many unsuccessful verification attempts. "
+                        "Please try again after the 5-minute break."
+                        if failure.get("just_locked")
+                        else (
+                            "Face recognition was not consistent "
+                            "enough. Please try again."
+                        )
+                    ),
+                    **failure
+                }
+
             return {
                 "status": "No Match",
                 "message": (
@@ -2642,6 +2770,29 @@ async def kiosk_verify_live(
                 flush=True
             )
 
+            if recognized_employee_id:
+                failure = record_verification_failure(
+                    recognized_employee_id
+                )
+
+                return {
+                    "status": (
+                        "Locked"
+                        if failure.get("just_locked")
+                        else "No Match"
+                    ),
+                    "message": (
+                        "Too many unsuccessful verification attempts. "
+                        "Please try again after the 5-minute break."
+                        if failure.get("just_locked")
+                        else (
+                            "Face was detected, but the identity "
+                            "could not be verified."
+                        )
+                    ),
+                    **failure
+                }
+
             return {
                 "status": "No Match",
                 "message": (
@@ -2658,6 +2809,29 @@ async def kiosk_verify_live(
                 flush=True
             )
 
+            if recognized_employee_id:
+                failure = record_verification_failure(
+                    recognized_employee_id
+                )
+
+                return {
+                    "status": (
+                        "Locked"
+                        if failure.get("just_locked")
+                        else "No Match"
+                    ),
+                    "message": (
+                        "Too many unsuccessful verification attempts. "
+                        "Please try again after the 5-minute break."
+                        if failure.get("just_locked")
+                        else (
+                            "Face recognition was not confident "
+                            "enough. Please try again."
+                        )
+                    ),
+                    **failure
+                }
+
             return {
                 "status": "No Match",
                 "message": (
@@ -2670,6 +2844,11 @@ async def kiosk_verify_live(
             "✅ KIOSK IDENTITY VERIFIED:",
             best_employee["full_name"],
             flush=True
+        )
+
+        # Successful kiosk verification clears previous failures.
+        clear_verification_failures(
+            str(best_employee["id"])
         )
 
         # =====================================================
