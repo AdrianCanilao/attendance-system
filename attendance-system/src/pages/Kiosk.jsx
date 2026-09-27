@@ -368,6 +368,14 @@ export default function Kiosk() {
 
       const formData = new FormData();
 
+      const recognizedEmployeeId =
+        recognition?.employee_id || "";
+
+      formData.append(
+        "recognized_employee_id",
+        recognizedEmployeeId
+      );
+
       formData.append(
         "action",
         selectedAction
@@ -423,6 +431,20 @@ export default function Kiosk() {
           data.message ||
           "Kiosk verification failed."
         );
+      }
+
+      if (data.status === "Locked") {
+        setScanState("recognized");
+
+        setAttendanceResult({
+          type: "warning",
+          message:
+            data.message ||
+            "Attendance verification is temporarily locked. Please try again after the break.",
+        });
+
+        scanStartedRef.current = false;
+        return;
       }
 
       if (data.status !== "Match") {
