@@ -2361,7 +2361,7 @@ async def kiosk_verify_live(
         # OPEN → CLOSED → OPEN
         # =====================================================
 
-        # Match the web attendance adaptive blink detection.
+        # Match the Web attendance adaptive blink detection exactly.
         # Use the user's observed open-eye EAR as a baseline while
         # still requiring OPEN -> CLOSED -> OPEN.
         sorted_ears = sorted(ear_values, reverse=True)
@@ -2371,15 +2371,8 @@ async def kiosk_verify_live(
             )
         )
 
-        OPEN_THRESHOLD = max(
-            0.20,
-            open_reference * 0.72
-        )
-
-        CLOSED_THRESHOLD = min(
-            0.20,
-            open_reference * 0.68
-        )
+        OPEN_THRESHOLD = open_reference * 0.85
+        CLOSED_THRESHOLD = open_reference * 0.70
 
         blink_detected = False
         open_before = False
