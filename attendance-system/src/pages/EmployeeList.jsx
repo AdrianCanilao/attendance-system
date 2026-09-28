@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
+import { getStorageAccessUrl } from "../utils/storageAccess";
 import { FaSearch } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -324,6 +325,27 @@ const exportExcel = async () => {
   );
 };
 
+  const [avatarUrls, setAvatarUrls] = useState({});
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all(
+      filteredEmployees.map(async (employee) => [
+        employee.id,
+        await getStorageAccessUrl("faces", employee.face_url),
+      ])
+    ).then((entries) => {
+      if (active) {
+        setAvatarUrls(Object.fromEntries(entries));
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [filteredEmployees]);
+
   return (
     <ManagerLayout>
       <div className="cibo-employee-list-page" style={styles.wrapper}>
@@ -370,7 +392,7 @@ const exportExcel = async () => {
                 <div style={styles.avatar}>
                   {employee.face_url ? (
                     <img
-                      src={employee.face_url}
+                      src={avatarUrls[employee.id] || ""}
                       alt="avatar"
                       style={styles.avatarImg}
                     />
