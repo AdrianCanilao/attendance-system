@@ -5,13 +5,17 @@ export async function getStorageAccessUrl(bucket, storedUrl, expiresIn = 3600) {
 
   const marker = `/storage/v1/object/public/${bucket}/`;
 
-  if (!storedUrl.includes(marker)) {
-    return storedUrl;
+  let objectPath = storedUrl;
+
+  if (storedUrl.includes(marker)) {
+    objectPath = decodeURIComponent(
+      storedUrl.split(marker)[1].split("?")[0]
+    );
   }
 
-  const objectPath = decodeURIComponent(
-    storedUrl.split(marker)[1].split("?")[0]
-  );
+  if (!objectPath || objectPath.startsWith("http")) {
+    return storedUrl;
+  }
 
   const { data, error } = await supabase.storage
     .from(bucket)
