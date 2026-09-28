@@ -12,14 +12,14 @@ export default function RegisterEmployee() {
   const webcamRef = useRef(null);
 
   const [form, setForm] = useState({
-  name: "",
-  email: "",
-  password: "",
-  contact: "",
-  position: "",
-  branch_id: "",
-  shift_id: "",
-});
+    name: "",
+    email: "",
+    password: "",
+    contact: "",
+    position: "",
+    branch_id: "",
+    shift_id: "",
+  });
 
   const [showCamera, setShowCamera] = useState(false);
   const [imageSrc, setImageSrc] = useState(null);
@@ -29,64 +29,67 @@ export default function RegisterEmployee() {
   const [branches, setBranches] = useState([]);
   const [shifts, setShifts] = useState([]);
   const [faceStatus, setFaceStatus] = useState({
-  valid: false,
-  message: "Position your face inside the box.",
-  box: null,
-});
+    valid: false,
+    message: "Position your face inside the box.",
+    box: null,
+  });
 
-const [checkingFace, setCheckingFace] = useState(false);
+  const [checkingFace, setCheckingFace] = useState(false);
+
   useEffect(() => {
-  fetchBranches();
-}, []);
+    fetchBranches();
+  }, []);
 
-const fetchBranches = async () => {
-  const { data, error } = await supabase
-    .from("branches")
-    .select("*")
-    .order("branch_name");
+  const fetchBranches = async () => {
+    const { data, error } = await supabase
+      .from("branches")
+      .select("*")
+      .order("branch_name");
 
-  if (!error) {
-    setBranches(data || []);
-  }
-};
-const fetchShifts = async (branchId) => {
-  if (!branchId) {
-    setShifts([]);
-    return;
-  }
+    if (!error) {
+      setBranches(data || []);
+    }
+  };
 
-  const { data, error } = await supabase
-    .from("branch_shifts")
-    .select("*")
-    .eq("branch_id", branchId)
-    .eq("is_active", true)
-    .order("time_in");
+  const fetchShifts = async (branchId) => {
+    if (!branchId) {
+      setShifts([]);
+      return;
+    }
 
-  if (!error) {
-    setShifts(data || []);
-  }
-};
+    const { data, error } = await supabase
+      .from("branch_shifts")
+      .select("*")
+      .eq("branch_id", branchId)
+      .eq("is_active", true)
+      .order("time_in");
+
+    if (!error) {
+      setShifts(data || []);
+    }
+  };
 
   const steps = ["Look straight", "Turn LEFT", "Turn RIGHT"];
 
   const handleChange = async (e) => {
-  const { name, value } = e.target;
+    const { name, value } = e.target;
 
-  setForm((prev) => ({
-    ...prev,
-    [name]: value,
-  }));
-
-  if (name === "branch_id") {
     setForm((prev) => ({
       ...prev,
-      branch_id: value,
-      shift_id: "",
+      [name]: value,
     }));
 
-    fetchShifts(value);
-  }
-};
+    if (name === "branch_id") {
+      setForm((prev) => ({
+        ...prev,
+        branch_id: value,
+        shift_id: "",
+      }));
+
+      fetchShifts(value);
+    }
+  };
+
   const openCamera = () => {
     setCapturedImages([]);
     setStep(0);
@@ -138,8 +141,7 @@ const fetchShifts = async (branchId) => {
     }
   };
 
-
-  // 🔥 LIVE CAMERA VALIDATION
+  // LIVE CAMERA VALIDATION
   useEffect(() => {
     if (!showCamera) {
       return;
@@ -168,64 +170,68 @@ const fetchShifts = async (branchId) => {
     return frames;
   };
 
-const captureFace = () => {
+  const captureFace = () => {
 
-  if (!faceStatus.valid) {
-    alert(faceStatus.message);
-    return;
-  }
+    if (!faceStatus.valid) {
+      alert(faceStatus.message);
+      return;
+    }
 
-  const image = webcamRef.current?.getScreenshot();
+    const image = webcamRef.current?.getScreenshot();
 
-  if (!image) {
-    alert("Unable to capture camera image.");
-    return;
-  }
+    if (!image) {
+      alert("Unable to capture camera image.");
+      return;
+    }
 
-  const newImages = [
-    ...capturedImages,
-    image
-  ];
+    const newImages = [
+      ...capturedImages,
+      image
+    ];
 
-  setCapturedImages(newImages);
+    setCapturedImages(newImages);
 
-  if (step === 0) {
-    setImageSrc(image);
-  }
+    if (step === 0) {
+      setImageSrc(image);
+    }
 
-  if (step < 2) {
+    if (step < 2) {
 
-    setStep(step + 1);
+      setStep(step + 1);
 
-    setFaceStatus({
-      valid: false,
-      message:
-        step === 0
-          ? "Now turn your face slightly LEFT."
-          : "Now turn your face slightly RIGHT.",
-      box: null,
-    });
+      setFaceStatus({
+        valid: false,
+        message:
+          step === 0
+            ? "Now turn your face slightly LEFT."
+            : "Now turn your face slightly RIGHT.",
+        box: null,
+      });
 
-  } else {
+    } else {
 
-    setShowCamera(false);
+      setShowCamera(false);
 
-    setFaceStatus({
-      valid: false,
-      message: "Face registration completed.",
-      box: null,
-    });
-  }
-};
+      setFaceStatus({
+        valid: false,
+        message: "Face registration completed.",
+        box: null,
+      });
+    }
+  };
 
-  const handleRegister = async () => {
+  const handleRegister = async (e) => {
+    // Prevent the browser from navigating/reloading the page
+    // when the registration form is submitted.
+    e.preventDefault();
+
     const {
-  name,
-  email,
-  password,
-  contact,
-  position,
-} = form;
+      name,
+      email,
+      password,
+      contact,
+      position,
+    } = form;
 
     if (
       !name ||
@@ -235,10 +241,10 @@ const captureFace = () => {
       !position ||
       !form.branch_id ||
       !form.shift_id
-      ) {
-          alert("Please fill all fields");
-          return;
-        }
+    ) {
+      alert("Please fill all fields");
+      return;
+    }
 
     if (!isValidEmail(email)) {
       alert("Please enter a valid email address.");
@@ -263,40 +269,36 @@ const captureFace = () => {
 
       const userId = authData.user.id;
       const EMPLOYEE_ROLE_ID = "e4dbb928-7f0e-4da9-9eff-d7700d37b25a";
-      // GET SELECTED SHIFT DETAILS
-const { data: selectedShift } = await supabase
-  .from("branch_shifts")
-  .select("time_in, time_out, grace_minutes")
-  .eq("id", form.shift_id)
-  .single();
 
-if (!selectedShift) {
-  alert("Selected shift not found.");
-  return;
-}
+      // GET SELECTED SHIFT DETAILS
+      const { data: selectedShift } = await supabase
+        .from("branch_shifts")
+        .select("time_in, time_out, grace_minutes")
+        .eq("id", form.shift_id)
+        .single();
+
+      if (!selectedShift) {
+        alert("Selected shift not found.");
+        return;
+      }
 
       await supabase.from("employee_profiles").insert([
-{
-    id: userId,
-    full_name: name,
-    email,
-    contact_number: contact,
-    position,
+        {
+          id: userId,
+          full_name: name,
+          email,
+          contact_number: contact,
+          position,
+          role_id: EMPLOYEE_ROLE_ID,
+          branch_id: form.branch_id,
+          shift_id: form.shift_id,
+          clock_in: selectedShift.time_in,
+          clock_out: selectedShift.time_out,
+          grace_minutes: selectedShift.grace_minutes,
+        },
+      ]);
 
-    role_id: EMPLOYEE_ROLE_ID,
-
-    branch_id: form.branch_id,
-
-    shift_id: form.shift_id,
-
-    // AUTO COPY SHIFT SCHEDULE
-    clock_in: selectedShift.time_in,
-    clock_out: selectedShift.time_out,
-    grace_minutes: selectedShift.grace_minutes,
-},
-]);
-
-      // 🔥 UPLOAD MULTIPLE IMAGES
+      // UPLOAD MULTIPLE IMAGES
       for (let i = 0; i < capturedImages.length; i++) {
         const blob = await fetch(capturedImages[i]).then((r) => r.blob());
 
@@ -324,6 +326,7 @@ if (!selectedShift) {
             .eq("id", userId);
         }
       }
+
       const { data: currentUser } = await supabase.auth.getUser();
 
       await logAudit({
@@ -334,12 +337,8 @@ if (!selectedShift) {
         description: `Registered employee: ${name}`,
       });
 
-            // =====================================================
-      // 🔄 RELOAD INSIGHTFACE EMPLOYEE TEMPLATES
-      // =====================================================
-
+      // RELOAD INSIGHTFACE EMPLOYEE TEMPLATES
       try {
-
         const reloadResponse = await fetch(
           INSIGHTFACE_URL + "/reload-templates",
           {
@@ -349,13 +348,10 @@ if (!selectedShift) {
 
         const reloadData = await reloadResponse.json();
 
-
         if (reloadData.status !== "OK") {
         }
 
       } catch (reloadError) {
-
-
       }
 
       alert("✅ Employee registered!");
@@ -402,7 +398,7 @@ if (!selectedShift) {
                 </div>
               </div>
 
-              <button onClick={openCamera} style={styles.cameraBtn}>
+              <button type="button" onClick={openCamera} style={styles.cameraBtn}>
                 Open Camera
               </button>
             </div>
@@ -414,17 +410,16 @@ if (!selectedShift) {
                     Step {step + 1}/3: {steps[step]}
                   </p>
 
-                    <div
-                      style={{
-                        position: "relative",
-                        width: "320px",
-                        height: "240px",
-                        borderRadius: "12px",
-                        overflow: "hidden",
-                        background: "#111827",
-                      }}
-                    >
-
+                  <div
+                    style={{
+                      position: "relative",
+                      width: "320px",
+                      height: "240px",
+                      borderRadius: "12px",
+                      overflow: "hidden",
+                      background: "#111827",
+                    }}
+                  >
                     <Webcam
                       ref={webcamRef}
                       screenshotFormat="image/jpeg"
@@ -442,41 +437,30 @@ if (!selectedShift) {
                     />
 
                     {/* FACE BOX */}
-
                     <div
                       style={{
                         position: "absolute",
-
                         left: faceStatus.box
                           ? `${(faceStatus.box.x / 320) * 100}%`
                           : "25%",
-
                         top: faceStatus.box
                           ? `${(faceStatus.box.y / 240) * 100}%`
                           : "20%",
-
                         width: faceStatus.box
                           ? `${(faceStatus.box.w / 320) * 100}%`
                           : "50%",
-
                         height: faceStatus.box
                           ? `${(faceStatus.box.h / 240) * 100}%`
                           : "60%",
-
                         border: faceStatus.valid
                           ? "3px solid #22c55e"
                           : "3px solid #ef4444",
-
                         borderRadius: "12px",
-
                         boxSizing: "border-box",
-
                         pointerEvents: "none",
-
                         transition: "all 0.2s ease",
                       }}
                     />
-
                   </div>
 
                   <div
@@ -501,21 +485,19 @@ if (!selectedShift) {
                   </div>
 
                   <button
+                    type="button"
                     onClick={captureFace}
                     disabled={!faceStatus.valid}
                     style={{
                       ...styles.captureBtn,
-
                       background:
                         faceStatus.valid
                           ? "#16a34a"
                           : "#9ca3af",
-
                       cursor:
                         faceStatus.valid
                           ? "pointer"
                           : "not-allowed",
-
                       opacity:
                         faceStatus.valid
                           ? 1
@@ -533,129 +515,129 @@ if (!selectedShift) {
             </div>
           </div>
 
-          <div className="cibo-register-employee-grid" style={styles.grid}>
-            <div>
-              <label style={styles.label}>Full Name</label>
-              <input
-                name="name"
-                placeholder="Enter full name"
-                value={form.name}
-                onChange={handleChange}
-                style={styles.input}
-              />
+          <form onSubmit={handleRegister}>
+            <div className="cibo-register-employee-grid" style={styles.grid}>
+              <div>
+                <label style={styles.label}>Full Name</label>
+                <input
+                  name="name"
+                  placeholder="Enter full name"
+                  value={form.name}
+                  onChange={handleChange}
+                  autoComplete="name"
+                  style={styles.input}
+                />
+              </div>
+
+              <div>
+                <label style={styles.label}>Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Enter email address"
+                  value={form.email}
+                  onChange={handleChange}
+                  autoComplete="email"
+                  style={styles.input}
+                />
+              </div>
+
+              <div>
+                <label style={styles.label}>Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Enter password"
+                  value={form.password}
+                  onChange={handleChange}
+                  autoComplete="new-password"
+                  style={styles.input}
+                />
+              </div>
+
+              <div>
+                <label style={styles.label}>Contact Number</label>
+                <input
+                  name="contact"
+                  placeholder="Enter contact number"
+                  value={form.contact}
+                  onChange={handleChange}
+                  autoComplete="tel"
+                  style={styles.input}
+                />
+              </div>
+
+              <div>
+                <label style={styles.label}>Position</label>
+                <input
+                  name="position"
+                  placeholder="Enter position"
+                  value={form.position}
+                  onChange={handleChange}
+                  style={styles.input}
+                />
+              </div>
+
+              <div>
+                <label style={styles.label}>Branch Assignment</label>
+                <select
+                  name="branch_id"
+                  value={form.branch_id}
+                  onChange={handleChange}
+                  style={styles.input}
+                >
+                  <option value="">Select Branch</option>
+
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.branch_name} ({branch.branch_code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={styles.label}>Shift Assignment</label>
+
+                <select
+                  name="shift_id"
+                  value={form.shift_id}
+                  onChange={handleChange}
+                  style={styles.input}
+                  disabled={!form.branch_id}
+                >
+                  <option value="">Select Shift</option>
+
+                  {shifts.map((shift) => (
+                    <option key={shift.id} value={shift.id}>
+                      {shift.shift_name} (
+                      {new Date(`1970-01-01T${shift.time_in}`).toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true,
+                      })}
+                      {" - "}
+                      {new Date(`1970-01-01T${shift.time_out}`).toLocaleTimeString([], {
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true,
+                      })}
+                      )
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label style={styles.label}>Email</label>
-              <input
-                type="email"
-                name="email"
-                placeholder="Enter email address"
-                value={form.email}
-                onChange={handleChange}
-                style={styles.input}
-              />
-            </div>
-
-            <div>
-              <label style={styles.label}>Password</label>
-              <input
-                type="password"
-                name="password"
-                placeholder="Enter password"
-                value={form.password}
-                onChange={handleChange}
-                style={styles.input}
-              />
-            </div>
-
-            <div>
-              <label style={styles.label}>Contact Number</label>
-              <input
-                name="contact"
-                placeholder="Enter contact number"
-                value={form.contact}
-                onChange={handleChange}
-                style={styles.input}
-              />
-            </div>
-
-            <div>
-  <label style={styles.label}>Position</label>
-
-  <input
-    name="position"
-    placeholder="Enter position"
-    value={form.position}
-    onChange={handleChange}
-    style={styles.input}
-  />
-</div>
-
-<div>
-  <label style={styles.label}>Branch Assignment</label>
-
-  <select
-    name="branch_id"
-    value={form.branch_id}
-    onChange={handleChange}
-    style={styles.input}
-  >
-    <option value="">Select Branch</option>
-
-    {branches.map((branch) => (
-      <option key={branch.id} value={branch.id}>
-        {branch.branch_name} ({branch.branch_code})
-      </option>
-    ))}
-  </select>
-</div>
-<div>
-  <label style={styles.label}>Shift Assignment</label>
-
-  <select
-    name="shift_id"
-    value={form.shift_id}
-    onChange={handleChange}
-    style={styles.input}
-    disabled={!form.branch_id}
-  >
-    <option value="">Select Shift</option>
-
-    {shifts.map((shift) => (
-      <option
-  key={shift.id}
-  value={shift.id}
->
-  {shift.shift_name} (
-  {new Date(`1970-01-01T${shift.time_in}`).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  })}
-  {" - "}
-  {new Date(`1970-01-01T${shift.time_out}`).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  })}
-  )
-</option>
-    ))}
-  </select>
-</div>
-          </div>
-
-          <button onClick={handleRegister} disabled={loading} style={styles.primaryBtn}>
-            {loading ? "Registering..." : "Register Employee"}
-          </button>
+            <button type="submit" disabled={loading} style={styles.primaryBtn}>
+              {loading ? "Registering..." : "Register Employee"}
+            </button>
+          </form>
         </div>
       </div>
-
     </ManagerLayout>
   );
 }
-
 
 const styles = {
   wrapper: { padding: "20px" },
@@ -701,14 +683,14 @@ const styles = {
     flexShrink: 0,
   },
 
-cameraWrapper: {
-  width: "260px",
-  minHeight: "220px",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "10px",
-},
+  cameraWrapper: {
+    width: "260px",
+    minHeight: "220px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "10px",
+  },
 
   camera: {
     width: "260px",
