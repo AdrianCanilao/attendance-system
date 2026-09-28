@@ -307,7 +307,7 @@ shift_id: form.shift_id,
       try {
 
         const reloadResponse = await fetch(
-          INSIGHTFACE_URL + "/reload-templates",
+          INSIGHTFACE_URL + "/reload-templates?employee_id=" + encodeURIComponent(userId),
           {
             method: "POST",
           }
