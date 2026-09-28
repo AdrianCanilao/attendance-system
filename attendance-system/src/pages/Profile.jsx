@@ -5,6 +5,7 @@ import EmployeeLayout from "../layouts/EmployeeLayout";
 import { FaUser } from "react-icons/fa";
 import { useLocation } from "react-router-dom";
 import { logAudit } from "../utils/auditlogger";
+import { getStorageAccessUrl } from "../utils/storageAccess";
 
 export default function Profile() {
   const [profile, setProfile] = useState(null);
@@ -45,10 +46,16 @@ export default function Profile() {
     if (error || !emp) return;
 
     // ✅ SAVE PROFILE
+    let profileFaceUrl = null;
+
+    if (emp?.face_url && emp.face_url !== "" && emp.face_url !== null) {
+      profileFaceUrl = await getStorageAccessUrl("faces", emp.face_url);
+    }
+
     setProfile({
       ...emp,
       avatar:
-        emp?.face_url ||
+        profileFaceUrl ||
         emp?.photo_url ||
         emp?.image ||
         emp?.avatar ||
@@ -56,12 +63,8 @@ export default function Profile() {
     });
 
     // ✅ SET IMAGE URL
-    if (
-      emp?.face_url &&
-      emp.face_url !== "" &&
-      emp.face_url !== null
-    ) {
-      setImageUrl(emp.face_url);
+    if (profileFaceUrl) {
+      setImageUrl(profileFaceUrl);
     } else if (
       emp?.photo_url &&
       emp.photo_url !== "" &&
@@ -99,7 +102,21 @@ export default function Profile() {
   .eq("employee_id", emp.id)
   .order("created_at", { ascending: false });
 
-setAttendanceLogs(logs || []);
+const resolvedLogs = await Promise.all(
+  (logs || []).map(async (log) => ({
+    ...log,
+    time_in_face_url: await getStorageAccessUrl(
+      "faces",
+      log.time_in_face_url
+    ),
+    time_out_face_url: await getStorageAccessUrl(
+      "faces",
+      log.time_out_face_url
+    ),
+  }))
+);
+
+setAttendanceLogs(resolvedLogs);
   };
 
   const fetchAttendanceStats = async (safeName) => {
