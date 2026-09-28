@@ -626,12 +626,10 @@ async def upload_face(
             {"content-type": "image/jpeg", "upsert": "true"}
         )
 
-        public_url = supabase.storage.from_("faces").get_public_url(file_name)
-
         return {
             "status": "Uploaded",
             "file": file_name,
-            "url": public_url
+            "url": file_name
         }
 
     except Exception as e:
@@ -2918,14 +2916,7 @@ async def kiosk_verify_live(
                         }
                     )
 
-                    face_url = (
-                        supabase
-                        .storage
-                        .from_("faces")
-                        .get_public_url(
-                            file_name
-                        )
-                    )
+                    face_url = file_name
 
                     print(
                         "✅ KIOSK PHOTO SAVED:",
