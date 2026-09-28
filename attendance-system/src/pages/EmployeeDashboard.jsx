@@ -732,13 +732,7 @@ const scheduledClockOut = new Date(
         return;
       }
 
-      const { data: urlData } =
-        supabase.storage
-          .from("faces")
-          .getPublicUrl(fileName);
-
-      const faceUrl =
-        urlData.publicUrl;
+      const faceUrl = fileName;
 
       if (
         actionType === "time_in"
