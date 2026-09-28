@@ -4,6 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
 import { logAudit } from "../utils/auditlogger";
+import { getStorageAccessUrl } from "../utils/storageAccess";
 
 export default function ManagerDashboard() {
   const [logs, setLogs] = useState([]);
