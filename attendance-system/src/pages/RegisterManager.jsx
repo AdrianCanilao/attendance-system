@@ -211,7 +211,9 @@ const captureFace = () => {
     });
   }
 };
-  const handleRegister = async () => {
+  const handleRegister = async (e) => {
+    // Prevent the browser from performing a normal form submission.
+    e.preventDefault();
     const {
       name,
       email,
@@ -374,7 +376,7 @@ shift_id: "",
                 </div>
               </div>
 
-              <button onClick={openCamera} style={styles.cameraBtn}>
+              <button type="button" onClick={openCamera} style={styles.cameraBtn}>
                 Open Camera
               </button>
             </div>
@@ -474,6 +476,7 @@ shift_id: "",
 
                   {/* CAPTURE BUTTON */}
                   <button
+                    type="button"
                     onClick={captureFace}
                     disabled={!faceStatus.valid}
                     style={{
@@ -503,6 +506,7 @@ shift_id: "",
             </div>
           </div>
 
+          <form onSubmit={handleRegister}>
           <div className="cibo-hr-form-grid" style={styles.grid}>
             <div>
               <label style={styles.label}>Full Name</label>
@@ -511,6 +515,10 @@ shift_id: "",
                 placeholder="Enter full name"
                 value={form.name}
                 onChange={handleChange}
+                autoComplete="name"
+                autoComplete="email"
+                autoComplete="new-password"
+                autoComplete="tel"
                 style={styles.input}
               />
             </div>
@@ -617,9 +625,10 @@ shift_id: "",
 </div>
           </div>
 
-          <button onClick={handleRegister} disabled={loading} style={styles.primaryBtn}>
+          <button type="submit" disabled={loading} style={styles.primaryBtn}>
             {loading ? "Registering..." : "Register Manager"}
           </button>
+          </form>
         </div>
       </div>
     </HRLayout>
