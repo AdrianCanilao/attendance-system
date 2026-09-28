@@ -343,23 +343,14 @@ const uploadFaces = async () => {
   // UPDATE PROFILE FACE URL
   // ==========================================================
 
-  const publicUrl =
-    supabase
-      .storage
-      .from("faces")
-      .getPublicUrl(
-        `employees/${safeName}/front.jpg`
-      )
-      .data
-      .publicUrl
-      + `?t=${Date.now()}`;
+  const facePath = `employees/${safeName}/front.jpg`;
 
 
   const { error: profileError } =
     await supabase
       .from("employee_profiles")
       .update({
-        face_url: publicUrl,
+        face_url: facePath,
       })
       .eq("id", selected.id);
 
