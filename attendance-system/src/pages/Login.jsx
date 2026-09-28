@@ -15,8 +15,8 @@ export default function Login() {
 
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
-
+  const handleLogin = async (e) => {
+    e.preventDefault();
 
     if (!email || !password) {
       alert(
@@ -35,7 +35,6 @@ export default function Login() {
             password,
           }
         );
-
 
       if (
         error ||
@@ -69,7 +68,6 @@ export default function Login() {
         .eq("id", user.id)
         .single();
 
-
       if (
         profileError ||
         !profile
@@ -97,7 +95,6 @@ export default function Login() {
         .select("name")
         .eq("id", profile.role_id)
         .single();
-
 
       if (
         roleError ||
@@ -129,7 +126,6 @@ export default function Login() {
           `${user.email} logged into the system`,
       });
 
-
       // ✅ SAVE ROLE
       localStorage.setItem(
         "role",
@@ -150,58 +146,39 @@ export default function Login() {
 
       // ✅ WAIT BEFORE NAVIGATION
       setTimeout(() => {
-
         if (role === "maintenance") {
-
-
           navigate(
             "/manager/profile"
           );
-
         }
 
         else if (role === "hr") {
-
-
           navigate(
             "/hr/profile"
           );
-
         }
 
         else if (
           role === "employee"
         ) {
-
-
           navigate(
             "/employee/profile"
           );
-
         }
 
         else {
-
-
           alert(
             "Unknown role detected"
           );
-
         }
-
       }, 150);
 
     } catch (err) {
-
-
       alert(
         "Something went wrong"
       );
-
     } finally {
-
       setLoading(false);
-
     }
   };
 
@@ -225,8 +202,7 @@ export default function Login() {
           Company Login Portal
         </p>
 
-        <div>
-
+        <form onSubmit={handleLogin}>
           <div style={styles.group}>
             <label>Email</label>
 
@@ -234,9 +210,9 @@ export default function Login() {
               type="email"
               placeholder="Enter email"
               style={{
-    ...styles.input,
-    color: "#000",
-  }}
+                ...styles.input,
+                color: "#000",
+              }}
               value={email}
               onChange={(e) =>
                 setEmail(
@@ -253,9 +229,9 @@ export default function Login() {
               type="password"
               placeholder="Enter password"
               style={{
-    ...styles.input,
-    color: "#000",
-  }}
+                ...styles.input,
+                color: "#000",
+              }}
               value={password}
               onChange={(e) =>
                 setPassword(
@@ -266,8 +242,7 @@ export default function Login() {
           </div>
 
           <button
-            type="button"
-            onClick={handleLogin}
+            type="submit"
             style={styles.button}
             disabled={loading}
           >
@@ -275,8 +250,7 @@ export default function Login() {
               ? "Logging in..."
               : "Login"}
           </button>
-
-        </div>
+        </form>
       </div>
     </div>
   );
@@ -383,21 +357,21 @@ const styles = {
   },
 
   input: {
-  padding: "10px",
+    padding: "10px",
 
-  borderRadius: "5px",
+    borderRadius: "5px",
 
-  border:
-    "1px solid #ddd",
+    border:
+      "1px solid #ddd",
 
-  marginTop: "5px",
+    marginTop: "5px",
 
-  background: "#ffffff",
+    background: "#ffffff",
 
-  color: "#000",
+    color: "#000",
 
-  fontSize: "14px",
-},
+    fontSize: "14px",
+  },
 
   button: {
     width: "100%",
