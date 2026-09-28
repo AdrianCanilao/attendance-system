@@ -96,9 +96,11 @@ const [selectedDate, setSelectedDate] = useState(
 };
 
   const fetchDashboardData = async () => {
-    const today = selectedDate
-  .toISOString()
-  .split("T")[0];
+    const today = [
+      selectedDate.getFullYear(),
+      String(selectedDate.getMonth() + 1).padStart(2, "0"),
+      String(selectedDate.getDate()).padStart(2, "0"),
+    ].join("-");
     
 
     // GET CURRENT USER
@@ -136,7 +138,7 @@ const { data: employees } =
   .select("*")
   .eq(
   "log_date",
-  selectedDate.toISOString().split("T")[0]
+  today
 );
 
     const { data: leaves } = await supabase
