@@ -368,6 +368,8 @@ def root():
 @app.post("/reload-templates")
 def reload_templates(employee_id: str = None):
 
+    global templates
+
     # If an employee_id is supplied, rebuild only that employee's
     # template. This avoids reprocessing every employee after
     # registration or face replacement.
@@ -405,8 +407,6 @@ def reload_templates(employee_id: str = None):
                     "message": "No valid face template could be built.",
                     "templates": len(templates)
                 }
-
-            global templates
 
             templates = [
                 item for item in templates
