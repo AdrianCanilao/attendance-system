@@ -239,8 +239,22 @@ correction:
       });
     });
 
-    setLogs(result);
-    setFilteredLogs(result);
+    const resolvedResult = await Promise.all(
+      result.map(async (log) => ({
+        ...log,
+        time_in_face_url: await getStorageAccessUrl(
+          "faces",
+          log.time_in_face_url
+        ),
+        time_out_face_url: await getStorageAccessUrl(
+          "faces",
+          log.time_out_face_url
+        ),
+      }))
+    );
+
+    setLogs(resolvedResult);
+    setFilteredLogs(resolvedResult);
     setTotal(employees?.length || 0);
     setPresent(presentCount);
     setAbsent(absentCount);
