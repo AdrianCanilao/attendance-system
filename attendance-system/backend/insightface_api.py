@@ -136,14 +136,15 @@ def download_image(file_path):
 
     url = (
         f"{SUPABASE_URL}"
-        "/storage/v1/object/public/faces/"
+        "/storage/v1/object/faces/"
         f"{file_path}"
     )
 
     response = requests.get(
         url,
         headers={
-            "apikey": SUPABASE_KEY
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}"
         },
         timeout=10
     )
