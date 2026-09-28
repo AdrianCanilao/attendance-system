@@ -20,13 +20,11 @@ export const logAudit = async ({
     ]);
 
     if (error) {
-      console.error("Audit log failed:", error);
       return { success: false, error };
     }
 
     return { success: true };
   } catch (err) {
-    console.error("Audit log failed:", err);
     return { success: false, error: err };
   }
 };
@@ -39,7 +37,6 @@ export const logCurrentUserAudit = async ({
   const { data, error } = await supabase.auth.getUser();
 
   if (error || !data?.user) {
-    console.error("Audit user lookup failed:", error);
     return { success: false, error };
   }
 

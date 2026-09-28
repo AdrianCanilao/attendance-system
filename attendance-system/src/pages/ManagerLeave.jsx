@@ -25,7 +25,6 @@ export default function ManagerLeave() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.log(error);
       setLoading(false);
       return;
     }
@@ -41,7 +40,6 @@ export default function ManagerLeave() {
       .eq("id", id);
 
     if (error) {
-      console.log(error);
       alert("Error updating status");
       return;
     }

@@ -130,10 +130,6 @@ export default function Kiosk() {
         const data =
           await recognitionResponse.json();
 
-        console.log(
-          "KIOSK LIVE INSIGHTFACE:",
-          data
-        );
 
         if (!recognitionResponse.ok) {
           setRecognition({
@@ -260,10 +256,6 @@ export default function Kiosk() {
           return;
         }
 
-        console.error(
-          "KIOSK LIVE RECOGNITION ERROR:",
-          error
-        );
 
         setRecognition({
           status: "Error",
@@ -405,10 +397,6 @@ export default function Kiosk() {
         );
       }
 
-      console.log(
-        "📸 Sending kiosk frames:",
-        frameSources.length
-      );
 
       const response = await fetch(
         `${BACKEND_URL}/kiosk-verify-live`,
@@ -421,10 +409,6 @@ export default function Kiosk() {
       const data =
         await response.json();
 
-      console.log(
-        "🔥 KIOSK VERIFICATION RESULT:",
-        data
-      );
 
       if (!response.ok) {
         throw new Error(
@@ -506,10 +490,6 @@ export default function Kiosk() {
       });
 
     } catch (error) {
-      console.error(
-        "KIOSK ATTENDANCE ERROR:",
-        error
-      );
 
       await logAudit({
         user_id: recognition?.employee_id || null,
@@ -616,10 +596,6 @@ export default function Kiosk() {
                   setCameraReady(true)
                 }
                 onUserMediaError={(error) => {
-                  console.error(
-                    "Camera error:",
-                    error
-                  );
 
                   setCameraReady(false);
 

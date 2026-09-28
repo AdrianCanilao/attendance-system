@@ -47,7 +47,6 @@ export default function Profile() {
       .eq("email", user.email)
       .single();
 
-    console.log("EMPLOYEE PROFILE:", emp);
 
     if (error || !emp) return;
 
@@ -789,7 +788,6 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
         .upload(filePath, correctionFile);
 
       if (uploadError) {
-        console.error(uploadError);
         alert("Failed to upload attachment");
         return;
       }
@@ -814,7 +812,6 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
       ]);
 
     if (error) {
-      console.error(error);
       alert("Failed to submit correction");
       return;
     }
@@ -833,7 +830,6 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
     setCorrectionReason("");
     setCorrectionFile(null);
   } catch (err) {
-    console.error(err);
     alert("Something went wrong");
   }
 }}

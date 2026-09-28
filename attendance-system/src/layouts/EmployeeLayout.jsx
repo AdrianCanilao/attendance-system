@@ -65,10 +65,6 @@ export default function EmployeeLayout({ children }) {
           .eq("email", email)
           .single();
 
-      console.log(
-        "EMPLOYEE PROFILE:",
-        profile
-      );
 
       if (
         profile?.branches?.branch_name
@@ -80,10 +76,6 @@ export default function EmployeeLayout({ children }) {
 
     } catch (err) {
 
-      console.log(
-        "BRANCH FETCH ERROR:",
-        err
-      );
 
     }
   };
@@ -155,15 +147,7 @@ export default function EmployeeLayout({ children }) {
         ascending: false,
       });
 
-    console.log(
-      "TODAY ATTENDANCE:",
-      data
-    );
 
-    console.log(
-      "ERROR:",
-      error
-    );
 
     if (data && data.length > 0) {
 

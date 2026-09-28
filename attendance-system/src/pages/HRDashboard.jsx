@@ -139,7 +139,6 @@ export default function HRDashboard() {
       .select("*");
 
     if (correctionError) {
-      console.log(correctionError);
     }
 
     let result = [];

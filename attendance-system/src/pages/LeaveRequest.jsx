@@ -40,7 +40,6 @@ export default function LeaveRequest() {
       .single();
 
     if (error) {
-      console.log(error);
       return;
     }
 
@@ -113,7 +112,6 @@ export default function LeaveRequest() {
         .single();
 
       if (profileError || !profile) {
-        console.log(profileError);
         alert("Employee profile not found");
         return;
       }
@@ -129,7 +127,6 @@ export default function LeaveRequest() {
           .upload(fileName, attachment);
 
         if (uploadError) {
-          console.log(uploadError);
         } else {
           const { data } = supabase.storage
             .from("leave-attachments")
@@ -155,7 +152,6 @@ export default function LeaveRequest() {
         ]);
 
       if (error) {
-        console.log(error);
         alert("Failed to submit leave");
         return;
       }
@@ -178,7 +174,6 @@ export default function LeaveRequest() {
           .eq("id", profile.id);
 
         if (updateError) {
-          console.log(updateError);
           alert("Failed to update leave credits");
           return;
         }
@@ -206,7 +201,6 @@ export default function LeaveRequest() {
       setAttachment(null);
 
     } catch (err) {
-      console.log(err);
       alert("Something went wrong");
     }
   };

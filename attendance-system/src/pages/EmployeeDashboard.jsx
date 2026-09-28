@@ -107,8 +107,6 @@ const [deviceLocation, setDeviceLocation] = useState(null);
         .eq("id", user.id)
         .single();
 
-    console.log("PROFILE:", profile);
-    console.log("PROFILE ERROR:", error);
 
     if (!profile) return;
 
@@ -259,10 +257,6 @@ const validateLiveFace = async () => {
     const recognitionData =
       await recognitionResponse.json();
 
-    console.log(
-      "INSIGHTFACE RESULT:",
-      recognitionData
-    );
 
     // ========================================================
     // 3. UNKNOWN FACE
@@ -316,10 +310,6 @@ const validateLiveFace = async () => {
         message: "Identity verified.",
       });
 
-      console.log(
-        "IDENTITY VERIFIED:",
-        detectedEmployeeName
-      );
     } else {
       setIdentityVerified(false);
 
@@ -329,18 +319,10 @@ const validateLiveFace = async () => {
           "Detected face does not match the logged-in employee.",
       });
 
-      console.log(
-        "IDENTITY MISMATCH:",
-        detectedEmployeeName
-      );
     }
 
   } catch (error) {
 
-    console.error(
-      "Live face recognition error:",
-      error
-    );
 
     setDetectedFace(null);
     setIdentityVerified(false);
@@ -549,15 +531,7 @@ const handleScan = async (
     )
     .eq("id", user.id)
     .single();
-      console.log(
-        "SCAN PROFILE:",
-        profile
-      );
 
-      console.log(
-        "SCAN ERROR:",
-        error
-      );
 
       if (!profile) {
         alert("Profile not found");
@@ -652,9 +626,6 @@ const scheduledClockOut = new Date(
         profile.full_name
       );
 
-      console.log(
-        "Sending to FastAPI..."
-      );
 
       const res = await fetch(
         API_URL + "/verify-face",
@@ -664,10 +635,6 @@ const scheduledClockOut = new Date(
         }
       );
 
-      console.log(
-        "FASTAPI RESPONSE:",
-        res
-      );
 
       if (!res.ok) {
         await logAudit({
@@ -690,10 +657,6 @@ const scheduledClockOut = new Date(
       const result =
         await res.json();
 
-      console.log(
-        "FACE RESULT:",
-        result
-      );
 
       if (result.status === "Locked") {
         setShowCamera(false);
@@ -755,7 +718,6 @@ const scheduledClockOut = new Date(
         });
 
       if (uploadError) {
-        console.log(uploadError);
 
         await logAudit({
           user_id: user.id,
@@ -913,7 +875,6 @@ const scheduledClockOut = new Date(
 
       loadData();
     } catch (err) {
-      console.error(err);
 
       alert("Scan failed");
     } finally {

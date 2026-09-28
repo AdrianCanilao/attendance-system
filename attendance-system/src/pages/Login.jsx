@@ -17,7 +17,6 @@ export default function Login() {
 
   const handleLogin = async () => {
 
-    console.log("Login clicked");
 
     if (!email || !password) {
       alert(
@@ -37,11 +36,6 @@ export default function Login() {
           }
         );
 
-      console.log(
-        "LOGIN RESPONSE:",
-        data,
-        error
-      );
 
       if (
         error ||
@@ -75,11 +69,6 @@ export default function Login() {
         .eq("id", user.id)
         .single();
 
-      console.log(
-        "PROFILE:",
-        profile,
-        profileError
-      );
 
       if (
         profileError ||
@@ -109,11 +98,6 @@ export default function Login() {
         .eq("id", profile.role_id)
         .single();
 
-      console.log(
-        "ROLE:",
-        roleData,
-        roleError
-      );
 
       if (
         roleError ||
@@ -145,10 +129,6 @@ export default function Login() {
           `${user.email} logged into the system`,
       });
 
-      console.log(
-        "FINAL ROLE:",
-        role
-      );
 
       // ✅ SAVE ROLE
       localStorage.setItem(
@@ -173,9 +153,6 @@ export default function Login() {
 
         if (role === "maintenance") {
 
-          console.log(
-            "GOING TO MAINTENANCE"
-          );
 
           navigate(
             "/manager/profile"
@@ -185,9 +162,6 @@ export default function Login() {
 
         else if (role === "hr") {
 
-          console.log(
-            "GOING TO HR"
-          );
 
           navigate(
             "/hr/profile"
@@ -199,9 +173,6 @@ export default function Login() {
           role === "employee"
         ) {
 
-          console.log(
-            "GOING TO EMPLOYEE"
-          );
 
           navigate(
             "/employee/profile"
@@ -211,9 +182,6 @@ export default function Login() {
 
         else {
 
-          console.log(
-            "UNKNOWN ROLE"
-          );
 
           alert(
             "Unknown role detected"
@@ -225,10 +193,6 @@ export default function Login() {
 
     } catch (err) {
 
-      console.error(
-        "LOGIN ERROR:",
-        err
-      );
 
       alert(
         "Something went wrong"

@@ -126,10 +126,6 @@ const fetchShifts = async (branchId) => {
       setFaceStatus(data);
 
     } catch (error) {
-      console.error(
-        "Live face validation error:",
-        error
-      );
 
       setFaceStatus({
         valid: false,
@@ -343,7 +339,6 @@ if (!selectedShift) {
       // =====================================================
 
       try {
-        console.log("🔄 Reloading InsightFace templates...");
 
         const reloadResponse = await fetch(
           INSIGHTFACE_URL + "/reload-templates",
@@ -354,23 +349,12 @@ if (!selectedShift) {
 
         const reloadData = await reloadResponse.json();
 
-        console.log(
-          "🔄 INSIGHTFACE TEMPLATE RELOAD:",
-          reloadData
-        );
 
         if (reloadData.status !== "OK") {
-          console.warn(
-            "⚠️ Employee registered, but InsightFace templates were not reloaded."
-          );
         }
 
       } catch (reloadError) {
 
-        console.warn(
-          "⚠️ Employee registered, but InsightFace reload failed:",
-          reloadError
-        );
 
       }
 
@@ -390,7 +374,6 @@ if (!selectedShift) {
       setImageSrc(null);
 
     } catch (err) {
-      console.error(err);
       alert("Registration failed");
     } finally {
       setLoading(false);

@@ -26,8 +26,6 @@ export default function LeaveCounts() {
     .from("employee_profiles")
     .select("*");
 
-  console.log("EMPLOYEE DATA:", data);
-  console.log("ERROR:", error);
 
   if (!error && data) {
     setEmployees(data);

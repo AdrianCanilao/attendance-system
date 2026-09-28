@@ -147,7 +147,6 @@ const exportExcel = async () => {
       });
 
   if (error) {
-    console.log(error);
     return;
   }
 

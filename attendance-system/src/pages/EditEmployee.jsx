@@ -156,19 +156,11 @@ useEffect(() => {
 
       const data = await response.json();
 
-      console.log(
-        "🔥 FACE VALIDATION DATA:",
-        JSON.stringify(data, null, 2)
-      );
 
       setFaceStatus(data);
 
     } catch (error) {
 
-      console.error(
-        "❌ Enrollment face validation error:",
-        error
-      );
 
       setFaceStatus({
         valid: false,
@@ -384,9 +376,6 @@ const uploadFaces = async () => {
   // RELOAD INSIGHTFACE TEMPLATES
   // ==========================================================
 
-  console.log(
-    "🔄 Reloading InsightFace templates..."
-  );
 
 
   const reloadResponse =
@@ -410,10 +399,6 @@ const uploadFaces = async () => {
     await reloadResponse.json();
 
 
-  console.log(
-    "🔄 INSIGHTFACE TEMPLATE RELOAD:",
-    reloadData
-  );
 
 
   if (reloadData.status !== "OK") {
@@ -424,9 +409,6 @@ const uploadFaces = async () => {
   }
 
 
-  console.log(
-    "✅ Face updated and InsightFace templates reloaded."
-  );
 };
 const handleUpdate = async () => {
   if (!form.name || !form.email) {

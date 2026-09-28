@@ -133,10 +133,6 @@ const validateLiveFace = async () => {
     setFaceStatus(data);
 
   } catch (error) {
-    console.error(
-      "Live face validation error:",
-      error
-    );
 
     setFaceStatus({
       valid: false,
@@ -307,7 +303,6 @@ shift_id: form.shift_id,
       // 🔄 RELOAD INSIGHTFACE EMPLOYEE TEMPLATES
       // =====================================================
       try {
-        console.log("🔄 Reloading InsightFace templates...");
 
         const reloadResponse = await fetch(
           INSIGHTFACE_URL + "/reload-templates",
@@ -318,21 +313,10 @@ shift_id: form.shift_id,
 
         const reloadData = await reloadResponse.json();
 
-        console.log(
-          "🔄 INSIGHTFACE TEMPLATE RELOAD:",
-          reloadData
-        );
 
         if (reloadData.status !== "OK") {
-          console.warn(
-            "⚠️ Maintenance specialist registered, but InsightFace templates were not reloaded."
-          );
         }
       } catch (reloadError) {
-        console.warn(
-          "⚠️ Maintenance specialist registered, but InsightFace reload failed:",
-          reloadError
-        );
       }
 
       const { data: currentUser } =
@@ -362,7 +346,6 @@ shift_id: "",
       setImageSrc(null);
 
     } catch (err) {
-      console.error(err);
       alert("Registration failed");
     } finally {
       setLoading(false);
