@@ -208,6 +208,7 @@ export default function Login() {
 
             <input
               type="email"
+              autoComplete="username"
               placeholder="Enter email"
               style={{
                 ...styles.input,
@@ -227,6 +228,7 @@ export default function Login() {
 
             <input
               type="password"
+              autoComplete="current-password"
               placeholder="Enter password"
               style={{
                 ...styles.input,
