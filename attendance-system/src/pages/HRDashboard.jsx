@@ -3,6 +3,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
+import { getStorageAccessUrl } from "../utils/storageAccess";
 import { logAudit } from "../utils/auditlogger";
 
 export default function HRDashboard() {
@@ -214,12 +215,16 @@ export default function HRDashboard() {
         ),
 
         time_in_face_url:
-          attendanceToday?.time_in_face_url ||
-          null,
+          await getStorageAccessUrl(
+            "faces",
+            attendanceToday?.time_in_face_url
+          ),
 
         time_out_face_url:
-          attendanceToday?.time_out_face_url ||
-          null,
+          await getStorageAccessUrl(
+            "faces",
+            attendanceToday?.time_out_face_url
+          ),
 
         status,
 
