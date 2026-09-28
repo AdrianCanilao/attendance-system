@@ -531,6 +531,7 @@ shift_id: "",
                 placeholder="Enter email address"
                 value={form.email}
                 onChange={handleChange}
+                autoComplete="username"
                 style={styles.input}
               />
             </div>
