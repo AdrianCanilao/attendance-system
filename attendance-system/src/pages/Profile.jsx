@@ -32,13 +32,7 @@ export default function Profile() {
     if (!user) return;
 
     // ✅ GET USER ROLE
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    setRole(roleData?.role);
+    setRole(localStorage.getItem("role"));
 
     // ✅ GET EMPLOYEE PROFILE
     const { data: emp, error } = await supabase
