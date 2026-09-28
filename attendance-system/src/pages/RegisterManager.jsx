@@ -543,6 +543,7 @@ shift_id: "",
                 placeholder="Enter password"
                 value={form.password}
                 onChange={handleChange}
+                autoComplete="new-password"
                 style={styles.input}
               />
             </div>
