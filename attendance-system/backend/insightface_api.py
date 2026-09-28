@@ -366,12 +366,82 @@ def root():
 # ============================================================
 
 @app.post("/reload-templates")
-def reload_templates():
+def reload_templates(employee_id: str = None):
 
+    # If an employee_id is supplied, rebuild only that employee's
+    # template. This avoids reprocessing every employee after
+    # registration or face replacement.
+    if employee_id:
+        try:
+            url = (
+                f"{SUPABASE_URL}"
+                "/rest/v1/employee_profiles"
+                "?select=id,full_name,branch_id,role_id"
+                f"&id=eq.{employee_id}"
+            )
+
+            response = requests.get(
+                url,
+                headers=headers,
+                timeout=10
+            )
+            response.raise_for_status()
+
+            employees = response.json()
+
+            if not employees:
+                return {
+                    "status": "Error",
+                    "message": "Employee not found.",
+                    "templates": len(templates)
+                }
+
+            employee = employees[0]
+            template = build_template(employee)
+
+            if template is None:
+                return {
+                    "status": "Error",
+                    "message": "No valid face template could be built.",
+                    "templates": len(templates)
+                }
+
+            global templates
+
+            templates = [
+                item for item in templates
+                if item["employee"]["id"] != employee_id
+            ]
+
+            templates.append({
+                "employee": employee,
+                "template": template
+            })
+
+            return {
+                "status": "OK",
+                "message": "Employee template refreshed.",
+                "templates": len(templates)
+            }
+
+        except Exception as e:
+            print(
+                "❌ SINGLE TEMPLATE RELOAD ERROR:",
+                str(e),
+                flush=True
+            )
+
+            return {
+                "status": "Error",
+                "message": "Unable to refresh employee template.",
+                "templates": len(templates)
+            }
+
+    # Keep the existing full reload behavior when no employee_id
+    # is supplied, preserving compatibility with existing callers.
     success = load_employee_templates()
 
     if not success:
-
         return {
             "status": "Error",
             "message": "Unable to reload employee templates.",
