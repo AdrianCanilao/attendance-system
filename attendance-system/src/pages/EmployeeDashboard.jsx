@@ -140,12 +140,16 @@ const [deviceLocation, setDeviceLocation] = useState(null);
         .eq("log_date", today)
         .maybeSingle();
 
+    // Only treat an approved leave as "On Leave" when today
+    // falls within the leave's start and end dates.
     const { data: leave } =
       await supabase
         .from("leave_requests")
         .select("*")
         .eq("employee_id", employeeId)
-        .eq("status", "Approved");
+        .eq("status", "Approved")
+        .lte("start_date", today)
+        .gte("end_date", today);
 
     let currentStatus = "Absent";
 
