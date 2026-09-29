@@ -4,7 +4,15 @@ import ManagerLayout from "../layouts/ManagerLayout";
 import Webcam from "react-webcam";
 import { logAudit } from "../utils/auditlogger";
 
+const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
+
+const isStrongPassword = (password) =>
+  password.length >= 8 &&
+  /[A-Z]/.test(password) &&
+  /[a-z]/.test(password) &&
+  /\d/.test(password) &&
+  /[^A-Za-z0-9]/.test(password);
 
 export default function EditEmployee() {
   const [employees, setEmployees] = useState([]);
@@ -97,6 +105,7 @@ const fetchEmployees = async () => {
 
   branch_id: emp.branch_id || "",
   shift_id: emp.shift_id || "",
+  password: "",
 });
 
 fetchShifts(emp.branch_id);
@@ -407,8 +416,47 @@ const handleUpdate = async () => {
     return;
   }
 
+  if (form.password && !isStrongPassword(form.password)) {
+    alert(
+      "Password must have:\n\n" +
+      "• 8 or more characters\n" +
+      "• 1 uppercase letter\n" +
+      "• 1 lowercase letter\n" +
+      "• 1 number\n" +
+      "• 1 special character"
+    );
+    return;
+  }
+
   try {
     setLoading(true);
+
+    if (form.password) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error("Your session has expired. Please log in again.");
+      }
+
+      const passwordResponse = await fetch(API_URL + "/admin/update-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + accessToken,
+        },
+        body: JSON.stringify({
+          target_user_id: selected.id,
+          password: form.password,
+        }),
+      });
+
+      const passwordData = await passwordResponse.json();
+
+      if (!passwordResponse.ok) {
+        throw new Error(passwordData.detail || "Unable to update password.");
+      }
+    }
 
     await supabase
       .from("employee_profiles")
@@ -672,6 +720,22 @@ const handleDelete = async () => {
                   <input name="position" value={form.position} onChange={handleChange} style={styles.input} />
                 </div>
                 <div>
+                  <label style={styles.label}>Password (optional)</label>
+                  <input
+                    name="password"
+                    type="password"
+                    value={form.password || ""}
+                    onChange={handleChange}
+                    placeholder="Enter new password"
+                    style={styles.input}
+                    autoComplete="new-password"
+                  />
+                  <small style={styles.passwordHint}>
+                    Leave blank to keep the current password.
+                  </small>
+                </div>
+
+                <div>
   <label style={styles.label}>Shift</label>
 
   <select
@@ -840,6 +904,13 @@ avatarImg: {
     fontSize: "13px",
     marginBottom: "5px",
     display: "block",
+  },
+
+  passwordHint: {
+    display: "block",
+    marginTop: "5px",
+    fontSize: "11px",
+    color: "#6b7280",
   },
 
   actions: {
