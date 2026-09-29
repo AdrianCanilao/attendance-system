@@ -8,6 +8,13 @@ import { isValidEmail } from "../utils/emailValidation";
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
 
+const isStrongPassword = (password) =>
+  password.length >= 8 &&
+  /[A-Z]/.test(password) &&
+  /[a-z]/.test(password) &&
+  /\d/.test(password) &&
+  /[^A-Za-z0-9]/.test(password);
+
 export default function RegisterEmployee() {
   const webcamRef = useRef(null);
 
@@ -248,6 +255,18 @@ export default function RegisterEmployee() {
 
     if (!isValidEmail(email)) {
       alert("Please enter a valid email address.");
+      return;
+    }
+
+    if (!isStrongPassword(password)) {
+      alert(
+        "Password must have:\n\n" +
+        "• 8 or more characters\n" +
+        "• 1 uppercase letter\n" +
+        "• 1 lowercase letter\n" +
+        "• 1 number\n" +
+        "• 1 special character"
+      );
       return;
     }
 
