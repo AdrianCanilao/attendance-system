@@ -301,21 +301,49 @@ export default function RegisterEmployee() {
         return;
       }
 
-      await supabase.from("employee_profiles").insert([
-        {
-          id: userId,
-          full_name: name,
-          email,
-          contact_number: contact,
-          position,
-          role_id: EMPLOYEE_ROLE_ID,
-          branch_id: form.branch_id,
+      const { error: profileInsertError } = await supabase
+        .from("employee_profiles")
+        .insert([
+          {
+            id: userId,
+            full_name: name,
+            email,
+            contact_number: contact,
+            position,
+            role_id: EMPLOYEE_ROLE_ID,
+            branch_id: form.branch_id,
+            shift_id: form.shift_id,
+            clock_in: selectedShift.time_in,
+            clock_out: selectedShift.time_out,
+            grace_minutes: selectedShift.grace_minutes,
+          },
+        ]);
+
+      if (profileInsertError) {
+        throw new Error(
+          "Employee profile could not be created: " +
+          profileInsertError.message
+        );
+      }
+
+      // Keep the employee's scheduled clock times synchronized
+      // with the selected branch shift.
+      const { error: shiftSyncError } = await supabase
+        .from("employee_profiles")
+        .update({
           shift_id: form.shift_id,
           clock_in: selectedShift.time_in,
           clock_out: selectedShift.time_out,
           grace_minutes: selectedShift.grace_minutes,
-        },
-      ]);
+        })
+        .eq("id", userId);
+
+      if (shiftSyncError) {
+        throw new Error(
+          "Employee shift could not be assigned: " +
+          shiftSyncError.message
+        );
+      }
 
       // UPLOAD MULTIPLE IMAGES
       for (let i = 0; i < capturedImages.length; i++) {
