@@ -730,9 +730,6 @@ const handleDelete = async () => {
                     style={styles.input}
                     autoComplete="new-password"
                   />
-                  <small style={styles.passwordHint}>
-                    Leave blank to keep the current password.
-                  </small>
                 </div>
 
                 <div>
@@ -904,13 +901,6 @@ avatarImg: {
     fontSize: "13px",
     marginBottom: "5px",
     display: "block",
-  },
-
-  passwordHint: {
-    display: "block",
-    marginTop: "5px",
-    fontSize: "11px",
-    color: "#6b7280",
   },
 
   actions: {
