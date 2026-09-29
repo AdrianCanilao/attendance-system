@@ -214,9 +214,21 @@ def build_template(employee):
             f"{folder}/{file_name}"
         )
 
-        image = download_image(
-            file_path
-        )
+        try:
+
+            image = download_image(
+                file_path
+            )
+
+        except Exception as e:
+
+            print(
+                f"Download error for {name} "
+                f"({file_name}): {e}",
+                flush=True
+            )
+
+            continue
 
         if image is None:
             continue
