@@ -355,7 +355,7 @@ const validateLiveFace = async () => {
   }
 };
 useEffect(() => {
-  if (!showCamera) {
+  if (!showCamera || identityVerified) {
     return;
   }
 
@@ -366,7 +366,7 @@ useEffect(() => {
   return () => {
     clearInterval(interval);
   };
-}, [showCamera, currentEmployeeId]);
+}, [showCamera, currentEmployeeId, identityVerified]);
 const getDeviceLocation = () =>
   new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
