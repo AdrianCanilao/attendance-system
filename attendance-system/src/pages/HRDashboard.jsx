@@ -142,98 +142,106 @@ export default function HRDashboard() {
     if (correctionError) {
     }
 
-    let result = [];
-    let presentCount = 0;
-    let absentCount = 0;
+    const employeeResults = await Promise.all(
+      (employees || []).map(async (emp) => {
+        const attendanceToday =
+          attendance?.find(
+            (a) =>
+              a.employee_id === emp.id &&
+              a.log_date === today
+          );
 
-    (employees || []).forEach((emp) => {
-      const attendanceToday =
-        attendance?.find(
-          (a) =>
-            a.employee_id === emp.id &&
-            a.log_date === today
+        const leaveToday = leaves?.find(
+          (l) =>
+            l.employee_id === emp.id &&
+            today >= l.start_date &&
+            today <= l.end_date
         );
 
-      const leaveToday = leaves?.find(
-        (l) =>
-          l.employee_id === emp.id &&
-          today >= l.start_date &&
-          today <= l.end_date
-      );
+        let status = "Absent";
 
-      let status = "Absent";
+        if (attendanceToday?.time_in) {
+          status = "Present";
+        } else if (leaveToday) {
+          status = "On Leave";
+        }
 
-      if (attendanceToday?.time_in) {
-        status = "Present";
-        presentCount++;
-      } else if (leaveToday) {
-        status = "On Leave";
-      } else {
-        absentCount++;
-      }
+        const [timeInFaceUrl, timeOutFaceUrl] =
+          await Promise.all([
+            getStorageAccessUrl(
+              "faces",
+              attendanceToday?.time_in_face_url
+            ),
+            getStorageAccessUrl(
+              "faces",
+              attendanceToday?.time_out_face_url
+            ),
+          ]);
 
-      result.push({
-        name: emp.full_name,
-        position: emp.position || "-",
+        return {
+          name: emp.full_name,
+          position: emp.position || "-",
 
-        time_in_raw:
-          attendanceToday?.time_in || null,
+          time_in_raw:
+            attendanceToday?.time_in || null,
 
-        time_out_raw:
-          attendanceToday?.time_out || null,
+          time_out_raw:
+            attendanceToday?.time_out || null,
 
-        time_in: attendanceToday?.time_in
-          ? new Date(
-              attendanceToday.time_in
-            ).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-              timeZone: "Asia/Manila",
-            })
-          : "-",
+          time_in: attendanceToday?.time_in
+            ? new Date(
+                attendanceToday.time_in
+              ).toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+                timeZone: "Asia/Manila",
+              })
+            : "-",
 
-        time_out: attendanceToday?.time_out
-          ? new Date(
-              attendanceToday.time_out
-            ).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-              timeZone: "Asia/Manila",
-            })
-          : "-",
+          time_out: attendanceToday?.time_out
+            ? new Date(
+                attendanceToday.time_out
+              ).toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+                timeZone: "Asia/Manila",
+              })
+            : "-",
 
-        late: calculateLate(
-          attendanceToday?.time_in,
-          emp.clock_in
-        ),
-
-        overtime: calculateOvertime(
-          attendanceToday?.time_out,
-          emp.clock_out
-        ),
-
-        time_in_face_url:
-          await getStorageAccessUrl(
-            "faces",
-            attendanceToday?.time_in_face_url
+          late: calculateLate(
+            attendanceToday?.time_in,
+            emp.clock_in
           ),
 
-        time_out_face_url:
-          await getStorageAccessUrl(
-            "faces",
-            attendanceToday?.time_out_face_url
+          overtime: calculateOvertime(
+            attendanceToday?.time_out,
+            emp.clock_out
           ),
 
-        status,
+          time_in_face_url: timeInFaceUrl,
+          time_out_face_url: timeOutFaceUrl,
 
-        correction:
-          corrections?.find(
-            (c) => c.employee_id === emp.id
-          ) || null,
-      });
-    });
+          status,
+
+          correction:
+            corrections?.find(
+              (c) => c.employee_id === emp.id
+            ) || null,
+        };
+      })
+    );
+
+    const result = employeeResults;
+
+    const presentCount = result.filter(
+      (employee) => employee.status === "Present"
+    ).length;
+
+    const absentCount = result.filter(
+      (employee) => employee.status === "Absent"
+    ).length;
 
     setLogs(result);
     setFilteredLogs(result);
