@@ -278,18 +278,42 @@ const captureFace = () => {
       const userId = authData.user.id;
       const MANAGER_ROLE_ID = "b381a7a0-9595-4c69-abf1-5c15a827647a";
 
-      await supabase.from("employee_profiles").insert([
-        {
-          id: userId,
-          full_name: name,
-          email,
-          contact_number: contact,
-          position,
-          role_id: MANAGER_ROLE_ID,
-branch_id: form.branch_id,
-shift_id: form.shift_id,
-        },
-      ]);
+      // Get the selected branch shift so the Maintenance Specialist
+      // also receives the scheduled clock-in/out times.
+      const { data: selectedShift, error: selectedShiftError } = await supabase
+        .from("branch_shifts")
+        .select("time_in, time_out, grace_minutes")
+        .eq("id", form.shift_id)
+        .single();
+
+      if (selectedShiftError || !selectedShift) {
+        throw new Error("Selected shift not found.");
+      }
+
+      const { error: profileInsertError } = await supabase
+        .from("employee_profiles")
+        .insert([
+          {
+            id: userId,
+            full_name: name,
+            email,
+            contact_number: contact,
+            position,
+            role_id: MANAGER_ROLE_ID,
+            branch_id: form.branch_id,
+            shift_id: form.shift_id,
+            clock_in: selectedShift.time_in,
+            clock_out: selectedShift.time_out,
+            grace_minutes: selectedShift.grace_minutes,
+          },
+        ]);
+
+      if (profileInsertError) {
+        throw new Error(
+          "Maintenance Specialist profile could not be created: " +
+          profileInsertError.message
+        );
+      }
 
       // 🔥 UPLOAD MULTIPLE IMAGES
       for (let i = 0; i < capturedImages.length; i++) {
