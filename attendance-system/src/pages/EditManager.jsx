@@ -661,50 +661,49 @@ const uploadFaces = async () => {
                   <label style={styles.label}>Position</label>
                   <input name="position" value={form.position} onChange={handleChange} style={styles.input} />
                 </div>
+
+                <div>
+                  <label style={styles.label}>Password (optional)</label>
+                  <input
+                    name="password"
+                    type="password"
+                    value={form.password || ""}
+                    onChange={handleChange}
+                    placeholder="Enter new password"
+                    style={styles.input}
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                <div>
+                  <label style={styles.label}>Shift</label>
+                  <select
+                    name="shift_id"
+                    value={form.shift_id || ""}
+                    onChange={handleChange}
+                    style={styles.input}
+                  >
+                    <option value="">Select Shift</option>
+
+                    {shifts.map((shift) => (
+                      <option key={shift.id} value={shift.id}>
+                        {shift.shift_name} (
+                        {new Date(`1970-01-01T${shift.time_in}`).toLocaleTimeString([], {
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true,
+                        })} -{" "}
+                        {new Date(`1970-01-01T${shift.time_out}`).toLocaleTimeString([], {
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true,
+                        })}
+                        )
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label style={styles.label}>Password (optional)</label>
-                <input
-                  name="password"
-                  type="password"
-                  value={form.password || ""}
-                  onChange={handleChange}
-                  placeholder="Enter new password"
-                  style={styles.input}
-                  autoComplete="new-password"
-                />
-              </div>
-
-              <div>
-  <label style={styles.label}>Shift</label>
-
-  <select
-    name="shift_id"
-    value={form.shift_id || ""}
-    onChange={handleChange}
-    style={styles.input}
-  >
-    <option value="">Select Shift</option>
-
-    {shifts.map((shift) => (
-      <option key={shift.id} value={shift.id}>
-        {`${shift.shift_name} (${new Date(
-          `1970-01-01T${shift.time_in}`
-        ).toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })} - ${new Date(
-          `1970-01-01T${shift.time_out}`
-        ).toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })})`}
-      </option>
-    ))}
-  </select>
-</div>
 
               <div style={styles.actions}>
                 <button onClick={handleUpdate} style={styles.primary}>
