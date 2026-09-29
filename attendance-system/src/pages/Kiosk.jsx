@@ -169,7 +169,7 @@ export default function Kiosk() {
             full_name: fullName,
             distance: data.distance,
             message:
-              "Identity recognized.",
+              "Face recognized.",
             box: data.box || null,
             image_width: data.image_width || 1280,
             image_height: data.image_height || 720,
@@ -230,7 +230,7 @@ export default function Kiosk() {
             full_name: null,
             distance: data.distance,
             message:
-              "Face not recognized.",
+              "Face not registered. Please use a registered employee face.",
             box: data.box || null,
             image_width: data.image_width || 1280,
             image_height: data.image_height || 720,
