@@ -556,7 +556,7 @@ async def recognize_live_face(
 
         return {
             "status": "Unknown",
-            "message": "No employee templates available."
+            "message": "No registered employee faces are available."
         }
 
     best = results[0]
