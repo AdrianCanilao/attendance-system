@@ -1,6 +1,7 @@
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, File, UploadFile, Form, Header, HTTPException
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import cv2
@@ -39,6 +40,125 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
     raise RuntimeError("SUPABASE_URL and SUPABASE_KEY environment variables are required.")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+
+class UpdatePasswordRequest(BaseModel):
+    target_user_id: str
+    password: str
+
+
+def validate_strong_password(password: str):
+    if (
+        len(password) < 8
+        or not any(c.isupper() for c in password)
+        or not any(c.islower() for c in password)
+        or not any(c.isdigit() for c in password)
+        or not any(not c.isalnum() for c in password)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Password must have: 8 or more characters, "
+                "1 uppercase letter, 1 lowercase letter, "
+                "1 number, and 1 special character."
+            ),
+        )
+
+
+@app.post("/admin/update-password")
+async def admin_update_password(
+    payload: UpdatePasswordRequest,
+    authorization: str | None = Header(default=None),
+):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required.")
+
+    token = authorization[7:].strip()
+
+    try:
+        caller_response = supabase.auth.get_user(token)
+        caller = caller_response.user
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    if not caller:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    validate_strong_password(payload.password)
+
+    caller_result = (
+        supabase
+        .from_("employee_profiles")
+        .select("id, role_id, branch_id")
+        .eq("id", caller.id)
+        .single()
+        .execute()
+    )
+    caller_profile = caller_result.data
+
+    if not caller_profile:
+        raise HTTPException(status_code=403, detail="Your employee profile was not found.")
+
+    caller_role_result = (
+        supabase
+        .from_("roles")
+        .select("name")
+        .eq("id", caller_profile["role_id"])
+        .single()
+        .execute()
+    )
+    caller_role = (caller_role_result.data or {}).get("name", "").strip().lower()
+
+    target_result = (
+        supabase
+        .from_("employee_profiles")
+        .select("id, role_id, branch_id, email")
+        .eq("id", payload.target_user_id)
+        .single()
+        .execute()
+    )
+    target = target_result.data
+
+    if not target:
+        raise HTTPException(status_code=404, detail="Target employee was not found.")
+
+    target_role_result = (
+        supabase
+        .from_("roles")
+        .select("name")
+        .eq("id", target["role_id"])
+        .single()
+        .execute()
+    )
+    target_role = (target_role_result.data or {}).get("name", "").strip().lower()
+
+    if caller_role == "maintenance":
+        if target_role != "employee" or target.get("branch_id") != caller_profile.get("branch_id"):
+            raise HTTPException(
+                status_code=403,
+                detail="You are not authorized to change this employee's password.",
+            )
+    elif caller_role == "hr":
+        if target_role != "maintenance":
+            raise HTTPException(
+                status_code=403,
+                detail="You are not authorized to change this account's password.",
+            )
+    else:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not authorized to change passwords.",
+        )
+
+    try:
+        supabase.auth.admin.update_user_by_id(
+            payload.target_user_id,
+            {"password": payload.password},
+        )
+    except Exception:
+        raise HTTPException(status_code=500, detail="Unable to update password.")
+
+    return {"status": "OK"}
 
 # ============================================================
 # ATTENDANCE VERIFICATION LOCK
