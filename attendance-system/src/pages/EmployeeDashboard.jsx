@@ -36,6 +36,7 @@ const [detectedFace, setDetectedFace] = useState(null);
 const [identityVerified, setIdentityVerified] = useState(false);
 
 const [recognizingFace, setRecognizingFace] = useState(false);
+const [recognitionStatus, setRecognitionStatus] = useState("scanning");
 const recognizingFaceRef = useRef(false);
 const [deviceLocation, setDeviceLocation] = useState(null);
   const location = window.location.pathname;
@@ -197,6 +198,7 @@ const validateLiveFace = async () => {
   try {
     setCheckingFace(true);
     setRecognizingFace(true);
+    setRecognitionStatus("scanning");
     recognizingFaceRef.current = true;
 
     const blob = await fetch(image).then((res) =>
@@ -233,6 +235,7 @@ const validateLiveFace = async () => {
     if (!validationData.valid) {
       setDetectedFace(null);
       setIdentityVerified(false);
+      setRecognitionStatus("no-face");
       return;
     }
 
@@ -268,9 +271,11 @@ const validateLiveFace = async () => {
       setDetectedFace({
         name: null,
         distance: recognitionData.distance,
+        unknown: true,
       });
 
       setIdentityVerified(false);
+      setRecognitionStatus("unknown");
 
       setFaceStatus({
         ...validationData,
@@ -295,6 +300,7 @@ const validateLiveFace = async () => {
       distance: recognitionData.distance,
       employeeId: detectedEmployeeId,
     });
+    setRecognitionStatus("recognized");
 
     // ========================================================
     // 5. COMPARE WITH LOGGED-IN EMPLOYEE
@@ -305,6 +311,7 @@ const validateLiveFace = async () => {
     ) {
       setIdentityVerified(true);
 
+      setRecognitionStatus("recognized");
       setFaceStatus({
         ...validationData,
         message: "Identity verified.",
@@ -313,6 +320,7 @@ const validateLiveFace = async () => {
     } else {
       setIdentityVerified(false);
 
+      setRecognitionStatus("mismatch");
       setFaceStatus({
         ...validationData,
         message:
@@ -326,6 +334,7 @@ const validateLiveFace = async () => {
 
     setDetectedFace(null);
     setIdentityVerified(false);
+    setRecognitionStatus("error");
 
     setFaceStatus({
       valid: false,
@@ -1011,10 +1020,16 @@ const scheduledClockOut = new Date(
                   : "#6b7280",
               }}
             >
-              {identityVerified
-                ? "Identity verified."
-                : detectedFace?.name
-                ? "Identity does not match the logged-in employee."
+              {recognitionStatus === "recognized"
+                ? "Face recognized."
+                : recognitionStatus === "unknown"
+                ? "Face not registered."
+                : recognitionStatus === "mismatch"
+                ? "Face recognized, but it does not match the logged-in employee."
+                : recognitionStatus === "no-face"
+                ? "No face detected. Please look at the camera."
+                : recognitionStatus === "error"
+                ? "Face recognition unavailable."
                 : "Scanning for your face..."}
             </div>
 
@@ -1030,9 +1045,9 @@ const scheduledClockOut = new Date(
                   : "#6b7280",
               }}
             >
-              {detectedFace?.name ? (
+              {recognitionStatus === "recognized" && detectedFace?.name ? (
                 <>
-                  Detected Face: {detectedFace.name}
+                  Face recognized: {detectedFace.name}
 
                   <div
                     style={{
