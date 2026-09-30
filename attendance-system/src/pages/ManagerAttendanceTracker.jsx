@@ -372,15 +372,19 @@ if (correctionError) {
             )
           : "-",
 
-        late: calculateLate(
-          attendanceToday?.time_in,
-          emp.clock_in
-        ),
+        // Historical attendance must use the values saved on the log.
+        // Never recalculate old records from the employee's current shift.
+        late: attendanceToday
+          ? attendanceToday.late_minutes > 0
+            ? `${Math.floor(attendanceToday.late_minutes / 60)}h ${attendanceToday.late_minutes % 60}m`
+            : "0m"
+          : "-",
 
-        overtime: calculateOvertime(
-          attendanceToday?.time_out,
-          emp.clock_out
-        ),
+        overtime: attendanceToday
+          ? attendanceToday.overtime_minutes > 0
+            ? `${Math.floor(attendanceToday.overtime_minutes / 60)}h ${attendanceToday.overtime_minutes % 60}m`
+            : "0m"
+          : "-",
 
         time_in_face_url:attendanceToday?.time_in_face_url || null,
 
