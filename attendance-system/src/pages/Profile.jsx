@@ -471,6 +471,10 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                   style={{
                     width: "42px",
                     height: "42px",
+                    minWidth: "42px",
+                    minHeight: "42px",
+                    aspectRatio: "1 / 1",
+                    flexShrink: 0,
                     borderRadius: "50%",
                     objectFit: "cover",
                     cursor: "pointer",
