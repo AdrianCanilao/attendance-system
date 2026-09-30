@@ -194,7 +194,7 @@ export default function EmployeeList() {
 
     const { data: employeeData, error: employeeError } = await supabase
       .from("employee_profiles")
-      .select("id, full_name, email, position, department, employee_id, role_id")
+      .select("id, full_name, email, position, employee_id, role_id")
       .eq("branch_id", profile.branch_id)
       .order("full_name", { ascending: true });
 
@@ -242,7 +242,6 @@ export default function EmployeeList() {
         "Employee ID": employee.employee_id || employee.id || "-",
         Employee: employee.full_name || "-",
         Position: employee.position || "-",
-        Department: employee.department || "-",
         "Time In": formatTime(log.time_in),
         "Time In Location": log.time_in_location || "-",
         "Time Out": formatTime(log.time_out),
@@ -276,7 +275,6 @@ export default function EmployeeList() {
         Employee: employee.full_name || "-",
         Position: employee.position || "-",
         Role: employee.role_id === "b381a7a0-9595-4c69-abf1-5c15a827647a" ? "Maintenance Specialist" : "Employee",
-        Department: employee.department || "-",
         Present: present,
         Late: late,
         "Late Minutes": formatMinutes(lateMinutes),
@@ -309,14 +307,14 @@ export default function EmployeeList() {
 
     const employeeSheet = XLSX.utils.json_to_sheet(summaryRows);
     employeeSheet["!cols"] = [
-      { wch: 18 }, { wch: 28 }, { wch: 24 }, { wch: 22 }, { wch: 24 }, { wch: 12 },
+      { wch: 18 }, { wch: 28 }, { wch: 24 }, { wch: 22 }, { wch: 12 },
       { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 18 }
     ];
     XLSX.utils.book_append_sheet(workbook, employeeSheet, "Personnel Summary");
 
     const detailSheet = XLSX.utils.json_to_sheet(detailRows);
     detailSheet["!cols"] = [
-      { wch: 14 }, { wch: 18 }, { wch: 28 }, { wch: 24 }, { wch: 24 },
+      { wch: 14 }, { wch: 18 }, { wch: 28 }, { wch: 24 },
       { wch: 14 }, { wch: 34 }, { wch: 14 }, { wch: 34 }, { wch: 12 },
       { wch: 14 }, { wch: 16 }, { wch: 14 }
     ];
