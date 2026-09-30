@@ -194,7 +194,7 @@ export default function EmployeeList() {
 
     const { data: employeeData, error: employeeError } = await supabase
       .from("employee_profiles")
-      .select("id, full_name, email, position, employee_id, role_id")
+      .select("id, full_name, email, position, role_id")
       .eq("branch_id", profile.branch_id)
       .order("full_name", { ascending: true });
 
@@ -239,7 +239,7 @@ export default function EmployeeList() {
         : "Absent";
       return {
         Date: log.log_date || "-",
-        "Employee ID": employee.employee_id || employee.id || "-",
+        "Employee ID": employee.id || "-",
         Employee: employee.full_name || "-",
         Position: employee.position || "-",
         "Time In": formatTime(log.time_in),
