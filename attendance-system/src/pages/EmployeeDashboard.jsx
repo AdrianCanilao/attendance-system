@@ -748,7 +748,6 @@ const scheduledClockOut = new Date(
               status: attendanceStatus,
               time_in_face_url: faceUrl,
               time_in_location: deviceLocation?.label || null,
-              location: deviceLocation?.label || null,
             });
 
         if (attendanceInsertError) {
@@ -793,7 +792,6 @@ const scheduledClockOut = new Date(
               overtime_minutes: overtimeMinutes,
               time_out_face_url: faceUrl,
               time_out_location: deviceLocation?.label || null,
-              location: deviceLocation?.label || null,
             })
             .eq("employee_id", employeeId)
             .eq("log_date", today)
