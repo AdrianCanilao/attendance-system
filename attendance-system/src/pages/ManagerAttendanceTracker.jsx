@@ -278,6 +278,95 @@ correction:
   };
 
   return (
+      <style>{`
+        @media (max-width: 768px) {
+          .cibo-attendance-mobile-table-card {
+            margin: 0 !important;
+            padding: 14px 10px 18px !important;
+            border-radius: 10px !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+          }
+
+          .cibo-attendance-mobile-table-card .cibo-attendance-table-header {
+            margin-bottom: 14px !important;
+            padding-bottom: 10px !important;
+          }
+
+          .cibo-attendance-mobile-table-wrapper {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            box-sizing: border-box !important;
+          }
+
+          .cibo-attendance-mobile-table-wrapper table {
+            width: 1120px !important;
+            min-width: 1120px !important;
+            table-layout: fixed !important;
+          }
+
+          .cibo-attendance-mobile-table-wrapper th,
+          .cibo-attendance-mobile-table-wrapper td {
+            box-sizing: border-box !important;
+            padding: 12px 8px !important;
+            font-size: 13px !important;
+            line-height: 1.35 !important;
+            white-space: normal !important;
+            overflow-wrap: anywhere !important;
+          }
+
+          .cibo-attendance-mobile-table-wrapper th {
+            font-size: 13px !important;
+            white-space: nowrap !important;
+          }
+
+          .cibo-attendance-mobile-table-wrapper th:nth-child(1),
+          .cibo-attendance-mobile-table-wrapper td:nth-child(1) {
+            width: 130px !important;
+          }
+
+          .cibo-attendance-mobile-table-wrapper th:nth-child(2),
+          .cibo-attendance-mobile-table-wrapper td:nth-child(2) {
+            width: 140px !important;
+          }
+
+          .cibo-attendance-mobile-table-wrapper th:nth-child(3),
+          .cibo-attendance-mobile-table-wrapper td:nth-child(3),
+          .cibo-attendance-mobile-table-wrapper th:nth-child(4),
+          .cibo-attendance-mobile-table-wrapper td:nth-child(4) {
+            width: 190px !important;
+          }
+
+          .cibo-attendance-mobile-table-wrapper th:nth-child(5),
+          .cibo-attendance-mobile-table-wrapper td:nth-child(5),
+          .cibo-attendance-mobile-table-wrapper th:nth-child(6),
+          .cibo-attendance-mobile-table-wrapper td:nth-child(6),
+          .cibo-attendance-mobile-table-wrapper th:nth-child(7),
+          .cibo-attendance-mobile-table-wrapper td:nth-child(7),
+          .cibo-attendance-mobile-table-wrapper th:nth-child(8),
+          .cibo-attendance-mobile-table-wrapper td:nth-child(8) {
+            width: 110px !important;
+          }
+
+          .cibo-attendance-mobile-table-wrapper th:nth-child(9),
+          .cibo-attendance-mobile-table-wrapper td:nth-child(9) {
+            width: 140px !important;
+          }
+
+          .cibo-attendance-mobile-table-wrapper .timeContainer {
+            gap: 8px !important;
+            min-height: 56px !important;
+          }
+
+          .cibo-attendance-mobile-table-wrapper .locationText {
+            max-width: 120px !important;
+            font-size: 11px !important;
+          }
+        }
+      `}</style>
     <ManagerLayout>
       <div style={styles.header}>
         <h2 style={styles.pageTitle}>Attendance Tracker</h2>
@@ -300,7 +389,7 @@ correction:
         </div>
       </div>
 
-      <div style={styles.tableCard}>
+      <div className="cibo-attendance-mobile-table-card" style={styles.tableCard}>
         <div className="cibo-attendance-table-header" style={styles.tableHeader}>
           <div>
             <h3 style={styles.tableTitle}>
@@ -364,7 +453,7 @@ correction:
           </div>
         </div>
 
-        <div style={styles.tableWrapperScrollable}>
+        <div className="cibo-attendance-mobile-table-wrapper" style={styles.tableWrapperScrollable}>
           <table style={styles.table}>
             <thead>
               <tr>
