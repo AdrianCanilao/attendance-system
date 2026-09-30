@@ -533,13 +533,13 @@ const today = new Intl.DateTimeFormat("en-CA", {
 
 const now = new Date();
 
-const scheduledClockIn = new Date(
-  `${today}T${profile.clock_in}`
-);
+const scheduledClockIn = profile.clock_in
+  ? new Date(`${today}T${profile.clock_in}`)
+  : null;
 
-const scheduledClockOut = new Date(
-  `${today}T${profile.clock_out}`
-);
+let scheduledClockOut = profile.clock_out
+  ? new Date(`${today}T${profile.clock_out}`)
+  : null;
 
       const { data: existing } =
         await supabase
@@ -562,6 +562,25 @@ const scheduledClockOut = new Date(
         });
         alert("Already timed in today");
         return;
+      }
+
+      // Time Out must use the schedule snapshot saved on the attendance row.
+      // This prevents a transfer/shift change from changing historical overtime.
+      if (actionType === "time_out" && existing?.scheduled_time_out) {
+        scheduledClockOut = new Date(
+          `${today}T${existing.scheduled_time_out}`
+        );
+
+        const scheduledInForOvernight = existing?.scheduled_time_in
+          ? new Date(`${today}T${existing.scheduled_time_in}`)
+          : scheduledClockIn;
+
+        if (
+          scheduledInForOvernight &&
+          scheduledClockOut <= scheduledInForOvernight
+        ) {
+          scheduledClockOut.setDate(scheduledClockOut.getDate() + 1);
+        }
       }
 
       if (
