@@ -114,216 +114,199 @@ export default function EmployeeList() {
     setShowAttendanceModal(true);
   };
 
-  // EXPORT EXCEL
-  // EXPORT EXCEL
-const exportExcel = async () => {
-  const { data: authData } =
-    await supabase.auth.getUser();
+  // EXPORT CURRENT-BRANCH ATTENDANCE REPORT
+  // Uses saved attendance values so historical shift changes do not rewrite old records.
+  const exportExcel = async () => {
+    const { data: authData } = await supabase.auth.getUser();
+    const currentUserId = authData?.user?.id;
+    if (!currentUserId) return;
 
-  const currentUserId = authData.user.id;
+    const { data: profile } = await supabase
+      .from("employee_profiles")
+      .select("branch_id")
+      .eq("id", currentUserId)
+      .single();
+    if (!profile?.branch_id) return;
 
-  const { data: profile } = await supabase
-    .from("employee_profiles")
-    .select("branch_id")
-    .eq("id", currentUserId)
-    .single();
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  if (!profile) return;
-
-  const { data: attendanceData, error } =
-    await supabase
-      .from("attendance_logs")
-      .select(`
-        *,
-        employee_profiles (
-          full_name
-        )
-      `)
-      .eq(
-        "employee_profiles.branch_id",
-        profile.branch_id
-      )
-      .order("log_date", {
-        ascending: true,
-      });
-
-  if (error) {
-    return;
-  }
-
-  // GROUP DATA BY DATE
-  const groupedByDate = {};
-
-  attendanceData.forEach((item) => {
-    const date = item.log_date;
-
-    if (!groupedByDate[date]) {
-      groupedByDate[date] = {};
-    }
-
-    groupedByDate[date][
-      item.employee_profiles?.full_name
-    ] = {
-      timeIn: item.time_in
-        ? new Date(
-            item.time_in
-          ).toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })
-        : "-",
-
-      timeOut: item.time_out
-        ? new Date(
-            item.time_out
-          ).toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })
-        : "-",
-
-      late: item.late_minutes
-        ? `${item.late_minutes}m`
-        : "-",
-
-      overtime: item.overtime_minutes
-        ? `${item.overtime_minutes}m`
-        : "-",
+    const toManilaDate = (value) => {
+      if (!value) return "";
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit"
+      }).format(new Date(value));
     };
-  });
 
-  // UNIQUE EMPLOYEES
-  const employeeNames = [
-    ...new Set(
-      attendanceData.map(
-        (item) =>
-          item.employee_profiles?.full_name ||
-          "-"
-      )
-    ),
-  ];
+    const formatTime = (value) => value ? new Date(value).toLocaleTimeString("en-US", {
+      hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Manila"
+    }) : "-";
 
-  // UNIQUE DATES
-  const dates = Object.keys(groupedByDate);
+    const formatMinutes = (minutes) => {
+      const total = Number(minutes || 0);
+      if (total <= 0) return "0m";
+      const hours = Math.floor(total / 60);
+      const mins = total % 60;
+      return hours > 0 ? hours + "h " + mins + "m" : mins + "m";
+    };
 
-  // HEADER ROW 1
-  const headerRow1 = ["Name"];
+    const formatHoursWorked = (timeIn, timeOut) => {
+      if (!timeIn || !timeOut) return "-";
+      const diff = Math.floor((new Date(timeOut) - new Date(timeIn)) / 60000);
+      if (diff <= 0) return "-";
+      return Math.floor(diff / 60) + "h " + (diff % 60) + "m";
+    };
 
-  dates.forEach((date) => {
-    const formattedDate =
-      new Date(date).toLocaleDateString(
-        "en-GB"
-      );
+    const { data: branch } = await supabase
+      .from("branches")
+      .select("id, name, branch_code")
+      .eq("id", profile.branch_id)
+      .single();
+    if (!branch) return;
 
-    headerRow1.push(
-      formattedDate,
-      "",
-      "",
-      ""
+    const { data: employeeData } = await supabase
+      .from("employee_profiles")
+      .select("id, full_name, email, position, department, employee_id, role_id")
+      .eq("branch_id", profile.branch_id)
+      .order("full_name", { ascending: true });
+
+    const regularEmployees = (employeeData || []).filter(
+      (employee) => employee.role_id === "e4dbb928-7f0e-4da9-9eff-d7700d37b25a"
     );
-  });
+    if (!regularEmployees.length) return;
 
-  // HEADER ROW 2
-  const headerRow2 = [""];
+    const { data: attendanceData } = await supabase
+      .from("attendance_logs")
+      .select("*")
+      .in("employee_id", regularEmployees.map((employee) => employee.id))
+      .gte("log_date", toManilaDate(monthStart))
+      .lt("log_date", toManilaDate(nextMonthStart))
+      .order("log_date", { ascending: true });
 
-  dates.forEach(() => {
-    headerRow2.push(
-      "Time-in",
-      "Time-out",
-      "Late",
-      "Overtime"
-    );
-  });
+    const { data: leaveData } = await supabase
+      .from("leave_requests")
+      .select("*")
+      .in("employee_id", regularEmployees.map((employee) => employee.id))
+      .eq("status", "Approved");
 
-  // BODY ROWS
-  const rows = employeeNames.map(
-    (employee) => {
-      const row = [employee];
+    const employeeMap = Object.fromEntries(regularEmployees.map((employee) => [employee.id, employee]));
+    const leaves = leaveData || [];
 
-      dates.forEach((date) => {
-        const data =
-          groupedByDate[date][employee];
-
-        row.push(data?.timeIn || "-");
-        row.push(data?.timeOut || "-");
-        row.push(data?.late || "-");
-        row.push(data?.overtime || "-");
-      });
-
-      return row;
-    }
-  );
-
-  const worksheetData = [
-    headerRow1,
-    headerRow2,
-    ...rows,
-  ];
-
-  const worksheet =
-    XLSX.utils.aoa_to_sheet(
-      worksheetData
-    );
-
-  // MERGE DATE HEADERS
-  const merges = [];
-
-  let col = 1;
-
-  dates.forEach(() => {
-    merges.push({
-      s: { r: 0, c: col },
-      e: { r: 0, c: col + 3 },
+    const detailRows = (attendanceData || []).map((log) => {
+      const employee = employeeMap[log.employee_id] || {};
+      const status = log.time_in
+        ? Number(log.late_minutes || 0) > 0 ? "Late" : "Present"
+        : "Absent";
+      return {
+        Date: log.log_date || "-",
+        "Employee ID": employee.employee_id || employee.id || "-",
+        Employee: employee.full_name || "-",
+        Position: employee.position || "-",
+        Department: employee.department || "-",
+        "Time In": formatTime(log.time_in),
+        "Time In Location": log.time_in_location || "-",
+        "Time Out": formatTime(log.time_out),
+        "Time Out Location": log.time_out_location || "-",
+        Late: formatMinutes(log.late_minutes),
+        Overtime: formatMinutes(log.overtime_minutes),
+        "Hours Worked": formatHoursWorked(log.time_in, log.time_out),
+        Status: status,
+      };
     });
 
-    col += 4;
-  });
+    const summaryRows = regularEmployees.map((employee) => {
+      const logs = (attendanceData || []).filter((log) => log.employee_id === employee.id);
+      const present = logs.filter((log) => log.time_in).length;
+      const late = logs.filter((log) => Number(log.late_minutes || 0) > 0).length;
+      const overtime = logs.filter((log) => Number(log.overtime_minutes || 0) > 0).length;
+      const leaveDays = leaves.filter((leave) => leave.employee_id === employee.id).reduce((total, leave) => {
+        const start = new Date(String(leave.start_date || "").slice(0, 10) + "T00:00:00");
+        const end = new Date(String(leave.end_date || leave.start_date || "").slice(0, 10) + "T00:00:00");
+        return total + Math.max(0, Math.floor((end - start) / 86400000) + 1);
+      }, 0);
+      const lateMinutes = logs.reduce((sum, log) => sum + Number(log.late_minutes || 0), 0);
+      const overtimeMinutes = logs.reduce((sum, log) => sum + Number(log.overtime_minutes || 0), 0);
+      const workedMinutes = logs.reduce((sum, log) => {
+        if (!log.time_in || !log.time_out) return sum;
+        const diff = Math.floor((new Date(log.time_out) - new Date(log.time_in)) / 60000);
+        return sum + (diff > 0 ? diff : 0);
+      }, 0);
+      return {
+        "Employee ID": employee.employee_id || employee.id || "-",
+        Employee: employee.full_name || "-",
+        Position: employee.position || "-",
+        Department: employee.department || "-",
+        Present: present,
+        Late: late,
+        "Late Minutes": formatMinutes(lateMinutes),
+        Overtime: overtime,
+        "Overtime Minutes": formatMinutes(overtimeMinutes),
+        "Leave Days": leaveDays,
+        "Hours Worked": formatMinutes(workedMinutes),
+      };
+    });
 
-  worksheet["!merges"] = merges;
+    const reportInfo = [
+      ["CIBO ATTENDANCE REPORT"],
+      ["Branch", branch.name || "-"],
+      ["Branch Code", branch.branch_code || "-"],
+      ["Report Period", monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" })],
+      ["Generated", now.toLocaleString("en-US", { timeZone: "Asia/Manila" })],
+      [],
+      ["Employees", regularEmployees.length],
+      ["Present Records", detailRows.filter((row) => row.Status === "Present").length],
+      ["Late Records", detailRows.filter((row) => row.Status === "Late").length],
+      ["Absent Records", detailRows.filter((row) => row.Status === "Absent").length],
+      ["Approved Leave Records", leaves.length],
+      ["Overtime Records", detailRows.filter((row) => row.Overtime !== "0m").length],
+    ];
 
-  // COLUMN WIDTHS
-  worksheet["!cols"] = [
-    { wch: 28 },
+    const workbook = XLSX.utils.book_new();
+    const summarySheet = XLSX.utils.aoa_to_sheet(reportInfo);
+    summarySheet["!cols"] = [{ wch: 26 }, { wch: 42 }];
+    XLSX.utils.book_append_sheet(workbook, summarySheet, "Report Summary");
 
-    ...Array(dates.length * 4).fill({
-      wch: 16,
-    }),
-  ];
+    const employeeSheet = XLSX.utils.json_to_sheet(summaryRows);
+    employeeSheet["!cols"] = [
+      { wch: 18 }, { wch: 28 }, { wch: 24 }, { wch: 24 }, { wch: 12 },
+      { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 18 }
+    ];
+    XLSX.utils.book_append_sheet(workbook, employeeSheet, "Employee Summary");
 
-  const workbook =
-    XLSX.utils.book_new();
+    const detailSheet = XLSX.utils.json_to_sheet(detailRows);
+    detailSheet["!cols"] = [
+      { wch: 14 }, { wch: 18 }, { wch: 28 }, { wch: 24 }, { wch: 24 },
+      { wch: 14 }, { wch: 34 }, { wch: 14 }, { wch: 34 }, { wch: 12 },
+      { wch: 14 }, { wch: 16 }, { wch: 14 }
+    ];
+    XLSX.utils.book_append_sheet(workbook, detailSheet, "Attendance Details");
 
-  XLSX.utils.book_append_sheet(
-    workbook,
-    worksheet,
-    "Attendance Report"
-  );
+    const leaveSheet = XLSX.utils.json_to_sheet(leaves.map((leave) => {
+      const employee = employeeMap[leave.employee_id] || {};
+      return {
+        Employee: employee.full_name || "-",
+        "Employee ID": employee.employee_id || employee.id || "-",
+        "Leave Type": leave.leave_type || leave.type || "-",
+        "Start Date": leave.start_date || "-",
+        "End Date": leave.end_date || leave.start_date || "-",
+        Status: leave.status || "-",
+        Reason: leave.reason || "-",
+      };
+    }));
+    leaveSheet["!cols"] = [
+      { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 42 }
+    ];
+    XLSX.utils.book_append_sheet(workbook, leaveSheet, "Approved Leave");
 
-  const excelBuffer = XLSX.write(
-    workbook,
-    {
-      bookType: "xlsx",
-      type: "array",
-    }
-  );
-
-  const data = new Blob(
-    [excelBuffer],
-    {
-      type:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
-    }
-  );
-
-  saveAs(
-    data,
-    `attendance-report-${new Date()
-      .toISOString()
-      .split("T")[0]}.xlsx`
-  );
-};
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    saveAs(
+      new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
+      }),
+      "cibo-attendance-report-" + toManilaDate(now) + ".xlsx"
+    );
+  };
 
   const [avatarUrls, setAvatarUrls] = useState({});
 
