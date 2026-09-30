@@ -1900,6 +1900,7 @@ async def record_kiosk_attendance(employee, action, face_url=None, location=None
                 "scheduled_time_out": scheduled_time_out,
                 "late_minutes": late_minutes,
                 "overtime_minutes": 0,
+                "time_in_location": location,
                 "location": location
             }
 
@@ -2111,6 +2112,7 @@ async def record_kiosk_attendance(employee, action, face_url=None, location=None
                 update_data["time_out_face_url"] = face_url
 
             if location:
+                update_data["time_out_location"] = location
                 update_data["location"] = location
 
             updated_result = (
