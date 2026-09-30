@@ -2497,7 +2497,7 @@ async def kiosk_verify_live(
         # The open threshold is intentionally more tolerant so users
         # do not need to widen their eyes beyond their normal opening.
         OPEN_THRESHOLD = open_reference * 0.80
-        CLOSED_THRESHOLD = open_reference * 0.70
+        CLOSED_THRESHOLD = open_reference * 0.75
 
         blink_detected = False
         open_before = False
