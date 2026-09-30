@@ -607,10 +607,9 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
               textAlign: "center",
             }}
           >
-            {calculateLate(
-  log.time_in,
-  profile?.clock_in
-)}
+            {log.late_minutes > 0
+              ? `${Math.floor(log.late_minutes / 60)}h ${log.late_minutes % 60}m`
+              : "0m"}
           </td>
 
           {/* OVERTIME */}
@@ -620,10 +619,9 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
               textAlign: "center",
             }}
           >
-            {calculateOvertime(
-  log.time_out,
-  profile?.clock_out
-)}
+            {log.overtime_minutes > 0
+              ? `${Math.floor(log.overtime_minutes / 60)}h ${log.overtime_minutes % 60}m`
+              : "0m"}
           </td>
 
           {/* HOURS WORKED */}
