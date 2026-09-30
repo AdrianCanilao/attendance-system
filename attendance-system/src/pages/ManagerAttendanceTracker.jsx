@@ -278,6 +278,7 @@ correction:
   };
 
   return (
+    <>
       <style>{`
         @media (max-width: 768px) {
           .cibo-attendance-mobile-table-card {
@@ -618,6 +619,7 @@ correction:
         </div>
       </div>
     </ManagerLayout>
+    </>
   );
 }
 
