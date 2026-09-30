@@ -41,6 +41,43 @@ export default function ManagerLayout({ children }) {
     if (showNotifications) fetchNotifications();
   }, [showNotifications]);
 
+  // Subscribe to Supabase Realtime so new leave notifications appear
+  // immediately instead of waiting for the 30-second refresh interval.
+  useEffect(() => {
+    let channel;
+
+    const subscribeToNotifications = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+
+      if (!user) return;
+
+      channel = supabase
+        .channel(`manager-notifications-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            fetchNotifications();
+          }
+        )
+        .subscribe();
+    };
+
+    subscribeToNotifications();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, []);
+
   const fetchBranch = async () => {
     const email = localStorage.getItem("email");
 
