@@ -14,17 +14,44 @@ export default function ManagerLeave() {
   const fetchRequests = async () => {
     setLoading(true);
 
+    // A Maintenance Specialist can only manage employees currently
+    // assigned to the same branch as the logged-in specialist.
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
+
+    if (!user) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: managerProfile, error: profileError } = await supabase
+      .from("employee_profiles")
+      .select("branch_id")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !managerProfile?.branch_id) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("leave_requests")
       .select(`
         *,
-        employee_profiles!leave_requests_employee_id_fkey (
-          full_name
+        employee_profiles!inner (
+          full_name,
+          branch_id
         )
       `)
+      .eq("employee_profiles.branch_id", managerProfile.branch_id)
       .order("created_at", { ascending: false });
 
     if (error) {
+      console.error("Failed to load branch leave requests:", error);
+      setRequests([]);
       setLoading(false);
       return;
     }
