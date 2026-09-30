@@ -171,15 +171,17 @@ export default function EmployeeList() {
       .eq("branch_id", profile.branch_id)
       .order("full_name", { ascending: true });
 
-    const regularEmployees = (employeeData || []).filter(
-      (employee) => employee.role_id === "e4dbb928-7f0e-4da9-9eff-d7700d37b25a"
+    const branchMembers = (employeeData || []).filter(
+      (employee) =>
+        employee.role_id === "e4dbb928-7f0e-4da9-9eff-d7700d37b25a" ||
+        employee.role_id === "b381a7a0-9595-4c69-abf1-5c15a827647a"
     );
-    if (!regularEmployees.length) return;
+    if (!branchMembers.length) return;
 
     const { data: attendanceData } = await supabase
       .from("attendance_logs")
       .select("*")
-      .in("employee_id", regularEmployees.map((employee) => employee.id))
+      .in("employee_id", branchMembers.map((employee) => employee.id))
       .gte("log_date", toManilaDate(monthStart))
       .lt("log_date", toManilaDate(nextMonthStart))
       .order("log_date", { ascending: true });
@@ -190,7 +192,7 @@ export default function EmployeeList() {
       .in("employee_id", regularEmployees.map((employee) => employee.id))
       .eq("status", "Approved");
 
-    const employeeMap = Object.fromEntries(regularEmployees.map((employee) => [employee.id, employee]));
+    const employeeMap = Object.fromEntries(branchMembers.map((employee) => [employee.id, employee]));
     const leaves = leaveData || [];
 
     const detailRows = (attendanceData || []).map((log) => {
@@ -215,7 +217,7 @@ export default function EmployeeList() {
       };
     });
 
-    const summaryRows = regularEmployees.map((employee) => {
+    const summaryRows = branchMembers.map((employee) => {
       const logs = (attendanceData || []).filter((log) => log.employee_id === employee.id);
       const present = logs.filter((log) => log.time_in).length;
       const late = logs.filter((log) => Number(log.late_minutes || 0) > 0).length;
@@ -236,6 +238,7 @@ export default function EmployeeList() {
         "Employee ID": employee.employee_id || employee.id || "-",
         Employee: employee.full_name || "-",
         Position: employee.position || "-",
+        Role: employee.role_id === "b381a7a0-9595-4c69-abf1-5c15a827647a" ? "Maintenance Specialist" : "Employee",
         Department: employee.department || "-",
         Present: present,
         Late: late,
@@ -254,7 +257,7 @@ export default function EmployeeList() {
       ["Report Period", monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" })],
       ["Generated", now.toLocaleString("en-US", { timeZone: "Asia/Manila" })],
       [],
-      ["Employees", regularEmployees.length],
+      ["Branch Personnel", branchMembers.length],
       ["Present Records", detailRows.filter((row) => row.Status === "Present").length],
       ["Late Records", detailRows.filter((row) => row.Status === "Late").length],
       ["Absent Records", detailRows.filter((row) => row.Status === "Absent").length],
@@ -269,10 +272,10 @@ export default function EmployeeList() {
 
     const employeeSheet = XLSX.utils.json_to_sheet(summaryRows);
     employeeSheet["!cols"] = [
-      { wch: 18 }, { wch: 28 }, { wch: 24 }, { wch: 24 }, { wch: 12 },
+      { wch: 18 }, { wch: 28 }, { wch: 24 }, { wch: 22 }, { wch: 24 }, { wch: 12 },
       { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 18 }
     ];
-    XLSX.utils.book_append_sheet(workbook, employeeSheet, "Employee Summary");
+    XLSX.utils.book_append_sheet(workbook, employeeSheet, "Personnel Summary");
 
     const detailSheet = XLSX.utils.json_to_sheet(detailRows);
     detailSheet["!cols"] = [
