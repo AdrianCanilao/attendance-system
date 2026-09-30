@@ -2957,13 +2957,38 @@ async def kiosk_verify_live(
             }
 
         # =====================================================
-        # 11A. ENFORCE KIOSK BRANCH ACCESS
+        # 11A. ENFORCE KIOSK BRANCH ACCESS USING LIVE DATA
         # =====================================================
-        # Each kiosk is assigned to one branch. The employee's
-        # registered branch must match the kiosk's branch before
-        # attendance can be recorded.
+        # The InsightFace result can contain a stale branch_id
+        # because face recognition data may be cached. Always
+        # retrieve the employee's CURRENT branch from Supabase
+        # immediately before recording attendance.
         kiosk_branch_id = str(kiosk.get("branch_id") or "").strip()
-        employee_branch_id = str(best_employee.get("branch_id") or "").strip()
+
+        live_employee_response = (
+            supabase
+            .table("employee_profiles")
+            .select(
+                "id, full_name, branch_id, shift_id, role_id"
+            )
+            .eq("id", best_employee["id"])
+            .limit(1)
+            .execute()
+        )
+
+        live_employees = live_employee_response.data or []
+
+        if not live_employees:
+            return {
+                "status": "Error",
+                "message": "Employee profile was not found."
+            }
+
+        live_employee = live_employees[0]
+
+        employee_branch_id = str(
+            live_employee.get("branch_id") or ""
+        ).strip()
 
         if (
             not kiosk_branch_id
@@ -2972,7 +2997,7 @@ async def kiosk_verify_live(
         ):
             print(
                 "🚫 KIOSK BRANCH ACCESS DENIED:",
-                best_employee["full_name"],
+                live_employee["full_name"],
                 "EMPLOYEE_BRANCH=",
                 employee_branch_id or "NONE",
                 "KIOSK_BRANCH=",
@@ -2984,18 +3009,25 @@ async def kiosk_verify_live(
                 "status": "Branch Not Allowed",
                 "message": (
                     "This kiosk is assigned to Cubao Head Office. "
-                    "Only employees registered under this branch "
+                    "Only employees currently assigned to this branch "
                     "can record attendance here."
                 ),
                 "employee": {
-                    "id": best_employee["id"],
-                    "full_name": best_employee["full_name"]
+                    "id": live_employee["id"],
+                    "full_name": live_employee["full_name"]
                 }
             }
+
+        # Replace the cached employee object with the live profile
+        # so the attendance record also uses the employee's current
+        # branch and shift.
+        best_employee = live_employee
 
         print(
             "✅ KIOSK BRANCH ACCESS VERIFIED:",
             best_employee["full_name"],
+            "CURRENT_BRANCH=",
+            employee_branch_id,
             flush=True
         )
 
