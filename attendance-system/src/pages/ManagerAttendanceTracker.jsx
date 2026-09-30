@@ -229,7 +229,9 @@ if (correctionError) {
 
         time_out_face_url:attendanceToday?.time_out_face_url || null,
 
-        location: attendanceToday?.location || null,
+        time_in_location: attendanceToday?.time_in_location || null,
+
+        time_out_location: attendanceToday?.time_out_location || null,
 
         status,
 
@@ -370,7 +372,6 @@ correction:
                 <th style={styles.th}>Position</th>
                 <th style={styles.th}>Time In</th>
                 <th style={styles.th}>Time Out</th>
-                <th style={styles.th}>Location</th>
                 <th style={styles.th}>Late</th>
                 <th style={styles.th}>Overtime</th>
                 <th style={styles.th}>Hours Worked</th>
@@ -405,7 +406,12 @@ correction:
                         />
                       )}
 
-                      <span>{log.time_in}</span>
+                      <div style={styles.timeDetails}>
+                        <span>{log.time_in}</span>
+                        <span style={styles.locationText}>
+                          {log.time_in_location || "-"}
+                        </span>
+                      </div>
                     </div>
                   </td>
 
@@ -426,12 +432,13 @@ correction:
                         />
                       )}
 
-                      <span>{log.time_out}</span>
+                      <div style={styles.timeDetails}>
+                        <span>{log.time_out}</span>
+                        <span style={styles.locationText}>
+                          {log.time_out_location || "-"}
+                        </span>
+                      </div>
                     </div>
-                  </td>
-
-                  <td style={styles.td}>
-                    {log.location || "-"}
                   </td>
 
                   <td style={styles.td}>
@@ -639,8 +646,22 @@ const styles = {
     timeContainer: {
   display: "flex",
   alignItems: "center",
+  justifyContent: "center",
   gap: "10px",
-  minHeight: "40px",
+  minHeight: "56px",
+  },
+  timeDetails: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "4px",
+  },
+  locationText: {
+    fontSize: "12px",
+    color: "#6b7280",
+    lineHeight: "1.3",
+    maxWidth: "180px",
+    overflowWrap: "anywhere",
   },
   timeAvatar: {
     width: "32px",
