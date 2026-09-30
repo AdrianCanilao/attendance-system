@@ -458,6 +458,22 @@ const handleUpdate = async () => {
     return;
   }
 
+  const branchChanged =
+    selected?.branch_id !== (form.branch_id || null);
+
+  if (branchChanged) {
+    const previousBranch = branches.find((branch) => branch.id === selected?.branch_id);
+    const newBranch = branches.find((branch) => branch.id === form.branch_id);
+
+    const confirmed = confirm(
+      `Transfer ${form.name} from ${previousBranch?.branch_name || "Unassigned"} to ${newBranch?.branch_name || "Unassigned"}?\\n\\nTheir existing account, attendance history, leave records, and face registration will remain with the same employee profile.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+  }
+
   try {
     setLoading(true);
 
@@ -488,7 +504,7 @@ const handleUpdate = async () => {
       }
     }
 
-    await supabase
+    const { error: profileUpdateError } = await supabase
       .from("employee_profiles")
       .update({
         full_name: form.name,
@@ -498,6 +514,10 @@ const handleUpdate = async () => {
         shift_id: form.shift_id || null,
       })
       .eq("id", selected.id);
+
+    if (profileUpdateError) {
+      throw new Error(profileUpdateError.message);
+    }
     const previousBranch = branches.find((branch) => branch.id === selected.branch_id);
     const newBranch = branches.find((branch) => branch.id === form.branch_id);
 
