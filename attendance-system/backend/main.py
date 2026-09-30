@@ -3481,37 +3481,26 @@ async def kiosk_verify(
                 "message": "Kiosk face database is empty."
             }
                 # =====================================================
-        # 🏢 FILTER FACES BY KIOSK BRANCH
+        # 🏢 LOAD ALL FACE EMBEDDINGS
+        #
+        # Do not use the cached branch_id for authorization.
+        # Employees can be transferred between branches while
+        # the kiosk process is still running, so cached branch
+        # information can become stale.
+        #
+        # We identify the face first, then fetch the employee's
+        # CURRENT branch from Supabase and enforce kiosk access
+        # against that live value.
         # =====================================================
 
-        if kiosk_branch_id:
+        branch_face_cache = kiosk_face_cache
 
-            branch_face_cache = [
-                cached_face
-                for cached_face in kiosk_face_cache
-                if str(
-                    cached_face["employee"].get("branch_id")
-                ) == str(kiosk_branch_id)
-            ]
-
-            print(
-                "🏢 BRANCH-FILTERED FACE CACHE:",
-                len(branch_face_cache),
-                "FACE EMBEDDINGS",
-                flush=True
-            )
-
-        else:
-
-            # Development kiosk has no branch assigned yet.
-            # Keep using the complete cache temporarily.
-            branch_face_cache = kiosk_face_cache
-
-            print(
-                "🧪 DEVELOPMENT MODE:",
-                "Using all kiosk face embeddings.",
-                flush=True
-            )
+        print(
+            "👥 KIOSK FACE CACHE:",
+            len(branch_face_cache),
+            "FACE EMBEDDINGS",
+            flush=True
+        )
 
         if not branch_face_cache:
             return {
@@ -3761,11 +3750,73 @@ async def kiosk_verify(
                 flush=True
             )
 
+            # =================================================
+            # 🔒 LIVE BRANCH AUTHORIZATION
+            #
+            # Always read the employee's current branch from
+            # Supabase. This prevents a stale face-cache branch
+            # from blocking a valid transfer or authorizing an
+            # employee after they have been transferred away.
+            # =================================================
+
+            live_employee_response = (
+                supabase
+                .table("employee_profiles")
+                .select(
+                    "id, full_name, branch_id, shift_id, role_id"
+                )
+                .eq("id", best_employee["id"])
+                .limit(1)
+                .execute()
+            )
+
+            live_employees = live_employee_response.data or []
+
+            if not live_employees:
+                return {
+                    "status": "Error",
+                    "message": "Employee profile was not found."
+                }
+
+            live_employee = live_employees[0]
+            live_employee_branch_id = str(
+                live_employee.get("branch_id") or ""
+            ).strip()
+
+            if (
+                not kiosk_branch_id
+                or not live_employee_branch_id
+                or live_employee_branch_id != str(kiosk_branch_id).strip()
+            ):
+                print(
+                    "🚫 KIOSK BRANCH DENIED:",
+                    live_employee.get("full_name"),
+                    "EMPLOYEE BRANCH:",
+                    live_employee_branch_id,
+                    "KIOSK BRANCH:",
+                    kiosk_branch_id,
+                    flush=True
+                )
+
+                return {
+                    "status": "Branch Not Allowed",
+                    "message": (
+                        "This kiosk is assigned to Cubao Head Office. "
+                        "Only employees currently assigned to this branch "
+                        "can record attendance here."
+                    ),
+                    "employee": {
+                        "id": live_employee["id"],
+                        "full_name": live_employee["full_name"]
+                    }
+                }
+
             employee_result = {
-                "id": best_employee["id"],
-                "full_name": best_employee["full_name"],
-                "branch_id": best_employee["branch_id"],
-                "shift_id": best_employee["shift_id"]
+                "id": live_employee["id"],
+                "full_name": live_employee["full_name"],
+                "branch_id": live_employee["branch_id"],
+                "shift_id": live_employee["shift_id"],
+                "role_id": live_employee.get("role_id")
             }
 
             # =================================================
