@@ -997,8 +997,7 @@ async def recognize_live_face(
             cv2.IMREAD_COLOR
         )
 
-        if img is None:
-            return {
+        if img is None:            return {
                 "status": "No Face",
                 "message": "Unable to read camera frame."
             }
@@ -1997,8 +1996,7 @@ async def record_kiosk_attendance(employee, action, face_url=None, location=None
                     .is_("time_out", None)
                     .order("time_in", desc=True)
                     .limit(1)
-                    .execute()
-                )
+                    .execute()                )
 
                 yesterday_records = (
                     yesterday_result.data or []
@@ -2958,12 +2956,6 @@ async def kiosk_verify_live(
                 )
             }
 
-        print(
-            "✅ KIOSK IDENTITY VERIFIED:",
-            best_employee["full_name"],
-            flush=True
-        )
-
         # =====================================================
         # 11A. ENFORCE KIOSK BRANCH ACCESS
         # =====================================================
@@ -3041,7 +3033,6 @@ async def kiosk_verify_live(
                 )
 
                 if not success:
-
                     print(
                         "⚠️ KIOSK PHOTO ENCODE FAILED",
                         flush=True
@@ -3541,3 +3532,350 @@ async def kiosk_verify(
             # Convert normalized face image to uint8
             face_crop = np.asarray(
                 face_crop * 255,
+                dtype=np.uint8
+            )
+
+            # Convert RGB to BGR
+            face_crop = cv2.cvtColor(
+                face_crop,
+                cv2.COLOR_RGB2BGR
+            )
+
+            # Create ArcFace embedding from the face crop
+            captured_result = DeepFace.represent(
+                img_path=face_crop,
+                model_name="ArcFace",
+                detector_backend="skip",
+                enforce_detection=False
+            )
+
+            if not captured_result:
+                return {
+                    "status": "No Face",
+                    "message": "Unable to create face embedding."
+                }
+
+            captured_embedding = (
+                captured_result[0]["embedding"]
+            )
+
+        except Exception as e:
+
+            print(
+                "❌ EMBEDDING ERROR:",
+                str(e),
+                flush=True
+            )
+
+            return {
+                "status": "Error",
+                "message": "Unable to process face."
+            }
+        # =====================================================
+        # COMPARE AGAINST CACHED EMPLOYEE EMBEDDINGS
+        # =====================================================
+
+# =====================================================
+# COMPARE AGAINST CACHED EMPLOYEE EMBEDDINGS
+# USE ALL REGISTERED FACE IMAGES PER EMPLOYEE
+# =====================================================
+
+        employee_distances = {}
+
+        for cached_face in branch_face_cache:
+
+            employee = cached_face["employee"]
+
+            stored_embedding = (
+                cached_face["embedding"]
+            )
+
+            distance = cosine_distance(
+                captured_embedding,
+                stored_embedding
+            )
+
+            employee_id = str(employee.get("id"))
+            employee_name = (
+                employee.get("full_name") or ""
+            )
+
+            print(
+                f"📏 {employee_name}: {distance}",
+                flush=True
+            )
+
+            if employee_id not in employee_distances:
+                employee_distances[employee_id] = {
+                    "employee": employee,
+                    "distances": []
+                }
+
+            employee_distances[employee_id]["distances"].append(
+                distance
+            )
+
+
+# =====================================================
+# CALCULATE MEDIAN DISTANCE PER EMPLOYEE
+# =====================================================
+
+        best_distance = 1.0
+        best_employee = None
+
+        for employee_id, data in employee_distances.items():
+
+            distances = data["distances"]
+            employee = data["employee"]
+
+            median_distance = float(
+                np.median(distances)
+            )
+
+            print(
+                f"📊 KIOSK MEDIAN "
+                f"{employee.get('full_name')}: "
+                f"{median_distance} "
+                f"FROM {len(distances)} FACE(S)",
+                flush=True
+            )
+
+            if median_distance < best_distance:
+
+                best_distance = median_distance
+                best_employee = employee
+
+
+        print(
+            "🏆 KIOSK BEST EMPLOYEE:",
+            best_employee.get("full_name")
+            if best_employee
+            else None,
+            flush=True
+        )
+
+        print(
+            "🔥 KIOSK BEST MEDIAN DISTANCE:",
+            best_distance,
+            flush=True
+        )
+        # =====================================================
+        # FINAL DECISION
+        # =====================================================
+
+# =====================================================
+# FINAL DECISION WITH CONFIDENCE MARGIN
+# =====================================================
+
+        ranked_employees = sorted(
+            employee_distances.values(),
+            key=lambda item: float(np.median(item["distances"]))
+        )
+
+        best_employee = (
+            ranked_employees[0]["employee"]
+            if len(ranked_employees) >= 1
+            else None
+        )
+
+        best_distance = (
+            float(np.median(ranked_employees[0]["distances"]))
+            if len(ranked_employees) >= 1
+            else 1.0
+        )
+
+        second_distance = (
+            float(np.median(ranked_employees[1]["distances"]))
+            if len(ranked_employees) >= 2
+            else 1.0
+        )
+
+        margin = second_distance - best_distance
+
+        print(
+            "🏆 KIOSK BEST EMPLOYEE:",
+            best_employee.get("full_name")
+            if best_employee
+            else None,
+            flush=True
+        )
+
+        print(
+            "🔥 KIOSK BEST DISTANCE:",
+            best_distance,
+            flush=True
+        )
+
+        print(
+            "🥈 KIOSK SECOND-BEST DISTANCE:",
+            second_distance,
+            flush=True
+        )
+
+        print(
+            "📐 KIOSK CONFIDENCE MARGIN:",
+            margin,
+            flush=True
+        )
+
+
+        # =====================================================
+        # REQUIRE A CLEAR DIFFERENCE
+        # =====================================================
+
+        MIN_MARGIN = 0.05
+
+        if (
+            best_employee is not None
+            and best_distance < 0.35
+            and margin >= MIN_MARGIN
+        ):
+
+            print(
+                "✅ KIOSK MATCH:",
+                best_employee["full_name"],
+                flush=True
+            )
+
+            employee_result = {
+                "id": best_employee["id"],
+                "full_name": best_employee["full_name"],
+                "branch_id": best_employee["branch_id"],
+                "shift_id": best_employee["shift_id"]
+            }
+
+            # =================================================
+            # 📸 SAVE SUCCESSFUL KIOSK FACE IMAGE
+            # =================================================
+
+            face_url = None
+
+            try:
+
+                face_frame = valid_frames[-1]
+
+                success, encoded_image = cv2.imencode(
+                    ".jpg",
+                    face_frame
+                )
+
+                if success:
+
+                    face_bytes = encoded_image.tobytes()
+
+                    safe_name = normalize_name(
+                        best_employee["full_name"]
+                    )
+
+                    action_folder = action.strip().lower()
+
+                    file_name = (
+                        f"attendance/"
+                        f"{safe_name}/"
+                        f"{action_folder}/"
+                        f"{int(time.time() * 1000)}.jpg"
+                    )
+
+                    print(
+                        "📸 Uploading kiosk attendance photo:",
+                        file_name,
+                        flush=True
+                    )
+
+                    supabase.storage.from_("faces").upload(
+                        file_name,
+                        face_bytes,
+                        {
+                            "content-type": "image/jpeg",
+                            "upsert": "true"
+                        }
+                    )
+
+                    face_url = (
+                        supabase
+                        .storage
+                        .from_("faces")
+                        .get_public_url(file_name)
+                    )
+
+                    print(
+                        "✅ KIOSK FACE PHOTO SAVED:",
+                        face_url,
+                        flush=True
+                    )
+
+            except Exception as e:
+
+                print(
+                    "⚠️ KIOSK PHOTO UPLOAD FAILED:",
+                    str(e),
+                    flush=True
+                )
+
+
+            # =================================================
+            # RECORD ATTENDANCE
+            # =================================================
+
+            attendance_result = await record_kiosk_attendance(
+                employee_result,
+                action,
+                face_url
+            )
+
+            return {
+                "status": "Match",
+                "employee": employee_result,
+                "distance": best_distance,
+                "attendance": attendance_result
+            }
+
+
+        # =====================================================
+        # UNCERTAIN MATCH
+        # =====================================================
+
+        if (
+            best_employee is not None
+            and best_distance < 0.35
+            and margin < MIN_MARGIN
+        ):
+
+            print(
+                "⚠️ KIOSK UNCERTAIN FACE MATCH:",
+                best_employee["full_name"],
+                "MARGIN:",
+                margin,
+                flush=True
+            )
+
+            return {
+                "status": "No Match",
+                "message": "Face recognition was not confident enough. Please try again."
+            }
+
+
+        # =====================================================
+        # NO MATCH
+        # =====================================================
+
+        print(
+            "❌ KIOSK NO MATCH",
+            flush=True
+        )
+
+        return {
+            "status": "No Match"
+        }
+    except Exception as e:
+
+        print(
+            "❌ KIOSK ERROR:",
+            str(e),
+            flush=True
+        )
+
+        return {
+            "status": "Error",
+            "message": str(e)
+        }
