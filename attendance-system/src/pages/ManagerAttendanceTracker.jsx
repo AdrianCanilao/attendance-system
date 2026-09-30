@@ -557,7 +557,7 @@ const styles = {
   tableCard: {
     background: "#fff",
     borderRadius: "12px",
-    padding: "20px 24px 24px",
+    padding: "22px 22px 26px",
     border: "2px solid #e5e7eb",
 
     minHeight: "calc(100vh - 220px)",
@@ -604,17 +604,23 @@ const styles = {
   table: {
     width: "100%",
     borderCollapse: "collapse",
+    tableLayout: "fixed",
   },
 
   th: {
-    textAlign: "left",
-    padding: "14px 12px",
+    textAlign: "center",
+    verticalAlign: "middle",
+    padding: "13px 10px",
     background: "#f9fafb",
     borderBottom: "1px solid #e5e7eb",
+    fontWeight: "600",
+    whiteSpace: "nowrap",
   },
 
   td: {
-    padding: "14px 12px",
+    textAlign: "center",
+    verticalAlign: "middle",
+    padding: "15px 10px",
     borderBottom: "1px solid #f1f5f9",
     color: "#111827",
   },
@@ -660,7 +666,7 @@ const styles = {
     fontSize: "12px",
     color: "#6b7280",
     lineHeight: "1.3",
-    maxWidth: "180px",
+    maxWidth: "150px",
     overflowWrap: "anywhere",
   },
   timeAvatar: {
