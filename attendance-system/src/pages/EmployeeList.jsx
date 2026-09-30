@@ -172,7 +172,7 @@ export default function EmployeeList() {
 
     const { data: branch, error: branchError } = await supabase
       .from("branches")
-      .select("id, name, branch_code")
+      .select("id, branch_name, branch_code")
       .eq("id", profile.branch_id)
       .single();
     if (branchError || !branch) {
@@ -268,7 +268,7 @@ export default function EmployeeList() {
 
     const reportInfo = [
       ["CIBO ATTENDANCE REPORT"],
-      ["Branch", branch.name || "-"],
+      ["Branch", branch.branch_name || "-"],
       ["Branch Code", branch.branch_code || "-"],
       ["Report Period", monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" })],
       ["Generated", now.toLocaleString("en-US", { timeZone: "Asia/Manila" })],
