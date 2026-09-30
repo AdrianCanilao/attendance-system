@@ -140,8 +140,6 @@ const [deviceLocation, setDeviceLocation] = useState(null);
         .eq("log_date", today)
         .maybeSingle();
 
-    // Only treat an approved leave as "On Leave" when today
-    // falls within the leave's start and end dates.
     const { data: leave } =
       await supabase
         .from("leave_requests")
@@ -170,9 +168,6 @@ const [deviceLocation, setDeviceLocation] = useState(null);
  const captureFrames = async () => {
   const frames = [];
 
-  // Capture a longer blink window so a natural blink is less likely
-  // to fall between two samples. Recognition still uses the same
-  // InsightFace matching rules on the captured frames.
   for (let i = 0; i < 12; i++) {
     const image = webcamRef.current.getScreenshot();
 
@@ -184,7 +179,6 @@ const [deviceLocation, setDeviceLocation] = useState(null);
 
     frames.push(blob);
 
-    // Capture every 150 ms (~1.8 seconds total).
     await new Promise((res) => setTimeout(res, 150));
   }
 
@@ -217,10 +211,6 @@ const validateLiveFace = async () => {
       "live-face.jpg"
     );
 
-    // ========================================================
-    // 1. EXISTING FACE VALIDATION
-    // ========================================================
-
     const validationResponse = await fetch(
       API_URL + "/validate-face",
       {
@@ -234,18 +224,12 @@ const validateLiveFace = async () => {
 
     setFaceStatus(validationData);
 
-    // If face position/quality is invalid,
-    // don't run recognition.
     if (!validationData.valid) {
       setDetectedFace(null);
       setIdentityVerified(false);
       setRecognitionStatus("no-face");
       return;
     }
-
-    // ========================================================
-    // 2. INSIGHTFACE RECOGNITION
-    // ========================================================
 
     const recognitionResponse = await fetch(
       INSIGHTFACE_URL + "/recognize-live-face",
@@ -263,11 +247,6 @@ const validateLiveFace = async () => {
 
     const recognitionData =
       await recognitionResponse.json();
-
-
-    // ========================================================
-    // 3. UNKNOWN FACE
-    // ========================================================
 
     if (
       recognitionData.status !== "Match"
@@ -289,10 +268,6 @@ const validateLiveFace = async () => {
       return;
     }
 
-    // ========================================================
-    // 4. DISPLAY DETECTED EMPLOYEE
-    // ========================================================
-
     const detectedEmployeeId =
       recognitionData.employee_id;
 
@@ -305,10 +280,6 @@ const validateLiveFace = async () => {
       employeeId: detectedEmployeeId,
     });
     setRecognitionStatus("recognized");
-
-    // ========================================================
-    // 5. COMPARE WITH LOGGED-IN EMPLOYEE
-    // ========================================================
 
     if (
       detectedEmployeeId === currentEmployeeId
@@ -334,8 +305,6 @@ const validateLiveFace = async () => {
     }
 
   } catch (error) {
-
-
     setDetectedFace(null);
     setIdentityVerified(false);
     setRecognitionStatus("error");
@@ -348,7 +317,6 @@ const validateLiveFace = async () => {
     });
 
   } finally {
-
     setCheckingFace(false);
     setRecognizingFace(false);
     recognizingFaceRef.current = false;
@@ -415,8 +383,6 @@ const getDeviceLocation = () =>
           bestPosition = position;
         }
 
-        // Use the first sufficiently accurate reading instead of relying
-        // on the browser's first location estimate.
         if (position.coords.accuracy <= 100) {
           clearTimeout(timeoutId);
           finish(position);
@@ -545,7 +511,6 @@ const handleScan = async (
     .eq("id", user.id)
     .single();
 
-
       if (!profile) {
         alert("Profile not found");
         return;
@@ -639,7 +604,6 @@ const scheduledClockOut = new Date(
         profile.full_name
       );
 
-
       const res = await fetch(
         API_URL + "/verify-face",
         {
@@ -647,7 +611,6 @@ const scheduledClockOut = new Date(
           body: formData,
         }
       );
-
 
       if (!res.ok) {
         await logAudit({
@@ -669,7 +632,6 @@ const scheduledClockOut = new Date(
 
       const result =
         await res.json();
-
 
       if (result.status === "Locked") {
         setShowCamera(false);
@@ -731,7 +693,6 @@ const scheduledClockOut = new Date(
         });
 
       if (uploadError) {
-
         await logAudit({
           user_id: user.id,
           user_name: profile.full_name,
@@ -750,22 +711,22 @@ const scheduledClockOut = new Date(
       if (
         actionType === "time_in"
       ) {
-         const graceLimit = new Date(scheduledClockIn);
+        const graceLimit = new Date(scheduledClockIn);
 
-  graceLimit.setMinutes(
-    graceLimit.getMinutes() + GRACE_MINUTES
-  );
+        graceLimit.setMinutes(
+          graceLimit.getMinutes() + GRACE_MINUTES
+        );
 
-  let attendanceStatus = "Present";
-  let lateMinutes = 0;
+        let attendanceStatus = "Present";
+        let lateMinutes = 0;
 
-  if (now > graceLimit) {
-    attendanceStatus = "Late";
+        if (now > graceLimit) {
+          attendanceStatus = "Late";
 
-    lateMinutes = Math.floor(
-      (now - graceLimit) / 60000
-    );
-  }
+          lateMinutes = Math.floor(
+            (now - graceLimit) / 60000
+          );
+        }
 
         const { error: attendanceInsertError } =
           await supabase
@@ -780,6 +741,7 @@ const scheduledClockOut = new Date(
               overtime_minutes: 0,
               status: attendanceStatus,
               time_in_face_url: faceUrl,
+              time_in_location: deviceLocation?.label || null,
               location: deviceLocation?.label || null,
             });
 
@@ -800,69 +762,60 @@ const scheduledClockOut = new Date(
 
         await logAudit({
           user_id: employeeId,
-
           user_name:
             profile.full_name,
-
           role: managerMode
-  ? "maintenance"
-  : "employee",
-
+            ? "maintenance"
+            : "employee",
           action: "TIME_IN",
-
           description: `${profile.full_name} timed in with status ${attendanceStatus}${lateMinutes > 0 ? ` (${lateMinutes} minutes late)` : ""}`,
         });
       } else {
+        let overtimeMinutes = 0;
 
-  let overtimeMinutes = 0;
+        if (now > scheduledClockOut) {
+          overtimeMinutes = Math.floor(
+            (now - scheduledClockOut) / 60000
+          );
+        }
 
-  if (now > scheduledClockOut) {
-    overtimeMinutes = Math.floor(
-      (now - scheduledClockOut) / 60000
-    );
-  }
+        const { error: attendanceUpdateError } =
+          await supabase
+            .from("attendance_logs")
+            .update({
+              time_out: now.toISOString(),
+              overtime_minutes: overtimeMinutes,
+              time_out_face_url: faceUrl,
+              time_out_location: deviceLocation?.label || null,
+              location: deviceLocation?.label || null,
+            })
+            .eq("employee_id", employeeId)
+            .eq("log_date", today)
+            .is("time_out", null);
 
-  const { error: attendanceUpdateError } =
-    await supabase
-      .from("attendance_logs")
-      .update({
-        time_out: now.toISOString(),
-        overtime_minutes: overtimeMinutes,
-        time_out_face_url: faceUrl,
-        location: deviceLocation?.label || null,
-      })
-      .eq("employee_id", employeeId)
-      .eq("log_date", today)
-      .is("time_out", null);
+        if (attendanceUpdateError) {
+          await logAudit({
+            user_id: employeeId,
+            user_name: profile.full_name,
+            role: managerMode ? "maintenance" : "employee",
+            action: "ATTENDANCE_ERROR_WEB",
+            description: `Web TIME_OUT database error: ${attendanceUpdateError.message}`,
+          });
 
-  if (attendanceUpdateError) {
-    await logAudit({
-      user_id: employeeId,
-      user_name: profile.full_name,
-      role: managerMode ? "maintenance" : "employee",
-      action: "ATTENDANCE_ERROR_WEB",
-      description: `Web TIME_OUT database error: ${attendanceUpdateError.message}`,
-    });
-
-    throw new Error(
-      "Attendance Time Out could not be saved: " +
-      attendanceUpdateError.message
-    );
-  }
-
+          throw new Error(
+            "Attendance Time Out could not be saved: " +
+            attendanceUpdateError.message
+          );
+        }
 
         await logAudit({
           user_id: employeeId,
-
           user_name:
             profile.full_name,
-
           role: managerMode
-  ? "maintenance"
-  : "employee",
-
+            ? "maintenance"
+            : "employee",
           action: "TIME_OUT",
-
           description: `${profile.full_name} timed out${overtimeMinutes > 0 ? ` with ${overtimeMinutes} minutes overtime` : ""}`,
         });
       }
@@ -882,7 +835,6 @@ const scheduledClockOut = new Date(
 
       loadData();
     } catch (err) {
-
       alert("Scan failed");
     } finally {
       setLoading(false);
@@ -900,7 +852,6 @@ const scheduledClockOut = new Date(
       <div style={styles.cards}>
         <div style={styles.card}>
           <p>Status</p>
-
           <h3 style={styles.status(status)}>
             {status}
           </h3>
@@ -908,71 +859,46 @@ const scheduledClockOut = new Date(
 
         <div style={styles.card}>
           <p>Time In</p>
-
-          <h3>
-            {formatDateTime(timeIn)}
-          </h3>
+          <h3>{formatDateTime(timeIn)}</h3>
         </div>
 
         <div style={styles.card}>
           <p>Time Out</p>
-
-          <h3>
-            {formatDateTime(timeOut)}
-          </h3>
+          <h3>{formatDateTime(timeOut)}</h3>
         </div>
 
         <div style={styles.card}>
           <p>Registered Clock In</p>
-
-          <h3>
-            {formatTime(
-              profileClockIn
-            )}
-          </h3>
+          <h3>{formatTime(profileClockIn)}</h3>
         </div>
 
         <div style={styles.card}>
-          <p>
-            Registered Clock Out
-          </p>
-
-          <h3>
-            {formatTime(
-              profileClockOut
-            )}
-          </h3>
+          <p>Registered Clock Out</p>
+          <h3>{formatTime(profileClockOut)}</h3>
         </div>
       </div>
 
-        <div style={styles.attendanceButtons}>
-          <button
-            style={styles.primaryBtn}
-            onClick={() =>
-              openAttendanceCamera("time_in")
-            }
-            disabled={loading}
-          >
-            Time In
-          </button>
+      <div style={styles.attendanceButtons}>
+        <button
+          style={styles.primaryBtn}
+          onClick={() => openAttendanceCamera("time_in")}
+          disabled={loading}
+        >
+          Time In
+        </button>
 
-          <button
-            style={styles.secondaryBtn}
-            onClick={() =>
-              openAttendanceCamera("time_out")
-            }
-            disabled={loading}
-          >
-            Time Out
-          </button>
-
+        <button
+          style={styles.secondaryBtn}
+          onClick={() => openAttendanceCamera("time_out")}
+          disabled={loading}
+        >
+          Time Out
+        </button>
       </div>
 
       {showCamera && (
         <div style={styles.cameraOverlay}>
-
           <div style={styles.cameraModal}>
-
             <h2>
               {scanAction === "time_in"
                 ? "Time In"
@@ -984,7 +910,6 @@ const scheduledClockOut = new Date(
             </p>
 
             <div className="cibo-camera-wrapper" style={styles.cameraWrapper}>
-
               <Webcam
                 ref={webcamRef}
                 audio={false}
@@ -1011,7 +936,6 @@ const scheduledClockOut = new Date(
                   }}
                 />
               )}
-
             </div>
 
             <div
@@ -1052,7 +976,6 @@ const scheduledClockOut = new Date(
               {recognitionStatus === "recognized" && detectedFace?.name ? (
                 <>
                   Face recognized: {detectedFace.name}
-
                   <div
                     style={{
                       fontSize: "13px",
@@ -1101,17 +1024,14 @@ const scheduledClockOut = new Date(
             </p>
 
             <div style={styles.actions}>
-
               <button
                 style={styles.primaryBtn}
-                onClick={() =>
-                  handleScan(scanAction)
-                }
+                onClick={() => handleScan(scanAction)}
                 disabled={
-                loading ||
-                !faceStatus.valid ||
-                !identityVerified
-              }
+                  loading ||
+                  !faceStatus.valid ||
+                  !identityVerified
+                }
               >
                 {loading
                   ? "Processing..."
@@ -1125,30 +1045,28 @@ const scheduledClockOut = new Date(
                 onClick={() => {
                   setShowCamera(false);
                   setScanAction(null);
+                  setDeviceLocation(null);
                 }}
                 disabled={loading}
               >
                 Cancel
               </button>
-
             </div>
-
           </div>
-
         </div>
       )}
     </>
   );
 
-if (managerMode) {
-  return content;
-}
+  if (managerMode) {
+    return content;
+  }
 
-return (
-  <EmployeeLayout>
-    {content}
-  </EmployeeLayout>
-);
+  return (
+    <EmployeeLayout>
+      {content}
+    </EmployeeLayout>
+  );
 }
 
 const styles = {
@@ -1218,69 +1136,66 @@ const styles = {
     letterSpacing: "-0.3px",
     lineHeight: "1.2",
   },
+
   cameraOverlay: {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0, 0, 0, 0.65)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 9999,
-},
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0, 0, 0, 0.65)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 9999,
+  },
 
-cameraModal: {
-  background: "#fff",
-  padding: "25px",
-  borderRadius: "16px",
-  width: "380px",
-  maxWidth: "90%",
-  textAlign: "center",
-  boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
-},
+  cameraModal: {
+    background: "#fff",
+    padding: "25px",
+    borderRadius: "16px",
+    width: "380px",
+    maxWidth: "90%",
+    textAlign: "center",
+    boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+  },
 
-cameraInstruction: {
-  marginBottom: "15px",
-  color: "#6b7280",
-},
+  cameraInstruction: {
+    marginBottom: "15px",
+    color: "#6b7280",
+  },
 
-cameraWrapper: {
-  position: "relative",
-  width: "320px",
-  height: "240px",
-  margin: "0 auto",
-  overflow: "hidden",
-  borderRadius: "10px",
-  background: "#000",
-},
+  cameraWrapper: {
+    position: "relative",
+    width: "320px",
+    height: "240px",
+    margin: "0 auto",
+    overflow: "hidden",
+    borderRadius: "10px",
+    background: "#000",
+  },
 
-camera: {
-  width: "320px",
-  height: "240px",
-  display: "block",
-},
+  faceBox: {
+    position: "absolute",
+    border: "3px solid",
+    borderRadius: "10px",
+    pointerEvents: "none",
+    boxSizing: "border-box",
+  },
 
-faceBox: {
-  position: "absolute",
-  border: "3px solid",
-  borderRadius: "10px",
-  pointerEvents: "none",
-  boxSizing: "border-box",
-},
+  faceStatus: {
+    marginTop: "15px",
+    fontWeight: "600",
+    height: "24px",
+    lineHeight: "24px",
+    overflow: "hidden",
+  },
 
-faceStatus: {
-  marginTop: "15px",
-  fontWeight: "600",
-  height: "24px",
-  lineHeight: "24px",
-  overflow: "hidden",
-},
-blinkText: {
-  fontSize: "14px",
-  color: "#6b7280",
-  marginTop: "10px",
-  height: "20px",
-  lineHeight: "20px",
-},
+  blinkText: {
+    fontSize: "14px",
+    color: "#6b7280",
+    marginTop: "10px",
+    height: "20px",
+    lineHeight: "20px",
+  },
+
   attendanceButtons: {
     display: "flex",
     justifyContent: "center",
