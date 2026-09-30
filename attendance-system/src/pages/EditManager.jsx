@@ -412,7 +412,7 @@ const uploadFaces = async () => {
       const newBranch = branches.find((branch) => branch.id === form.branch_id);
 
       const confirmed = confirm(
-        `Transfer ${form.name} from ${previousBranch?.branch_name || "Unassigned"} to ${newBranch?.branch_name || "Unassigned"}?\\n\\nTheir existing account, attendance history, leave records, and face registration will remain with the same employee profile.`
+        `Transfer ${form.name} from ${previousBranch?.branch_name || "Unassigned"} to ${newBranch?.branch_name || "Unassigned"}?\n\nTheir existing account, attendance history, leave records, and face registration will remain with the same employee profile.`
       );
 
       if (!confirmed) {
@@ -469,11 +469,15 @@ const uploadFaces = async () => {
       const newBranch = branches.find((branch) => branch.id === form.branch_id);
 
       if (selected.branch_id !== (form.branch_id || null)) {
-        await logCurrentUserAudit({
+        const auditResult = await logCurrentUserAudit({
           action: "TRANSFER_MAINTENANCE_SPECIALIST",
           description:
             `Transferred maintenance specialist: ${form.name} | Previous Branch: ${previousBranch?.branch_name || "Unassigned"} | New Branch: ${newBranch?.branch_name || "Unassigned"}`,
         });
+
+        if (auditResult?.error) {
+          console.warn("Branch transfer audit log failed:", auditResult.error);
+        }
       }
 
       if (capturedImages.length === 3) {
