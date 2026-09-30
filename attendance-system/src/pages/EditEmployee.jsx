@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
+import { getStorageAccessUrl } from "../utils/storageAccess";
 import ManagerLayout from "../layouts/ManagerLayout";
 import Webcam from "react-webcam";
 import { logAudit } from "../utils/auditlogger";
@@ -95,7 +96,7 @@ const fetchEmployees = async () => {
     emp.full_name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const openModal = (emp) => {
+  const openModal = async (emp) => {
     setSelected(emp);
     setForm({
   name: emp.full_name,
@@ -109,7 +110,8 @@ const fetchEmployees = async () => {
 });
 
 fetchShifts(emp.branch_id);
-setImageSrc(emp.face_url || null);
+const resolvedFaceUrl = await getStorageAccessUrl("faces", emp.face_url);
+setImageSrc(resolvedFaceUrl || null);
     setHasFace(!!emp.face_url);
     setCapturedImages([]);
     setStep(0);
