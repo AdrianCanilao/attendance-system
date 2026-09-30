@@ -666,6 +666,10 @@ const styles = {
   timeAvatar: {
     width: "32px",
     height: "32px",
+    minWidth: "32px",
+    minHeight: "32px",
+    aspectRatio: "1 / 1",
+    flexShrink: 0,
     borderRadius: "50%",
     objectFit: "cover",
     border: "2px solid #e5e7eb",
