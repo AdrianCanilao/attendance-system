@@ -9,6 +9,7 @@ export default function ManagerLayout({ children }) {
   const navigate = useNavigate();
 
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const notificationRef = useRef(null);
 
   const [branchName, setBranchName] = useState("");
@@ -28,6 +29,7 @@ export default function ManagerLayout({ children }) {
   // FETCH BRANCH NAME
   useEffect(() => {
     fetchBranch();
+    fetchNotifications();
   }, []);
 
   const fetchBranch = async () => {
@@ -72,67 +74,43 @@ export default function ManagerLayout({ children }) {
     };
   }, []);
 
-  // DATE LOGIC
-  const today = new Date();
-  const currentDay = today.getDate();
+  // NOTIFICATIONS
+  const fetchNotifications = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
 
-  const lastDayOfMonth = new Date(
-    today.getFullYear(),
-    today.getMonth() + 1,
-    0
-  ).getDate();
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
 
-  const notifications = [];
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("id, type, title, message, created_at, read_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
 
-  // NEXT PAYROLL DATE
-  let nextPayrollDay;
+    if (!error) {
+      setNotifications(data || []);
+    }
+  };
 
-  if (currentDay <= 15) {
-    nextPayrollDay = 15;
-  } else {
-    nextPayrollDay = lastDayOfMonth;
-  }
+  const markNotificationsRead = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
+    if (!user) return;
 
-  const daysRemaining = nextPayrollDay - currentDay;
+    await supabase
+      .from("notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .is("read_at", null);
 
-  // TODAY
-  if (daysRemaining === 0) {
-    notifications.push({
-      message: "🔥 Payroll deadline is TODAY.",
-      level: "critical",
-    });
-  }
+    await fetchNotifications();
+  };
 
-  // TOMORROW
-  else if (daysRemaining === 1) {
-    notifications.push({
-      message:
-        "🚨 Payroll deadline is TOMORROW.",
-      level: "urgent",
-    });
-  }
-
-  // 2–5 DAYS BEFORE
-  else if (daysRemaining <= 5) {
-    notifications.push({
-      message: `⚠ Payroll deadline is in ${daysRemaining} days.`,
-      level: "warning",
-    });
-
-    notifications.push({
-      message:
-        "Prepare employee salaries and attendance reports.",
-      level: "warning",
-    });
-  }
-
-  // NORMAL DAYS
-  else {
-    notifications.push({
-      message: `Next payroll deadline is in ${daysRemaining} days.`,
-      level: "normal",
-    });
-  }
+  const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   return (
     <div className="cibo-layout" style={styles.container}>
@@ -171,17 +149,32 @@ export default function ManagerLayout({ children }) {
                 />
 
                 {/* RED DOT */}
-                <div style={styles.redDot}></div>
+                {unreadCount > 0 && <div style={styles.redDot}></div>}
               </div>
 
               {/* DROPDOWN */}
               {showNotifications && (
                 <div className="cibo-notification-dropdown" style={styles.notificationDropdown}>
-                  <h4 style={styles.notificationTitle}>
-                    Notifications
-                  </h4>
+                  <div style={styles.notificationHeader}>
+                    <h4 style={styles.notificationTitle}>
+                      Notifications
+                    </h4>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={markNotificationsRead}
+                        style={styles.markReadButton}
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
 
-                  {notifications.map(
+                  {notifications.length === 0 ? (
+                    <div style={styles.notificationItem}>
+                      No new notifications.
+                    </div>
+                  ) : notifications.map(
                     (notif, index) => (
                       <div
                         key={index}
@@ -201,7 +194,9 @@ export default function ManagerLayout({ children }) {
                               : "#f9fafb",
                         }}
                       >
-                        {notif.message}
+                        <div style={styles.notificationItemTitle}>{notif.title || "Notification"}</div>
+                        <div>{notif.message}</div>
+                        <div style={styles.notificationTime}>{new Date(notif.created_at).toLocaleString()}</div>
                       </div>
                     )
                   )}
@@ -307,6 +302,34 @@ const styles = {
       "0 10px 25px rgba(0,0,0,0.08)",
     padding: "14px",
     zIndex: 999,
+  },
+
+  notificationHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "10px",
+    padding: "12px 15px",
+  },
+
+  markReadButton: {
+    border: "none",
+    background: "transparent",
+    color: "#f97316",
+    fontSize: "12px",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+
+  notificationItemTitle: {
+    fontWeight: "700",
+    marginBottom: "3px",
+  },
+
+  notificationTime: {
+    marginTop: "5px",
+    fontSize: "11px",
+    color: "#6b7280",
   },
 
   notificationTitle: {
