@@ -466,7 +466,7 @@ const handleUpdate = async () => {
     const newBranch = branches.find((branch) => branch.id === form.branch_id);
 
     const confirmed = confirm(
-      `Transfer ${form.name} from ${previousBranch?.branch_name || "Unassigned"} to ${newBranch?.branch_name || "Unassigned"}?\\n\\nTheir existing account, attendance history, leave records, and face registration will remain with the same employee profile.`
+      `Transfer ${form.name} from ${previousBranch?.branch_name || "Unassigned"} to ${newBranch?.branch_name || "Unassigned"}?\n\nTheir existing account, attendance history, leave records, and face registration will remain with the same employee profile.`
     );
 
     if (!confirmed) {
@@ -522,11 +522,20 @@ const handleUpdate = async () => {
     const newBranch = branches.find((branch) => branch.id === form.branch_id);
 
     if (selected.branch_id !== (form.branch_id || null)) {
-      await logCurrentUserAudit({
-        action: "TRANSFER_MAINTENANCE_SPECIALIST",
+      const { data: currentUser } = await supabase.auth.getUser();
+
+      const auditResult = await logAudit({
+        user_id: currentUser.user?.id,
+        user_name: currentUser.user?.email || "Unknown user",
+        role: "manager",
+        action: "TRANSFER_EMPLOYEE",
         description:
-          `Transferred maintenance specialist: ${form.name} | Previous Branch: ${previousBranch?.branch_name || "Unassigned"} | New Branch: ${newBranch?.branch_name || "Unassigned"}`,
+          `Transferred employee: ${form.name} | Previous Branch: ${previousBranch?.branch_name || "Unassigned"} | New Branch: ${newBranch?.branch_name || "Unassigned"}`,
       });
+
+      if (auditResult?.error) {
+        console.warn("Branch transfer audit log failed:", auditResult.error);
+      }
     }
 
 
@@ -555,8 +564,9 @@ const handleUpdate = async () => {
     closeModal();
     fetchEmployees();
 
-  } catch {
-    alert("Update failed");
+  } catch (error) {
+    console.error("UPDATE PROFILE ERROR:", error);
+    alert(`Update failed: ${error?.message || "Unknown error"}`);
 
   } finally {
     setLoading(false);
