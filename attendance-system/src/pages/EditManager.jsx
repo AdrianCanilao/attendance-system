@@ -386,6 +386,56 @@ const uploadFaces = async () => {
 
 };
 
+  // Freeze historical attendance against the shift that applied before an MS transfer/shift change.
+  // Existing rows with a saved schedule are never recalculated.
+  const snapshotHistoricalAttendance = async (employeeId, clockIn, clockOut, graceMinutes = 10) => {
+    if (!employeeId || !clockIn || !clockOut) return;
+
+    const { data: logs, error } = await supabase
+      .from("attendance_logs")
+      .select("id, log_date, time_in, time_out, scheduled_time_in, scheduled_time_out, late_minutes, overtime_minutes")
+      .eq("employee_id", employeeId);
+
+    if (error) throw new Error("Unable to read attendance history before the transfer.");
+
+    const [inHour, inMinute] = String(clockIn).slice(0, 5).split(":").map(Number);
+    const [outHour, outMinute] = String(clockOut).slice(0, 5).split(":").map(Number);
+    const overnight = outHour * 60 + outMinute <= inHour * 60 + inMinute;
+
+    for (const log of logs || []) {
+      if (log.scheduled_time_in || log.scheduled_time_out) continue;
+
+      const updates = {
+        scheduled_time_in: clockIn,
+        scheduled_time_out: clockOut,
+      };
+
+      if (log.time_in) {
+        const scheduledIn = new Date(String(log.log_date) + "T" + String(clockIn).slice(0, 8) + "+08:00");
+        const graceLimit = new Date(scheduledIn.getTime() + Number(graceMinutes || 0) * 60000);
+        updates.late_minutes = Math.max(0, Math.floor((new Date(log.time_in) - graceLimit) / 60000));
+      } else {
+        updates.late_minutes = Number(log.late_minutes || 0);
+      }
+
+      if (log.time_out) {
+        const scheduledOut = new Date(String(log.log_date) + "T00:00:00+08:00");
+        if (overnight) scheduledOut.setDate(scheduledOut.getDate() + 1);
+        scheduledOut.setHours(outHour, outMinute, 0, 0);
+        updates.overtime_minutes = Math.max(0, Math.floor((new Date(log.time_out) - scheduledOut) / 60000));
+      } else {
+        updates.overtime_minutes = Number(log.overtime_minutes || 0);
+      }
+
+      const { error: updateError } = await supabase
+        .from("attendance_logs")
+        .update(updates)
+        .eq("id", log.id);
+
+      if (updateError) throw new Error("Unable to preserve one or more historical attendance records.");
+    }
+  };
+
   const handleUpdate = async () => {
     if (!form.name || !form.email) {
       alert("Name and Email required");
@@ -450,9 +500,23 @@ const uploadFaces = async () => {
         }
       }
 
+      // Freeze the previous schedule into historical attendance rows before
+      // changing the MS profile. This prevents old late/overtime values from
+      // being recalculated using the new branch/shift.
+      const shiftChanged = selected?.shift_id !== (form.shift_id || null);
+      const branchChangedForSchedule = selected?.branch_id !== (form.branch_id || null);
+
+      if (shiftChanged || branchChangedForSchedule) {
+        await snapshotHistoricalAttendance(
+          selected.id,
+          selected.clock_in,
+          selected.clock_out,
+          selected.grace_minutes
+        );
+      }
+
       // Keep the denormalized schedule fields on employee_profiles in sync
-      // with the selected branch shift. Attendance pages read these fields
-      // for Registered Clock In/Out, late, overtime, and reminders.
+      // with the newly selected branch shift.
       let selectedShift = null;
 
       if (form.shift_id) {
