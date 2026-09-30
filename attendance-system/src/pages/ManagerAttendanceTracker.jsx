@@ -342,8 +342,10 @@ if (correctionError) {
         log_date: attendanceToday?.log_date || today,
         name: emp.full_name,
         position: emp.position || "-",
-        clock_in: emp.clock_in || null,
-        clock_out: emp.clock_out || null,
+        clock_in: attendanceToday?.scheduled_time_in || emp.clock_in || null,
+        clock_out: attendanceToday?.scheduled_time_out || emp.clock_out || null,
+        scheduled_time_in: attendanceToday?.scheduled_time_in || null,
+        scheduled_time_out: attendanceToday?.scheduled_time_out || null,
 
         time_in_raw: attendanceToday?.time_in || null,
         time_out_raw: attendanceToday?.time_out || null,
