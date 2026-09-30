@@ -39,7 +39,16 @@ export default function EmployeeLayout({ children }) {
   useEffect(() => {
     fetchNotifications();
     fetchBranch();
+
+    // Keep the notification bell current without requiring a page reload.
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Refresh immediately whenever the notification dropdown is opened.
+  useEffect(() => {
+    if (showNotifications) fetchNotifications();
+  }, [showNotifications]);
 
   // ================= FETCH BRANCH =================
 
