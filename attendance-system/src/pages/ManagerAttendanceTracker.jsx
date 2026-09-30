@@ -298,6 +298,16 @@ const { data: employees } =
 if (correctionError) {
 }
 
+    const resolvedCorrections = await Promise.all(
+      (corrections || []).map(async (correction) => ({
+        ...correction,
+        attachment_url: await getStorageAccessUrl(
+          "faces",
+          correction.attachment_url
+        ),
+      }))
+    );
+
     let result = [];
     let presentCount = 0;
     let absentCount = 0;
