@@ -445,6 +445,17 @@ const uploadFaces = async () => {
 })
         .eq("id", selected.id);
 
+      const previousBranch = branches.find((branch) => branch.id === selected.branch_id);
+      const newBranch = branches.find((branch) => branch.id === form.branch_id);
+
+      if (selected.branch_id !== (form.branch_id || null)) {
+        await logCurrentUserAudit({
+          action: "TRANSFER_MAINTENANCE_SPECIALIST",
+          description:
+            `Transferred maintenance specialist: ${form.name} | Previous Branch: ${previousBranch?.branch_name || "Unassigned"} | New Branch: ${newBranch?.branch_name || "Unassigned"}`,
+        });
+      }
+
       if (capturedImages.length === 3) {
         await uploadFaces();
       }
