@@ -1095,6 +1095,8 @@ const styles = {
 
   camera: {
     width: "320px",
+    height: "240px",
+    display: "block",
     marginBottom: "15px",
   },
 
