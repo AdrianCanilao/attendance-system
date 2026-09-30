@@ -152,12 +152,20 @@ export default function App() {
 
         <Route
           path="/hr/register-manager"
-          element={<RegisterManager />}
+          element={
+            <ProtectedRoute role="hr">
+              <RegisterManager />
+            </ProtectedRoute>
+          }
         />
 
         <Route
           path="/hr/edit-manager"
-          element={<EditManager />}
+          element={
+            <ProtectedRoute role="hr">
+              <EditManager />
+            </ProtectedRoute>
+          }
         />
 
         <Route
