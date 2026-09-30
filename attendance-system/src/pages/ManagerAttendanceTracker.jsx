@@ -328,6 +328,8 @@ if (correctionError) {
       }
 
       result.push({
+        id: attendanceToday?.id || null,
+        log_date: attendanceToday?.log_date || today,
         name: emp.full_name,
         position: emp.position || "-",
         clock_in: emp.clock_in || null,
