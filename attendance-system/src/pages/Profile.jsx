@@ -819,11 +819,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
         return;
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from("faces")
-        .getPublicUrl(filePath);
-
-      uploadedFileUrl = publicUrlData.publicUrl;
+      uploadedFileUrl = filePath;
     }
 
     // ✅ save correction request to database
