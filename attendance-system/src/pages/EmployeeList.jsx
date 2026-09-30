@@ -136,16 +136,20 @@ export default function EmployeeList() {
     setIsExporting(true);
 
     try {
-    const { data: authData } = await supabase.auth.getUser();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
     const currentUserId = authData?.user?.id;
-    if (!currentUserId) return;
+    if (authError || !currentUserId) {
+      throw new Error(authError?.message || "No authenticated user found.");
+    }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("employee_profiles")
       .select("branch_id")
       .eq("id", currentUserId)
       .single();
-    if (!profile?.branch_id) return;
+    if (profileError || !profile?.branch_id) {
+      throw new Error(profileError?.message || "Your employee profile has no branch assigned.");
+    }
 
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -188,20 +192,22 @@ export default function EmployeeList() {
       return;
     }
 
-    const { data: employeeData } = await supabase
+    const { data: employeeData, error: employeeError } = await supabase
       .from("employee_profiles")
       .select("id, full_name, email, position, department, employee_id, role_id")
       .eq("branch_id", profile.branch_id)
       .order("full_name", { ascending: true });
 
-    const branchMembers = (employeeData || []).filter(
-      (employee) =>
-        employee.role_id === "e4dbb928-7f0e-4da9-9eff-d7700d37b25a" ||
-        employee.role_id === "b381a7a0-9595-4c69-abf1-5c15a827647a"
-    );
-    if (!branchMembers.length) return;
+    if (employeeError) {
+      throw new Error(employeeError.message);
+    }
 
-    const { data: attendanceData } = await supabase
+    const branchMembers = employeeData || [];
+    if (!branchMembers.length) {
+      throw new Error("No personnel were found in your current branch.");
+    }
+
+    const { data: attendanceData, error: attendanceError } = await supabase
       .from("attendance_logs")
       .select("*")
       .in("employee_id", branchMembers.map((employee) => employee.id))
@@ -209,11 +215,19 @@ export default function EmployeeList() {
       .lt("log_date", toManilaDate(nextMonthStart))
       .order("log_date", { ascending: true });
 
-    const { data: leaveData } = await supabase
+    if (attendanceError) {
+      throw new Error(attendanceError.message);
+    }
+
+    const { data: leaveData, error: leaveError } = await supabase
       .from("leave_requests")
       .select("*")
       .in("employee_id", branchMembers.map((employee) => employee.id))
       .eq("status", "Approved");
+
+    if (leaveError) {
+      throw new Error(leaveError.message);
+    }
 
     const employeeMap = Object.fromEntries(branchMembers.map((employee) => [employee.id, employee]));
     const leaves = leaveData || [];
@@ -325,13 +339,10 @@ export default function EmployeeList() {
     ];
     XLSX.utils.book_append_sheet(workbook, leaveSheet, "Approved Leave");
 
-    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-    saveAs(
-      new Blob([excelBuffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
-      }),
-      "cibo-attendance-report-" + toManilaDate(now) + ".xlsx"
-    );
+    const fileName =
+      "cibo-attendance-report-" + toManilaDate(now) + ".xlsx";
+
+    XLSX.writeFile(workbook, fileName);
     } catch (error) {
       console.error("Attendance export failed:", error);
       alert(
