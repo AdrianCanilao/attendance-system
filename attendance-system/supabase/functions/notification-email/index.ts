@@ -411,6 +411,51 @@ const handleLeaveRequest = async (
       `
     ),
   });
+
+  if (payload.type === "INSERT") {
+    const { data: maintenanceUsers, error: maintenanceError } =
+      await supabaseAdmin
+        .from("employee_profiles")
+        .select("id, full_name, email")
+        .eq("role_id", MAINTENANCE_ROLE_ID)
+        .not("email", "is", null);
+
+    if (maintenanceError) {
+      console.error(
+        "Leave request maintenance notification lookup failed:",
+        maintenanceError
+      );
+      return;
+    }
+
+    for (const maintenanceUser of maintenanceUsers || []) {
+      const maintenanceEmail =
+        String(maintenanceUser.email || "").trim();
+
+      if (!maintenanceEmail) continue;
+
+      await sendEmail({
+        to: maintenanceEmail,
+        subject: "CIBO new leave request",
+        idempotencyKey: `leave-request-maintenance#${String(record.id)}#${String(maintenanceUser.id)}`,
+        html: baseEmail(
+          "New leave request",
+          `
+            <p>Hello <strong>${escapeHtml(maintenanceUser.full_name)}</strong>,</p>
+            <p>An employee has submitted a new leave request that requires review.</p>
+            <p>
+              Employee: <strong>${escapeHtml(profile.full_name)}</strong><br>
+              Leave Type: <strong>${escapeHtml(record.leave_type || "-")}</strong><br>
+              Start Date: <strong>${escapeHtml(record.start_date || "-")}</strong><br>
+              End Date: <strong>${escapeHtml(record.end_date || "-")}</strong><br>
+              Reason: <strong>${escapeHtml(record.reason || "-")}</strong>
+            </p>
+            <p>Please open the Leave Requests page to review the request.</p>
+          `
+        ),
+      });
+    }
+  }
 };
 
 const handleAttendanceReminders = async () => {
