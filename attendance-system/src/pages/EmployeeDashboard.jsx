@@ -1181,10 +1181,12 @@ const styles = {
 
   cameraLightFrame: {
     display: "inline-block",
-    padding: "10px",
+    padding: "12px",
+    border: "3px solid #ffffff",
     borderRadius: "16px",
-    background: "#fff",
-    boxShadow: "0 0 18px 6px rgba(255,255,255,0.95)",
+    background: "#ffffff",
+    boxShadow:
+      "0 0 0 2px rgba(255,255,255,0.95), 0 0 24px 10px rgba(255,255,255,0.9)",
   },
 
   cameraWrapper: {
