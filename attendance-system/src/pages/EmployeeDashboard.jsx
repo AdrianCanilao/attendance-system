@@ -39,6 +39,7 @@ const [recognizingFace, setRecognizingFace] = useState(false);
 const [recognitionStatus, setRecognitionStatus] = useState("scanning");
 const recognizingFaceRef = useRef(false);
 const [deviceLocation, setDeviceLocation] = useState(null);
+  const [locationChecking, setLocationChecking] = useState(false);
   const location = window.location.pathname;
 
   const managerMode =
@@ -412,7 +413,9 @@ const getDeviceLocation = () =>
   });
 
 const openAttendanceCamera = async (actionType) => {
-  if (loading) return;
+  if (loading || locationChecking) return;
+
+  setLocationChecking(true);
 
   if (!currentEmployeeId) {
     alert("Employee profile is not ready. Please try again.");
@@ -435,12 +438,14 @@ const openAttendanceCamera = async (actionType) => {
         alert(
           `Attendance verification is temporarily locked. Please try again in ${remainingMinutes} minute${remainingMinutes === 1 ? "" : "s"}.`
         );
+        setLocationChecking(false);
         return;
       }
     }
 
     const locationData = await getDeviceLocation();
     setDeviceLocation(locationData);
+    setLocationChecking(false);
     setScanAction(actionType);
 
     setDetectedFace(null);
@@ -455,6 +460,7 @@ const openAttendanceCamera = async (actionType) => {
 
     setShowCamera(true);
   } catch (locationError) {
+    setLocationChecking(false);
     alert(locationError.message);
   }
 };
@@ -882,7 +888,7 @@ const scheduledClockOut = new Date(
         <button
           style={styles.primaryBtn}
           onClick={() => openAttendanceCamera("time_in")}
-          disabled={loading}
+          disabled={loading || locationChecking}
         >
           Time In
         </button>
@@ -890,10 +896,19 @@ const scheduledClockOut = new Date(
         <button
           style={styles.secondaryBtn}
           onClick={() => openAttendanceCamera("time_out")}
-          disabled={loading}
+          disabled={loading || locationChecking}
         >
           Time Out
         </button>
+      </div>
+
+      <div style={styles.locationStatus}>
+        {locationChecking && (
+          <>
+            <span style={styles.locationSpinner} />
+            <span>Calculating if device has precise location...</span>
+          </>
+        )}
       </div>
 
       {showCamera && (
@@ -1203,7 +1218,28 @@ const styles = {
     justifyContent: "center",
     gap: "15px",
     marginTop: "10px",
-    marginBottom: "25px",
+    marginBottom: "6px",
+  },
+
+  locationStatus: {
+    minHeight: "24px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    color: "#6b7280",
+    fontSize: "13px",
+    fontWeight: "500",
+    textAlign: "center",
+  },
+
+  locationSpinner: {
+    width: "12px",
+    height: "12px",
+    border: "2px solid #d1d5db",
+    borderTopColor: "#f97316",
+    borderRadius: "50%",
+    animation: "cibo-location-spin 0.8s linear infinite",
   },
 
   status: (status) => ({
