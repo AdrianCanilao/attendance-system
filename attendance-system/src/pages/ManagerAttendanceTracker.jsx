@@ -384,8 +384,7 @@ if (correctionError) {
 correction:
   corrections?.find(
     (c) =>
-      c.employee_id === emp.id &&
-      c.created_at?.startsWith(today)
+      c.attendance_log_id === attendanceToday?.id
   ) || null,
       });
     });
