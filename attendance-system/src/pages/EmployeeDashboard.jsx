@@ -922,33 +922,35 @@ const scheduledClockOut = new Date(
               Position your face inside the box
             </p>
 
-            <div className="cibo-camera-wrapper" style={styles.cameraWrapper}>
-              <Webcam
-                ref={webcamRef}
-                audio={false}
-                screenshotFormat="image/jpeg"
-                videoConstraints={{
-                  width: 320,
-                  height: 240,
-                  facingMode: "user",
-                }}
-                style={styles.camera}
-              />
-
-              {faceStatus.box && (
-                <div
-                  style={{
-                    ...styles.faceBox,
-                    left: `${faceStatus.box.x}px`,
-                    top: `${faceStatus.box.y}px`,
-                    width: `${faceStatus.box.w}px`,
-                    height: `${faceStatus.box.h}px`,
-                    borderColor: faceStatus.valid
-                      ? "#22c55e"
-                      : "#ef4444",
+            <div style={styles.cameraLightFrame}>
+              <div className="cibo-camera-wrapper" style={styles.cameraWrapper}>
+                <Webcam
+                  ref={webcamRef}
+                  audio={false}
+                  screenshotFormat="image/jpeg"
+                  videoConstraints={{
+                    width: 320,
+                    height: 240,
+                    facingMode: "user",
                   }}
+                  style={styles.camera}
                 />
-              )}
+  
+                {faceStatus.box && (
+                  <div
+                    style={{
+                      ...styles.faceBox,
+                      left: `${faceStatus.box.x}px`,
+                      top: `${faceStatus.box.y}px`,
+                      width: `${faceStatus.box.w}px`,
+                      height: `${faceStatus.box.h}px`,
+                      borderColor: faceStatus.valid
+                        ? "#22c55e"
+                        : "#ef4444",
+                    }}
+                  />
+                )}
+              </div>
             </div>
 
             <div
@@ -1175,6 +1177,14 @@ const styles = {
   cameraInstruction: {
     marginBottom: "15px",
     color: "#6b7280",
+  },
+
+  cameraLightFrame: {
+    display: "inline-block",
+    padding: "10px",
+    borderRadius: "16px",
+    background: "#fff",
+    boxShadow: "0 0 18px 6px rgba(255,255,255,0.95)",
   },
 
   cameraWrapper: {
