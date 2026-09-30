@@ -450,6 +450,26 @@ const uploadFaces = async () => {
         }
       }
 
+      // Keep the denormalized schedule fields on employee_profiles in sync
+      // with the selected branch shift. Attendance pages read these fields
+      // for Registered Clock In/Out, late, overtime, and reminders.
+      let selectedShift = null;
+
+      if (form.shift_id) {
+        const { data: shiftData, error: shiftError } = await supabase
+          .from("branch_shifts")
+          .select("id, branch_id, time_in, time_out, grace_minutes")
+          .eq("id", form.shift_id)
+          .eq("branch_id", form.branch_id)
+          .single();
+
+        if (shiftError || !shiftData) {
+          throw new Error("The selected shift could not be found for the selected branch.");
+        }
+
+        selectedShift = shiftData;
+      }
+
       const { error: profileUpdateError } = await supabase
         .from("employee_profiles")
         .update({
@@ -458,6 +478,9 @@ const uploadFaces = async () => {
           position: form.position,
           branch_id: form.branch_id || null,
           shift_id: form.shift_id || null,
+          clock_in: selectedShift?.time_in || null,
+          clock_out: selectedShift?.time_out || null,
+          grace_minutes: selectedShift?.grace_minutes ?? 10,
         })
         .eq("id", selected.id);
 
