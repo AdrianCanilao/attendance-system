@@ -1381,17 +1381,17 @@ async def verify_face(
         # This keeps the liveness check tolerant of camera distance,
         # face size, and natural differences in eye shape while still
         # requiring a real OPEN -> CLOSED -> OPEN transition.
-        sorted_ears = sorted(ear_values, reverse=True)
+        # Use a representative upper-range EAR instead of only
+        # the highest four frames. This avoids making an unusually
+        # wide eye opening the user's normal open-eye baseline.
         open_reference = float(
-            np.median(sorted_ears[:min(4, len(sorted_ears))])
+            np.percentile(ear_values, 75)
         )
 
-        # The current camera/MediaPipe EAR values are typically
-        # below 0.20 on mobile devices, so a fixed 0.20 floor
-        # can prevent the OPEN state from ever being detected.
-        # Use relative thresholds based on the observed open-eye
-        # baseline instead.
-        OPEN_THRESHOLD = open_reference * 0.85
+        # Require a natural open -> closed -> open movement.
+        # The open threshold is intentionally more tolerant so users
+        # do not need to widen their eyes beyond their normal opening.
+        OPEN_THRESHOLD = open_reference * 0.80
         CLOSED_THRESHOLD = open_reference * 0.70
 
         blink_detected = False
@@ -2486,14 +2486,17 @@ async def kiosk_verify_live(
         # Match the Web attendance adaptive blink detection exactly.
         # Use the user's observed open-eye EAR as a baseline while
         # still requiring OPEN -> CLOSED -> OPEN.
-        sorted_ears = sorted(ear_values, reverse=True)
+        # Use a representative upper-range EAR instead of only
+        # the highest four frames. This avoids making an unusually
+        # wide eye opening the user's normal open-eye baseline.
         open_reference = float(
-            np.median(
-                sorted_ears[:min(4, len(sorted_ears))]
-            )
+            np.percentile(ear_values, 75)
         )
 
-        OPEN_THRESHOLD = open_reference * 0.85
+        # Require a natural open -> closed -> open movement.
+        # The open threshold is intentionally more tolerant so users
+        # do not need to widen their eyes beyond their normal opening.
+        OPEN_THRESHOLD = open_reference * 0.80
         CLOSED_THRESHOLD = open_reference * 0.70
 
         blink_detected = False
