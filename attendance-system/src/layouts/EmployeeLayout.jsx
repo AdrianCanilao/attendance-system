@@ -189,18 +189,31 @@ export default function EmployeeLayout({ children }) {
 
     }
 
-    // NORMAL
-    if (notif.length === 0) {
+    // DATABASE NOTIFICATIONS (leave status, branch-related events, etc.)
+    const { data: dbNotifications } = await supabase
+      .from("notifications")
+      .select("id, type, title, message, created_at, read_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
 
+    const storedNotifications = (dbNotifications || []).map((item) => ({
+      id: item.id,
+      message: item.message,
+      title: item.title,
+      created_at: item.created_at,
+      read_at: item.read_at,
+      level: item.type === "leave_status" ? "normal" : "warning",
+    }));
+
+    if (notif.length === 0) {
       notif.push({
-        message:
-          "✅ No attendance reminders today.",
+        message: "✅ No attendance reminders today.",
         level: "normal",
       });
-
     }
 
-    setNotifications(notif);
+    setNotifications([...storedNotifications, ...notif]);
   };
 
   return (
@@ -275,7 +288,7 @@ export default function EmployeeLayout({ children }) {
                     (notif, index) => (
 
                       <div
-                        key={index}
+                        key={notif.id || index}
                         style={{
                           ...styles.notificationItem,
 
@@ -286,7 +299,13 @@ export default function EmployeeLayout({ children }) {
                               : "#f9fafb",
                         }}
                       >
-                        {notif.message}
+                        <div style={styles.notificationItemTitle}>{notif.title || "Attendance Reminder"}</div>
+                        <div>{notif.message}</div>
+                        {notif.created_at && (
+                          <div style={styles.notificationTime}>
+                            {new Date(notif.created_at).toLocaleString()}
+                          </div>
+                        )}
                       </div>
 
                     )
@@ -409,6 +428,17 @@ const styles = {
       "0 10px 25px rgba(0,0,0,0.08)",
     padding: "14px",
     zIndex: 999,
+  },
+
+  notificationItemTitle: {
+    fontWeight: "700",
+    marginBottom: "3px",
+  },
+
+  notificationTime: {
+    marginTop: "5px",
+    fontSize: "11px",
+    color: "#6b7280",
   },
 
   notificationTitle: {
