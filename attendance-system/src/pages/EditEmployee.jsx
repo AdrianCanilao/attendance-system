@@ -440,6 +440,52 @@ const uploadFaces = async () => {
 
 
 };
+// Freeze historical attendance against the shift that applied before an employee transfer/shift change.
+const snapshotHistoricalAttendance = async (employeeId, clockIn, clockOut, graceMinutes = 10) => {
+  if (!employeeId || !clockIn || !clockOut) return;
+
+  const { data: logs, error } = await supabase
+    .from("attendance_logs")
+    .select("id, log_date, time_in, time_out, scheduled_time_in, scheduled_time_out, late_minutes, overtime_minutes")
+    .eq("employee_id", employeeId);
+
+  if (error) throw new Error("Unable to read attendance history before the transfer.");
+
+  const [inHour, inMinute] = String(clockIn).slice(0, 5).split(":").map(Number);
+  const [outHour, outMinute] = String(clockOut).slice(0, 5).split(":").map(Number);
+  const overnight = outHour * 60 + outMinute <= inHour * 60 + inMinute;
+
+  for (const log of logs || []) {
+    if (log.scheduled_time_in || log.scheduled_time_out) continue;
+
+    const updates = { scheduled_time_in: clockIn, scheduled_time_out: clockOut };
+
+    if (log.time_in) {
+      const scheduledIn = new Date(String(log.log_date) + "T" + String(clockIn).slice(0, 8) + "+08:00");
+      const graceLimit = new Date(scheduledIn.getTime() + Number(graceMinutes || 0) * 60000);
+      updates.late_minutes = Math.max(0, Math.floor((new Date(log.time_in) - graceLimit) / 60000));
+    } else {
+      updates.late_minutes = Number(log.late_minutes || 0);
+    }
+
+    if (log.time_out) {
+      const scheduledOut = new Date(String(log.log_date) + "T00:00:00+08:00");
+      if (overnight) scheduledOut.setDate(scheduledOut.getDate() + 1);
+      scheduledOut.setHours(outHour, outMinute, 0, 0);
+      updates.overtime_minutes = Math.max(0, Math.floor((new Date(log.time_out) - scheduledOut) / 60000));
+    } else {
+      updates.overtime_minutes = Number(log.overtime_minutes || 0);
+    }
+
+    const { error: updateError } = await supabase
+      .from("attendance_logs")
+      .update(updates)
+      .eq("id", log.id);
+
+    if (updateError) throw new Error("Unable to preserve one or more historical attendance records.");
+  }
+};
+
 const handleUpdate = async () => {
   if (!form.name || !form.email) {
     alert("Name and Email required");
@@ -504,6 +550,33 @@ const handleUpdate = async () => {
       }
     }
 
+    const shiftChanged = selected?.shift_id !== (form.shift_id || null);
+    const branchChangedForSchedule = selected?.branch_id !== (form.branch_id || null);
+
+    if (shiftChanged || branchChangedForSchedule) {
+      await snapshotHistoricalAttendance(
+        selected.id,
+        selected.clock_in,
+        selected.clock_out,
+        selected.grace_minutes
+      );
+    }
+
+    let selectedShift = null;
+    if (form.shift_id) {
+      const { data: shiftData, error: shiftError } = await supabase
+        .from("branch_shifts")
+        .select("id, branch_id, time_in, time_out, grace_minutes")
+        .eq("id", form.shift_id)
+        .eq("branch_id", form.branch_id)
+        .single();
+
+      if (shiftError || !shiftData) {
+        throw new Error("The selected shift could not be found for the selected branch.");
+      }
+      selectedShift = shiftData;
+    }
+
     const { error: profileUpdateError } = await supabase
       .from("employee_profiles")
       .update({
@@ -512,6 +585,9 @@ const handleUpdate = async () => {
         position: form.position,
         branch_id: form.branch_id || null,
         shift_id: form.shift_id || null,
+        clock_in: selectedShift?.time_in || null,
+        clock_out: selectedShift?.time_out || null,
+        grace_minutes: selectedShift?.grace_minutes ?? 10,
       })
       .eq("id", selected.id);
 
