@@ -905,7 +905,7 @@ const scheduledClockOut = new Date(
       <div style={styles.locationStatus}>
         {locationChecking && (
           <>
-            <span style={styles.locationSpinner} />
+            <span style={styles.locationIndicator}>●</span>
             <span>Calculating if device has precise location...</span>
           </>
         )}
@@ -1233,13 +1233,9 @@ const styles = {
     textAlign: "center",
   },
 
-  locationSpinner: {
-    width: "12px",
-    height: "12px",
-    border: "2px solid #d1d5db",
-    borderTopColor: "#f97316",
-    borderRadius: "50%",
-    animation: "cibo-location-spin 0.8s linear infinite",
+  locationIndicator: {
+    color: "#f97316",
+    fontSize: "12px",
   },
 
   status: (status) => ({
