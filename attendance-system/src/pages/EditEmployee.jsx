@@ -3,7 +3,7 @@ import { supabase } from "../supabaseClient";
 import { getStorageAccessUrl } from "../utils/storageAccess";
 import ManagerLayout from "../layouts/ManagerLayout";
 import Webcam from "react-webcam";
-import { logAudit } from "../utils/auditlogger";
+import { logAudit, logCurrentUserAudit } from "../utils/auditlogger";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
@@ -524,10 +524,7 @@ const handleUpdate = async () => {
     if (selected.branch_id !== (form.branch_id || null)) {
       const { data: currentUser } = await supabase.auth.getUser();
 
-      const auditResult = await logAudit({
-        user_id: currentUser.user?.id,
-        user_name: currentUser.user?.email || "Unknown user",
-        role: "manager",
+      const auditResult = await logCurrentUserAudit({
         action: "TRANSFER_EMPLOYEE",
         description:
           `Transferred employee: ${form.name} | Previous Branch: ${previousBranch?.branch_name || "Unassigned"} | New Branch: ${newBranch?.branch_name || "Unassigned"}`,
@@ -547,10 +544,7 @@ const handleUpdate = async () => {
     const { data: currentUser } =
       await supabase.auth.getUser();
 
-    await logAudit({
-      user_id: currentUser.user.id,
-      user_name: currentUser.user.email,
-      role: "manager",
+    await logCurrentUserAudit({
       action: "UPDATE_EMPLOYEE",
       description: `Updated employee profile: ${form.name}`,
     });
@@ -585,10 +579,7 @@ const handleDelete = async () => {
   const { data: currentUser } =
     await supabase.auth.getUser();
 
-  await logAudit({
-    user_id: currentUser.user.id,
-    user_name: currentUser.user.email,
-    role: "manager",
+  await logCurrentUserAudit({
     action: "DELETE_EMPLOYEE",
     description: `Deleted employee: ${selected.full_name}`,
   });
