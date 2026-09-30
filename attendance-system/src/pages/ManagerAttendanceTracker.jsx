@@ -14,6 +14,11 @@ export default function ManagerDashboard() {
   const [present, setPresent] = useState(0);
   const [absent, setAbsent] = useState(0);
   const [hoveredImage, setHoveredImage] = useState(null);
+const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+const [selectedCorrection, setSelectedCorrection] = useState(null);
+const [correctionTimeIn, setCorrectionTimeIn] = useState("");
+const [correctionTimeOut, setCorrectionTimeOut] = useState("");
+const [correctionSaving, setCorrectionSaving] = useState(false);
 const [selectedDate, setSelectedDate] = useState(
   new Date()
 );
@@ -36,6 +41,145 @@ const [selectedDate, setSelectedDate] = useState(
     const minutes = Math.floor(diff % 60);
 
     return `${hours}h ${minutes}m`;
+  };
+
+  const formatManilaTimeInput = (iso) => {
+    if (!iso) return "";
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Manila",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date(iso));
+
+    const hour = parts.find((p) => p.type === "hour")?.value || "00";
+    const minute = parts.find((p) => p.type === "minute")?.value || "00";
+    return `${hour}:${minute}`;
+  };
+
+  const toManilaISO = (logDate, timeValue) => {
+    if (!logDate || !timeValue) return null;
+    return new Date(`${logDate}T${timeValue}:00+08:00`).toISOString();
+  };
+
+  const calculateLateMinutes = (timeInISO, shiftIn) => {
+    if (!timeInISO || !shiftIn) return 0;
+
+    const actual = new Date(timeInISO);
+    const shift = new Date(`${actual.toISOString().slice(0, 10)}T${shiftIn}:00+00:00`);
+    const allowance = 10 * 60 * 1000;
+
+    if (actual <= shift.getTime() + allowance) return 0;
+    return Math.floor((actual.getTime() - shift.getTime() - allowance) / 60000);
+  };
+
+  const calculateOvertimeMinutes = (timeOutISO, shiftOut) => {
+    if (!timeOutISO || !shiftOut) return 0;
+
+    const actual = new Date(timeOutISO);
+    const shift = new Date(`${actual.toISOString().slice(0, 10)}T${shiftOut}:00+00:00`);
+
+    if (actual <= shift) return 0;
+    return Math.floor((actual.getTime() - shift.getTime()) / 60000);
+  };
+
+  const openCorrectionModal = (log) => {
+    setSelectedCorrection(log);
+    setCorrectionTimeIn(formatManilaTimeInput(log.time_in_raw));
+    setCorrectionTimeOut(formatManilaTimeInput(log.time_out_raw));
+    setShowCorrectionModal(true);
+  };
+
+  const closeCorrectionModal = () => {
+    if (correctionSaving) return;
+    setShowCorrectionModal(false);
+    setSelectedCorrection(null);
+    setCorrectionTimeIn("");
+    setCorrectionTimeOut("");
+  };
+
+  const saveAttendanceCorrection = async () => {
+    if (!selectedCorrection) return;
+
+    if (!correctionTimeIn && !correctionTimeOut) {
+      alert("Please enter at least a Time In or Time Out.");
+      return;
+    }
+
+    setCorrectionSaving(true);
+
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUser = authData?.user;
+
+      if (!currentUser) {
+        alert("Your session has expired. Please log in again.");
+        return;
+      }
+
+      const logDate = selectedCorrection.log_date;
+      const updatedTimeIn = correctionTimeIn
+        ? toManilaISO(logDate, correctionTimeIn)
+        : null;
+      const updatedTimeOut = correctionTimeOut
+        ? toManilaISO(logDate, correctionTimeOut)
+        : null;
+
+      const lateMinutes = calculateLateMinutes(
+        updatedTimeIn,
+        selectedCorrection.clock_in
+      );
+      const overtimeMinutes = calculateOvertimeMinutes(
+        updatedTimeOut,
+        selectedCorrection.clock_out
+      );
+
+      const { error: attendanceError } = await supabase
+        .from("attendance_logs")
+        .update({
+          time_in: updatedTimeIn,
+          time_out: updatedTimeOut,
+          late_minutes: lateMinutes,
+          overtime_minutes: overtimeMinutes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", selectedCorrection.id);
+
+      if (attendanceError) {
+        alert("Failed to update attendance.");
+        return;
+      }
+
+      const { error: correctionError } = await supabase
+        .from("attendance_corrections")
+        .update({
+          status: "Approved",
+          approved_by: currentUser.id,
+          approved_at: new Date().toISOString(),
+        })
+        .eq("id", selectedCorrection.correction.id);
+
+      if (correctionError) {
+        alert("Attendance was updated, but the correction request status could not be updated.");
+        return;
+      }
+
+      await logAudit({
+        user_id: currentUser.id,
+        user_name: currentUser.email || "Maintenance Specialist",
+        role: "maintenance",
+        action: "ATTENDANCE_CORRECTION_APPROVED",
+        description: `Updated attendance for ${selectedCorrection.name} on ${logDate}. Time In: ${correctionTimeIn || "-"}, Time Out: ${correctionTimeOut || "-"}.`,
+      });
+
+      alert("Attendance correction approved and updated.");
+      closeCorrectionModal();
+      await fetchDashboardData();
+    } catch (error) {
+      alert("Something went wrong while updating attendance.");
+    } finally {
+      setCorrectionSaving(false);
+    }
   };
 
   const calculateLate = (timeInISO, shiftIn) => {
@@ -187,6 +331,8 @@ if (correctionError) {
       result.push({
         name: emp.full_name,
         position: emp.position || "-",
+        clock_in: emp.clock_in || null,
+        clock_out: emp.clock_out || null,
 
         time_in_raw: attendanceToday?.time_in || null,
         time_out_raw: attendanceToday?.time_out || null,
@@ -574,6 +720,7 @@ correction:
                           style={{
                             display: "flex",
                             flexDirection: "column",
+                            alignItems: "center",
                             gap: "8px",
                           }}
                         >
@@ -586,6 +733,25 @@ correction:
                             }}
                           >
                             {log.correction.concern}
+                          </span>
+
+                          <span
+                            style={{
+                              padding: "5px 9px",
+                              borderRadius: "999px",
+                              background:
+                                log.correction.status === "Approved"
+                                  ? "#dcfce7"
+                                  : "#fef3c7",
+                              color:
+                                log.correction.status === "Approved"
+                                  ? "#166534"
+                                  : "#92400e",
+                              fontSize: "11px",
+                              fontWeight: "700",
+                            }}
+                          >
+                            {log.correction.status || "Pending"}
                           </span>
 
                           {log.correction.attachment_url && (
@@ -607,6 +773,25 @@ correction:
                               View Attachment
                             </a>
                           )}
+
+                          {log.correction.status !== "Approved" && (
+                            <button
+                              type="button"
+                              onClick={() => openCorrectionModal(log)}
+                              style={{
+                                background: "#f97316",
+                                color: "#fff",
+                                border: "none",
+                                padding: "7px 12px",
+                                borderRadius: "8px",
+                                fontSize: "12px",
+                                fontWeight: "700",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Update Attendance
+                            </button>
+                          )}
                         </div>
                       ) : (
                         "-"
@@ -618,6 +803,120 @@ correction:
           </table>
         </div>
       </div>
+
+      {showCorrectionModal && selectedCorrection && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              width: "min(460px, 100%)",
+              background: "#fff",
+              borderRadius: "16px",
+              padding: "24px",
+              boxSizing: "border-box",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
+            }}
+          >
+            <h2 style={{ margin: "0 0 8px", color: "#111827" }}>
+              Update Attendance
+            </h2>
+            <p style={{ margin: "0 0 18px", color: "#6b7280", fontSize: "14px" }}>
+              {selectedCorrection.name} — {selectedCorrection.log_date}
+            </p>
+
+            <label style={{ display: "block", fontWeight: "600", marginBottom: "6px" }}>
+              Time In
+            </label>
+            <input
+              type="time"
+              value={correctionTimeIn}
+              onChange={(e) => setCorrectionTimeIn(e.target.value)}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "10px 12px",
+                border: "1px solid #d1d5db",
+                borderRadius: "8px",
+                marginBottom: "14px",
+                background: "#fff",
+                color: "#111827",
+              }}
+            />
+
+            <label style={{ display: "block", fontWeight: "600", marginBottom: "6px" }}>
+              Time Out
+            </label>
+            <input
+              type="time"
+              value={correctionTimeOut}
+              onChange={(e) => setCorrectionTimeOut(e.target.value)}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "10px 12px",
+                border: "1px solid #d1d5db",
+                borderRadius: "8px",
+                marginBottom: "18px",
+                background: "#fff",
+                color: "#111827",
+              }}
+            />
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "10px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={closeCorrectionModal}
+                disabled={correctionSaving}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: "8px",
+                  border: "1px solid #d1d5db",
+                  background: "#fff",
+                  color: "#111827",
+                  fontWeight: "600",
+                  cursor: correctionSaving ? "not-allowed" : "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveAttendanceCorrection}
+                disabled={correctionSaving}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#f97316",
+                  color: "#fff",
+                  fontWeight: "700",
+                  cursor: correctionSaving ? "not-allowed" : "pointer",
+                  opacity: correctionSaving ? 0.7 : 1,
+                }}
+              >
+                {correctionSaving ? "Updating..." : "Approve & Update"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </ManagerLayout>
     </>
   );
