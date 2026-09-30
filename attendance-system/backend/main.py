@@ -3200,6 +3200,30 @@ async def kiosk_attendance(
 
         employee = employees[0]
 
+        # =====================================================
+        # ENFORCE KIOSK BRANCH ACCESS
+        # =====================================================
+        kiosk_branch_id = str(kiosk.get("branch_id") or "").strip()
+        employee_branch_id = str(employee.get("branch_id") or "").strip()
+
+        if (
+            not kiosk_branch_id
+            or not employee_branch_id
+            or employee_branch_id != kiosk_branch_id
+        ):
+            return {
+                "status": "Branch Not Allowed",
+                "message": (
+                    "This kiosk is assigned to Cubao Head Office. "
+                    "Only employees registered under this branch "
+                    "can record attendance here."
+                ),
+                "employee": {
+                    "id": employee["id"],
+                    "full_name": employee["full_name"]
+                }
+            }
+
         # Reuse existing attendance logic
         attendance = await record_kiosk_attendance(
             employee,
