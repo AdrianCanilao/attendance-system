@@ -30,7 +30,16 @@ export default function ManagerLayout({ children }) {
   useEffect(() => {
     fetchBranch();
     fetchNotifications();
+
+    // Keep the notification bell current without requiring a page reload.
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Refresh immediately whenever the notification dropdown is opened.
+  useEffect(() => {
+    if (showNotifications) fetchNotifications();
+  }, [showNotifications]);
 
   const fetchBranch = async () => {
     const email = localStorage.getItem("email");
@@ -177,7 +186,7 @@ export default function ManagerLayout({ children }) {
                   ) : notifications.map(
                     (notif, index) => (
                       <div
-                        key={index}
+                        key={notif.id || index}
                         style={{
                           ...styles.notificationItem,
 
