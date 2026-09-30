@@ -37,16 +37,34 @@ export default function ManagerLeave() {
       return;
     }
 
+    // Fetch employees in this branch first, then load their leave requests.
+    // This avoids relying on a nested PostgREST branch filter, which can
+    // return an empty result when RLS is applied to the joined profile.
+    const { data: branchEmployees, error: employeesError } = await supabase
+      .from("employee_profiles")
+      .select("id, full_name")
+      .eq("branch_id", managerProfile.branch_id)
+      .eq("is_active", true);
+
+    if (employeesError) {
+      console.error("Failed to load branch employees:", employeesError);
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    const employeeIds = (branchEmployees || []).map((employee) => employee.id);
+
+    if (employeeIds.length === 0) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("leave_requests")
-      .select(`
-        *,
-        employee_profiles!inner (
-          full_name,
-          branch_id
-        )
-      `)
-      .eq("employee_profiles.branch_id", managerProfile.branch_id)
+      .select("*")
+      .in("employee_id", employeeIds)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -56,14 +74,32 @@ export default function ManagerLeave() {
       return;
     }
 
-    setRequests(data || []);
+    const employeeNames = new Map(
+      (branchEmployees || []).map((employee) => [employee.id, employee.full_name])
+    );
+
+    setRequests(
+      (data || []).map((request) => ({
+        ...request,
+        employee_profiles: {
+          full_name: employeeNames.get(request.employee_id) || "Unknown",
+        },
+      }))
+    );
     setLoading(false);
   };
 
   const updateStatus = async (id, status) => {
+    const { data: userData } = await supabase.auth.getUser();
+    const reviewerId = userData?.user?.id || null;
+
     const { error } = await supabase
       .from("leave_requests")
-      .update({ status })
+      .update({
+        status,
+        reviewed_by: reviewerId,
+        reviewed_at: new Date().toISOString(),
+      })
       .eq("id", id);
 
     if (error) {
