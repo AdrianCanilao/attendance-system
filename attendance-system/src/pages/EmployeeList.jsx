@@ -74,6 +74,18 @@ export default function EmployeeList() {
     return `${hours}h ${minutes}m`;
   };
 
+  const formatAttendanceMinutes = (minutes) => {
+    const total = Number(minutes || 0);
+    if (total <= 0) return "0m";
+
+    const hours = Math.floor(total / 60);
+    const mins = total % 60;
+
+    return hours > 0
+      ? `${hours}h ${mins}m`
+      : `${mins}m`;
+  };
+
   const openAttendanceModal = async (employee) => {
     setSelectedEmployee(employee);
 
@@ -158,12 +170,16 @@ export default function EmployeeList() {
       return Math.floor(diff / 60) + "h " + (diff % 60) + "m";
     };
 
-    const { data: branch } = await supabase
+    const { data: branch, error: branchError } = await supabase
       .from("branches")
       .select("id, name, branch_code")
       .eq("id", profile.branch_id)
       .single();
-    if (!branch) return;
+    if (branchError || !branch) {
+      console.error("Export failed while loading branch:", branchError);
+      alert("Unable to export attendance data. Please try again.");
+      return;
+    }
 
     const { data: employeeData } = await supabase
       .from("employee_profiles")
@@ -189,7 +205,7 @@ export default function EmployeeList() {
     const { data: leaveData } = await supabase
       .from("leave_requests")
       .select("*")
-      .in("employee_id", regularEmployees.map((employee) => employee.id))
+      .in("employee_id", branchMembers.map((employee) => employee.id))
       .eq("status", "Approved");
 
     const employeeMap = Object.fromEntries(branchMembers.map((employee) => [employee.id, employee]));
@@ -516,15 +532,15 @@ export default function EmployeeList() {
                           </td>
 
                           <td style={styles.td}>
-                            {log.late_minutes
-                              ? `${log.late_minutes}m`
-                              : "-"}
+                            {formatAttendanceMinutes(
+                              log.late_minutes
+                            )}
                           </td>
 
                           <td style={styles.td}>
-                            {log.overtime_minutes
-                              ? `${log.overtime_minutes}m`
-                              : "-"}
+                            {formatAttendanceMinutes(
+                              log.overtime_minutes
+                            )}
                           </td>
 
                           <td style={styles.td}>
@@ -535,8 +551,11 @@ export default function EmployeeList() {
                           </td>
 
                           <td style={styles.td}>
-                            {log.status ||
-                              "Present"}
+                            {log.time_in
+                              ? Number(log.late_minutes || 0) > 0
+                                ? "Late"
+                                : "Present"
+                              : "Absent"}
                           </td>
 
                           <td style={styles.td}>
