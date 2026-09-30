@@ -443,13 +443,10 @@ const openAttendanceCamera = async (actionType) => {
       }
     }
 
-    const locationData = await getDeviceLocation();
-    setDeviceLocation(locationData);
-    setLocationChecking(false);
+    // Open the camera immediately. Location verification runs in parallel
+    // so a slow GPS/browser location fix does not delay camera startup.
     setScanAction(actionType);
-
     setDetectedFace(null);
-
     setIdentityVerified(false);
 
     setFaceStatus({
@@ -459,10 +456,18 @@ const openAttendanceCamera = async (actionType) => {
     });
 
     setShowCamera(true);
-  } catch (locationError) {
-    setLocationChecking(false);
-    alert(locationError.message);
-  }
+
+    try {
+      const locationData = await getDeviceLocation();
+      setDeviceLocation(locationData);
+      setLocationChecking(false);
+    } catch (locationError) {
+      setLocationChecking(false);
+      setShowCamera(false);
+      setScanAction(null);
+      setDeviceLocation(null);
+      alert(locationError.message);
+    }
 };
 
 const handleScan = async (
@@ -1044,6 +1049,7 @@ const scheduledClockOut = new Date(
                 onClick={() => handleScan(scanAction)}
                 disabled={
                   loading ||
+                  locationChecking ||
                   !faceStatus.valid ||
                   !identityVerified
                 }
