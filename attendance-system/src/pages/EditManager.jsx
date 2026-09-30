@@ -111,6 +111,18 @@ const handleChange = (e) => {
   setForm({ ...form, [e.target.name]: e.target.value });
 };
 
+const handleBranchChange = async (e) => {
+  const branchId = e.target.value;
+
+  setForm((prev) => ({
+    ...prev,
+    branch_id: branchId,
+    shift_id: "",
+  }));
+
+  await fetchShifts(branchId);
+};
+
 // ============================================================
 // INSIGHTFACE ENROLLMENT VALIDATION
 // ============================================================
@@ -428,7 +440,8 @@ const uploadFaces = async () => {
   full_name: form.name,
   contact_number: form.contact,
   position: form.position,
-  shift_id: form.shift_id,
+  branch_id: form.branch_id || null,
+  shift_id: form.shift_id || null,
 })
         .eq("id", selected.id);
 
@@ -675,6 +688,23 @@ const uploadFaces = async () => {
                     style={styles.input}
                     autoComplete="new-password"
                   />
+                </div>
+
+                <div>
+                  <label style={styles.label}>Branch</label>
+                  <select
+                    name="branch_id"
+                    value={form.branch_id || ""}
+                    onChange={handleBranchChange}
+                    style={styles.input}
+                  >
+                    <option value="">Select Branch</option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.branch_name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
