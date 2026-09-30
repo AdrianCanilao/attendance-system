@@ -18,6 +18,8 @@ export default function EmployeeList() {
   const [showAttendanceModal, setShowAttendanceModal] =
     useState(false);
 
+  const [isExporting, setIsExporting] = useState(false);
+
   useEffect(() => {
     fetchEmployees();
   }, []);
@@ -129,6 +131,11 @@ export default function EmployeeList() {
   // EXPORT CURRENT-BRANCH ATTENDANCE REPORT
   // Uses saved attendance values so historical shift changes do not rewrite old records.
   const exportExcel = async () => {
+    if (isExporting) return;
+
+    setIsExporting(true);
+
+    try {
     const { data: authData } = await supabase.auth.getUser();
     const currentUserId = authData?.user?.id;
     if (!currentUserId) return;
@@ -325,6 +332,14 @@ export default function EmployeeList() {
       }),
       "cibo-attendance-report-" + toManilaDate(now) + ".xlsx"
     );
+    } catch (error) {
+      console.error("Attendance export failed:", error);
+      alert(
+        "Unable to export attendance data. Please check the browser console for details."
+      );
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const [avatarUrls, setAvatarUrls] = useState({});
@@ -375,10 +390,16 @@ export default function EmployeeList() {
           </div>
 
           <button
+            type="button"
             onClick={exportExcel}
-            style={styles.exportButton}
+            disabled={isExporting}
+            style={{
+              ...styles.exportButton,
+              opacity: isExporting ? 0.7 : 1,
+              cursor: isExporting ? "wait" : "pointer",
+            }}
           >
-            Export Data
+            {isExporting ? "Exporting..." : "Export Data"}
           </button>
         </div>
 
