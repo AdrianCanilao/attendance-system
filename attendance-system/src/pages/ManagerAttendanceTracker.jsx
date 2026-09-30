@@ -91,7 +91,6 @@ const [selectedDate, setSelectedDate] = useState(
   };
 
   const closeCorrectionModal = () => {
-    if (correctionSaving) return;
     setShowCorrectionModal(false);
     setSelectedCorrection(null);
     setCorrectionTimeIn("");
