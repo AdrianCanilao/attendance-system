@@ -460,18 +460,22 @@ def load_kiosk_face_cache():
 
             url = (
                 f"{SUPABASE_URL}"
-                f"/storage/v1/object/public/"
+                f"/storage/v1/object/"
                 f"faces/{file_path}"
             )
 
             try:
 
                 # ==================================================
-                # DOWNLOAD IMAGE
+                # DOWNLOAD IMAGE USING AUTHENTICATED STORAGE ACCESS
                 # ==================================================
 
                 response = requests.get(
                     url,
+                    headers={
+                        "apikey": SUPABASE_SERVICE_KEY,
+                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                    },
                     timeout=5
                 )
 
