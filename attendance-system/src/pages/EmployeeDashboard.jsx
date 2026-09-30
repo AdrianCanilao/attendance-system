@@ -415,12 +415,12 @@ const getDeviceLocation = () =>
 const openAttendanceCamera = async (actionType) => {
   if (loading || locationChecking) return;
 
-  setLocationChecking(true);
-
   if (!currentEmployeeId) {
     alert("Employee profile is not ready. Please try again.");
     return;
   }
+
+  setLocationChecking(true);
 
   try {
     const lockResponse = await fetch(
@@ -443,7 +443,7 @@ const openAttendanceCamera = async (actionType) => {
       }
     }
 
-    // Open the camera immediately. Location verification runs in parallel
+    // Open the camera immediately. Location verification continues in parallel
     // so a slow GPS/browser location fix does not delay camera startup.
     setScanAction(actionType);
     setDetectedFace(null);
@@ -468,6 +468,13 @@ const openAttendanceCamera = async (actionType) => {
       setDeviceLocation(null);
       alert(locationError.message);
     }
+  } catch (error) {
+    setLocationChecking(false);
+    setShowCamera(false);
+    setScanAction(null);
+    setDeviceLocation(null);
+    alert("Unable to start attendance verification. Please try again.");
+  }
 };
 
 const handleScan = async (
