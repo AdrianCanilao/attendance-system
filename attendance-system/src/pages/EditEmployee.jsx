@@ -17,6 +17,7 @@ const isStrongPassword = (password) =>
 
 export default function EditEmployee() {
   const [employees, setEmployees] = useState([]);
+  const [avatarUrls, setAvatarUrls] = useState({});
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({});
@@ -88,7 +89,22 @@ const fetchEmployees = async () => {
     });
 
   if (!error) {
-    setEmployees(data || []);
+    const employeeRows = data || [];
+    setEmployees(employeeRows);
+
+    const resolvedAvatars = {};
+    await Promise.all(
+      employeeRows.map(async (employee) => {
+        if (employee.face_url) {
+          resolvedAvatars[employee.id] = await getStorageAccessUrl(
+            "faces",
+            employee.face_url
+          );
+        }
+      })
+    );
+
+    setAvatarUrls(resolvedAvatars);
   }
 };
 
@@ -551,8 +567,8 @@ const handleDelete = async () => {
           {filtered.map((emp) => (
             <div key={emp.id} className="cibo-edit-employee-card" style={styles.card} onClick={() => openModal(emp)}>
               <div style={styles.avatar}>
-                {emp.face_url ? (
-                  <img src={emp.face_url} style={styles.avatarImg} />
+                {avatarUrls[emp.id] ? (
+                  <img src={avatarUrls[emp.id]} style={styles.avatarImg} />
                 ) : (
                   <span style={styles.avatarText}>
                     {emp.full_name?.charAt(0).toUpperCase()}
