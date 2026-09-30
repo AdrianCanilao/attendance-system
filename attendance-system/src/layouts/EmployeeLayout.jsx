@@ -50,6 +50,43 @@ export default function EmployeeLayout({ children }) {
     if (showNotifications) fetchNotifications();
   }, [showNotifications]);
 
+  // Subscribe to Supabase Realtime so leave-status notifications
+  // appear immediately when an MS approves or rejects a request.
+  useEffect(() => {
+    let channel;
+
+    const subscribeToNotifications = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+
+      if (!user) return;
+
+      channel = supabase
+        .channel(`employee-notifications-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            fetchNotifications();
+          }
+        )
+        .subscribe();
+    };
+
+    subscribeToNotifications();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, []);
+
   // ================= FETCH BRANCH =================
 
   const fetchBranch = async () => {
