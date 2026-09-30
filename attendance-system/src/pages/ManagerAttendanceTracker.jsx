@@ -393,7 +393,7 @@ if (correctionError) {
         status,
 
 correction:
-  corrections?.find(
+  resolvedCorrections.find(
     (c) =>
       c.attendance_log_id === attendanceToday?.id
   ) || null,
