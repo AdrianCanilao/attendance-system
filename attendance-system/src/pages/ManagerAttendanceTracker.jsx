@@ -557,7 +557,7 @@ const styles = {
   tableCard: {
     background: "#fff",
     borderRadius: "12px",
-    padding: "20px",
+    padding: "20px 24px 24px",
     border: "2px solid #e5e7eb",
 
     minHeight: "calc(100vh - 220px)",
@@ -569,8 +569,8 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "15px",
-    paddingBottom: "10px",
+    marginBottom: "18px",
+    paddingBottom: "12px",
     borderBottom: "2px solid #e5e7eb",
   },
 
@@ -608,13 +608,13 @@ const styles = {
 
   th: {
     textAlign: "left",
-    padding: "12px",
+    padding: "14px 12px",
     background: "#f9fafb",
     borderBottom: "1px solid #e5e7eb",
   },
 
   td: {
-    padding: "12px",
+    padding: "14px 12px",
     borderBottom: "1px solid #f1f5f9",
     color: "#111827",
   },
@@ -664,11 +664,14 @@ const styles = {
     overflowWrap: "anywhere",
   },
   timeAvatar: {
-    width: "32px",
-    height: "32px",
-    minWidth: "32px",
-    minHeight: "32px",
+    width: "42px",
+    height: "42px",
+    minWidth: "42px",
+    minHeight: "42px",
+    maxWidth: "42px",
+    maxHeight: "42px",
     aspectRatio: "1 / 1",
+    flex: "0 0 42px",
     flexShrink: 0,
     borderRadius: "50%",
     objectFit: "cover",
@@ -679,7 +682,7 @@ const styles = {
 
   timeAvatarHover: {
     transform: "scale(4)",
-    borderRadius: "12px",
+    borderRadius: "50%",
     zIndex: 9999,
     position: "relative",
     boxShadow: "0 10px 25px rgba(0,0,0,0.25)",
