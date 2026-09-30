@@ -398,7 +398,6 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
           "Date",
   "Time In",
   "Time Out",
-  "Location",
   "Late",
   "Overtime",
   "Hours Worked",
@@ -496,18 +495,25 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                 />
               )}
 
-              <span>
-                {log.time_in
-                  ? new Date(
-                      log.time_in
-                    ).toLocaleTimeString("en-US", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                      timeZone: "Asia/Manila",
-                    })
-                  : "-"}
-              </span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span>
+                    {log.time_in
+                      ? new Date(
+                          log.time_in
+                        ).toLocaleTimeString("en-US", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                          timeZone: "Asia/Manila",
+                        })
+                      : "-"}
+                  </span>
+                </div>
+                <span style={{ fontSize: "12px", color: "#6b7280", lineHeight: "1.3", maxWidth: "180px", overflowWrap: "anywhere" }}>
+                  {log.time_in_location || "-"}
+                </span>
+              </div>
             </div>
           </td>
 
@@ -558,30 +564,26 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                 />
               )}
 
-              <span>
-                {log.time_out
-                  ? new Date(
-                      log.time_out
-                    ).toLocaleTimeString("en-US", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                      timeZone: "Asia/Manila",
-                    })
-                  : "-"}
-              </span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span>
+                    {log.time_out
+                      ? new Date(
+                          log.time_out
+                        ).toLocaleTimeString("en-US", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                          timeZone: "Asia/Manila",
+                        })
+                      : "-"}
+                  </span>
+                </div>
+                <span style={{ fontSize: "12px", color: "#6b7280", lineHeight: "1.3", maxWidth: "180px", overflowWrap: "anywhere" }}>
+                  {log.time_out_location || "-"}
+                </span>
+              </div>
             </div>
-          </td>
-
-          {/* LOCATION */}
-          <td
-            style={{
-              padding: "16px",
-              textAlign: "center",
-              verticalAlign: "middle",
-            }}
-          >
-            {log.location || "-"}
           </td>
 
           {/* LATE */}
