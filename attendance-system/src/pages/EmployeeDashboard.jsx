@@ -21,7 +21,7 @@ export default function EmployeeDashboard({
 
 const webcamRef = useRef(null);
 
-const [showCamera, setShowCamera] = useState(false);
+const [showCamera, setShowCamera] = useState(false);\nconst [cameraReady, setCameraReady] = useState(false);
 const [scanAction, setScanAction] = useState(null);
 const [faceStatus, setFaceStatus] = useState({
   valid: false,
@@ -324,7 +324,7 @@ const validateLiveFace = async () => {
   }
 };
 useEffect(() => {
-  if (!showCamera || identityVerified) {
+  if (!showCamera || !cameraReady || identityVerified) {
     return;
   }
 
@@ -458,7 +458,7 @@ const openAttendanceCamera = async (actionType) => {
       box: null,
     });
 
-    setShowCamera(true);
+    setCameraReady(false);\n    setShowCamera(true);
   } catch (locationError) {
     setLocationChecking(false);
     alert(locationError.message);
