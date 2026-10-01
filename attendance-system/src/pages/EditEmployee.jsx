@@ -607,7 +607,7 @@ const handleUpdate = async () => {
       });
 
       if (auditResult?.error) {
-        console.warn("Branch transfer audit log failed:", auditResult.error);
+        
       }
     }
 
@@ -635,7 +635,7 @@ const handleUpdate = async () => {
     fetchEmployees();
 
   } catch (error) {
-    console.error("UPDATE PROFILE ERROR:", error);
+    
     alert(`Update failed: ${error?.message || "Unknown error"}`);
 
   } finally {
