@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import EmployeeLayout from "../layouts/EmployeeLayout";
 import { logAudit } from "../utils/auditlogger";
+import { getStorageAccessUrl } from "../utils/storageAccess";
 
 export default function MyLeave() {
   const [requests, setRequests] = useState([]);
@@ -39,7 +40,17 @@ export default function MyLeave() {
       .eq("employee_id", profile.id)
       .order("created_at", { ascending: false });
 
-    setRequests(data || []);
+    const resolvedRequests = await Promise.all(
+      (data || []).map(async (request) => ({
+        ...request,
+        attachment_access_url: await getStorageAccessUrl(
+          "leave-attachments",
+          request.attachment || request.attachment_url
+        ),
+      }))
+    );
+
+    setRequests(resolvedRequests);
     setLoading(false);
   };
 
@@ -88,24 +99,24 @@ export default function MyLeave() {
                     </td>
 
                     <td style={styles.cell}>
-                      {req.attachment_url ? (
-                        req.attachment_url.match(
+                      {req.attachment_access_url ? (
+                        req.attachment_access_url.match(
                           /\.(jpg|jpeg|png|gif|webp)$/i
                         ) ? (
                           <img
-                            src={req.attachment_url}
+                            src={req.attachment_access_url}
                             alt="attachment"
                             style={styles.attachmentImage}
                             onClick={() =>
                               window.open(
-                                req.attachment_url,
+                                req.attachment_access_url,
                                 "_blank"
                               )
                             }
                           />
                         ) : (
                           <a
-                            href={req.attachment_url}
+                            href={req.attachment_access_url}
                             target="_blank"
                             rel="noreferrer"
                             style={styles.fileLink}
