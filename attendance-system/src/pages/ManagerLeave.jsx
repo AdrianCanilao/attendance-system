@@ -48,7 +48,7 @@ export default function ManagerLeave() {
       .eq("is_active", true);
 
     if (employeesError) {
-      console.error("Failed to load branch employees:", employeesError);
+      
       setRequests([]);
       setLoading(false);
       return;
@@ -69,7 +69,7 @@ export default function ManagerLeave() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Failed to load branch leave requests:", error);
+      
       setRequests([]);
       setLoading(false);
       return;
