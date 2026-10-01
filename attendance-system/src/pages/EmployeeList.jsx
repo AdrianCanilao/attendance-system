@@ -187,7 +187,7 @@ export default function EmployeeList() {
       .eq("id", profile.branch_id)
       .single();
     if (branchError || !branch) {
-      console.error("Export failed while loading branch:", branchError);
+      
       alert("Unable to export attendance data. Please try again.");
       return;
     }
@@ -342,7 +342,7 @@ export default function EmployeeList() {
 
     XLSX.writeFile(workbook, fileName);
     } catch (error) {
-      console.error("Attendance export failed:", error);
+      
       alert(
         "Unable to export attendance data. Please check the browser console for details."
       );
