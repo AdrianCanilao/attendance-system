@@ -24,8 +24,8 @@ const [search, setSearch] = useState("");
     setLoading(true);
 
     const { data, error } = await supabase
-      .from("audit_logs")
-      .select("*")
+      .from("hr_audit_logs_safe")
+      .select("id,user_name,role,action,description,created_at")
       .order("created_at", { ascending: false });
 
     if (!error) {
