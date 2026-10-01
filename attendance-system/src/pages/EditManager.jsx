@@ -571,7 +571,7 @@ const uploadFaces = async () => {
         });
 
         if (auditResult?.error) {
-          console.warn("Branch transfer audit log failed:", auditResult.error);
+          
         }
       }
 
