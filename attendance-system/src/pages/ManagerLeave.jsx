@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
 import { logCurrentUserAudit } from "../utils/auditlogger";
+import { getStorageAccessUrl } from "../utils/storageAccess";
 
 export default function ManagerLeave() {
   const [requests, setRequests] = useState([]);
@@ -78,14 +79,20 @@ export default function ManagerLeave() {
       (branchEmployees || []).map((employee) => [employee.id, employee.full_name])
     );
 
-    setRequests(
-      (data || []).map((request) => ({
+    const resolvedRequests = await Promise.all(
+      (data || []).map(async (request) => ({
         ...request,
         employee_profiles: {
           full_name: employeeNames.get(request.employee_id) || "Unknown",
         },
+        attachment_access_url: await getStorageAccessUrl(
+          "leave-attachments",
+          request.attachment || request.attachment_url
+        ),
       }))
     );
+
+    setRequests(resolvedRequests);
     setLoading(false);
   };
 
@@ -171,22 +178,22 @@ export default function ManagerLeave() {
 
                       {/* ATTACHMENT */}
                       <td style={styles.cell}>
-  {req.attachment ? (
-    isImage(req.attachment) ? (
+  {req.attachment_access_url ? (
+    isImage(req.attachment_access_url) ? (
       <img
-        src={req.attachment}
+        src={req.attachment_access_url}
         alt="attachment"
         style={styles.attachmentImage}
         onClick={() =>
           window.open(
-            req.attachment,
+            req.attachment_access_url,
             "_blank"
           )
         }
       />
     ) : (
       <a
-        href={req.attachment}
+        href={req.attachment_access_url}
         target="_blank"
         rel="noreferrer"
         style={styles.fileLink}
