@@ -102,9 +102,27 @@ export default function Profile() {
   .eq("employee_id", emp.id)
   .order("created_at", { ascending: false });
 
+const { data: corrections, error: correctionsError } = await supabase
+  .from("attendance_corrections")
+  .select("id, attendance_log_id, status, concern, created_at, approved_at")
+  .eq("employee_id", emp.id)
+  .order("created_at", { ascending: false });
+
+if (correctionsError) {
+  console.warn("Unable to load attendance correction requests:", correctionsError);
+}
+
+const latestCorrectionByLog = new Map();
+(corrections || []).forEach((correction) => {
+  if (!latestCorrectionByLog.has(correction.attendance_log_id)) {
+    latestCorrectionByLog.set(correction.attendance_log_id, correction);
+  }
+});
+
 const resolvedLogs = await Promise.all(
   (logs || []).map(async (log) => ({
     ...log,
+    correction: latestCorrectionByLog.get(log.id) || null,
     time_in_face_url: await getStorageAccessUrl(
       "faces",
       log.time_in_face_url
@@ -676,22 +694,32 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
   }}
 >
   <button
+    disabled={log.correction?.status === "Pending"}
     onClick={() => {
+      if (log.correction?.status === "Pending") return;
       setSelectedLog(log);
+      setCorrectionReason("");
+      setCorrectionFile(null);
       setShowCorrectionModal(true);
     }}
     style={{
-      background: "#f97316",
+      background: log.correction?.status === "Pending" ? "#9ca3af" : "#f97316",
       color: "#fff",
       border: "none",
       padding: "10px 14px",
       borderRadius: "8px",
-      cursor: "pointer",
+      cursor: log.correction?.status === "Pending" ? "not-allowed" : "pointer",
       fontWeight: "600",
       fontSize: "13px",
     }}
   >
-    Request to Correct
+    {log.correction?.status === "Pending"
+      ? "Correction Pending"
+      : log.correction?.status === "Approved"
+      ? "Request Again"
+      : log.correction?.status === "Rejected"
+      ? "Request Again"
+      : "Request to Correct"}
   </button>
 </td>
         </tr>
@@ -798,6 +826,21 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
         <button
           onClick={async () => {
   try {
+    if (!selectedLog?.id) {
+      alert("Please select an attendance record to correct.");
+      return;
+    }
+
+    if (!correctionReason.trim()) {
+      alert("Please enter the reason for the correction.");
+      return;
+    }
+
+    if (selectedLog.correction?.status === "Pending") {
+      alert("A correction request for this attendance record is already pending.");
+      return;
+    }
+
     let uploadedFileUrl = null;
 
     // ✅ upload attachment if exists
