@@ -132,17 +132,6 @@ export default function Login() {
         role
       );
 
-      // ✅ SAVE EMAIL
-      localStorage.setItem(
-        "email",
-        email
-      );
-
-      // ✅ SAVE USER ID
-      localStorage.setItem(
-        "user_id",
-        user.id
-      );
 
       // ✅ WAIT BEFORE NAVIGATION
       setTimeout(() => {
