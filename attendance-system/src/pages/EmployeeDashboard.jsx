@@ -795,26 +795,20 @@ let scheduledClockOut = profile.clock_out
           description: `${profile.full_name} timed in with status ${attendanceStatus}${lateMinutes > 0 ? ` (${lateMinutes} minutes late)` : ""}`,
         });
       } else {
-        let overtimeMinutes = 0;
-
-        if (now > scheduledClockOut) {
-          overtimeMinutes = Math.floor(
-            (now - scheduledClockOut) / 60000
-          );
-        }
-
-        const { error: attendanceUpdateError } =
+        const { data: updatedAttendance, error: attendanceUpdateError } =
           await supabase
             .from("attendance_logs")
             .update({
               time_out: now.toISOString(),
-              overtime_minutes: overtimeMinutes,
+              overtime_minutes: 0,
               time_out_face_url: faceUrl,
               time_out_location: deviceLocation?.label || null,
             })
             .eq("employee_id", employeeId)
             .eq("log_date", today)
-            .is("time_out", null);
+            .is("time_out", null)
+            .select("id,time_out,overtime_minutes")
+            .maybeSingle();
 
         if (attendanceUpdateError) {
           await logAudit({
@@ -828,6 +822,20 @@ let scheduledClockOut = profile.clock_out
           throw new Error(
             "Attendance Time Out could not be saved: " +
             attendanceUpdateError.message
+          );
+        }
+
+        if (!updatedAttendance) {
+          await logAudit({
+            user_id: employeeId,
+            user_name: profile.full_name,
+            role: managerMode ? "maintenance" : "employee",
+            action: "ATTENDANCE_ERROR_WEB",
+            description: "Web TIME_OUT database update affected no attendance row",
+          });
+
+          throw new Error(
+            "Your Time Out could not be saved. Please try again."
           );
         }
 
