@@ -21,7 +21,8 @@ export default function EmployeeDashboard({
 
 const webcamRef = useRef(null);
 
-const [showCamera, setShowCamera] = useState(false);\nconst [cameraReady, setCameraReady] = useState(false);
+const [showCamera, setShowCamera] = useState(false);
+const [cameraReady, setCameraReady] = useState(false);
 const [scanAction, setScanAction] = useState(null);
 const [faceStatus, setFaceStatus] = useState({
   valid: false,
@@ -186,13 +187,31 @@ const [deviceLocation, setDeviceLocation] = useState(null);
   return frames;
 };
 const validateLiveFace = async () => {
-  if (!webcamRef.current) return;
+  if (!webcamRef.current || !cameraReady) return;
+
+  const video = webcamRef.current.video;
+  if (
+    !video ||
+    video.readyState < 2 ||
+    !video.videoWidth ||
+    !video.videoHeight
+  ) {
+    return;
+  }
 
   if (recognizingFaceRef.current) return;
 
   const image = webcamRef.current.getScreenshot();
 
-  if (!image) return;
+  if (!image) {
+    setRecognitionStatus("camera-not-ready");
+    setFaceStatus({
+      valid: false,
+      message: "Starting camera. Please wait...",
+      box: null,
+    });
+    return;
+  }
 
   try {
     setCheckingFace(true);
@@ -458,7 +477,8 @@ const openAttendanceCamera = async (actionType) => {
       box: null,
     });
 
-    setCameraReady(false);\n    setShowCamera(true);
+    setCameraReady(false);\n    setCameraReady(false);
+    setShowCamera(true);
   } catch (locationError) {
     setLocationChecking(false);
     alert(locationError.message);
@@ -946,7 +966,23 @@ let scheduledClockOut = profile.clock_out
                 <Webcam
                   ref={webcamRef}
                   audio={false}
+                  muted
+                  playsInline
                   screenshotFormat="image/jpeg"
+                  forceScreenshotSourceSize={true}
+                  onPlay={() => {
+                    setCameraReady(true);
+                    setRecognitionStatus("scanning");
+                  }}
+                  onUserMediaError={() => {
+                    setCameraReady(false);
+                    setRecognitionStatus("error");
+                    setFaceStatus({
+                      valid: false,
+                      message: "Unable to access the camera.",
+                      box: null,
+                    });
+                  }}
                   videoConstraints={{
                     width: 320,
                     height: 240,
@@ -1078,6 +1114,7 @@ let scheduledClockOut = profile.clock_out
                 style={styles.secondaryBtn}
                 onClick={() => {
                   setShowCamera(false);
+                  setCameraReady(false);
                   setScanAction(null);
                   setDeviceLocation(null);
                 }}
