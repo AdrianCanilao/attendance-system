@@ -857,7 +857,7 @@ let scheduledClockOut = profile.clock_out
           action: "TIME_OUT",
           description: `${profile.full_name} timed out${savedAttendance.overtime_minutes > 0 ? ` with ${savedAttendance.overtime_minutes} minutes overtime` : ""}`,
         });
-
+      }
 
       setShowCamera(false);
       setScanAction(null);
