@@ -127,12 +127,12 @@ export default function LeaveRequest() {
           .upload(fileName, attachment);
 
         if (uploadError) {
+          alert("Failed to upload attachment");
+          return;
         } else {
-          const { data } = supabase.storage
-            .from("leave-attachments")
-            .getPublicUrl(fileName);
-
-          attachmentUrl = data.publicUrl;
+          // Store the private object path. The UI creates a short-lived
+          // signed URL when the attachment needs to be viewed.
+          attachmentUrl = fileName;
         }
       }
 
