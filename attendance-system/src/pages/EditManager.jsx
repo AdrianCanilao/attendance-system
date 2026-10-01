@@ -71,7 +71,15 @@ const { data } = await supabase
   .from("employee_profiles")
   .select("*")
   .eq("role_id", MANAGER_ROLE_ID);
-    setEmployees(data || []);
+
+    const resolvedEmployees = await Promise.all(
+      (data || []).map(async (emp) => ({
+        ...emp,
+        face_access_url: await getStorageAccessUrl("faces", emp.face_url),
+      }))
+    );
+
+    setEmployees(resolvedEmployees);
   };
 
   const filtered = employees.filter((emp) =>
@@ -628,8 +636,8 @@ const uploadFaces = async () => {
           {filtered.map((emp) => (
             <div key={emp.id} style={styles.card} onClick={() => openModal(emp)}>
               <div style={styles.avatar}>
-                {emp.face_url ? (
-                  <img src={emp.face_url} style={styles.avatarImg} />
+                {emp.face_access_url ? (
+                  <img src={emp.face_access_url} style={styles.avatarImg} />
                 ) : (
                   <span style={styles.avatarText}>
                     {emp.full_name?.charAt(0).toUpperCase()}
