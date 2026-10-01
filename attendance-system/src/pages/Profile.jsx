@@ -109,7 +109,7 @@ const { data: corrections, error: correctionsError } = await supabase
   .order("created_at", { ascending: false });
 
 if (correctionsError) {
-  console.warn("Unable to load attendance correction requests:", correctionsError);
+  
 }
 
 const latestCorrectionByLog = new Map();
