@@ -156,33 +156,10 @@ export default function LeaveRequest() {
         return;
       }
 
-      const selectedCard = leaveCards.find(
-        (card) => card.title === selectedLeave
-      );
-
-      if (selectedCard) {
-        const updatedValue = Math.max(
-          Number(profile[selectedCard.key]) - 1,
-          0
-        );
-
-        const { error: updateError } = await supabase
-          .from("employee_profiles")
-          .update({
-            [selectedCard.key]: updatedValue,
-          })
-          .eq("id", profile.id);
-
-        if (updateError) {
-          alert("Failed to update leave credits");
-          return;
-        }
-
-        setCredits((prev) => ({
-          ...prev,
-          [selectedCard.key]: updatedValue,
-        }));
-      }
+      // Leave credits are consumed by a database trigger when the
+      // leave request is inserted. This prevents employees from
+      // directly modifying their own leave balances through the API.
+      await fetchCredits();
       await logAudit({
   user_id: profile.id,
   user_name: profile.full_name,
