@@ -864,8 +864,16 @@ let scheduledClockOut = profile.clock_out
         "Attendance recorded"
       );
 
-      loadData();
+      // The attendance write has already succeeded at this point.
+      // A refresh failure must not turn a successful attendance scan
+      // into a misleading "Scan failed" message.
+      try {
+        await loadData();
+      } catch (refreshError) {
+        console.error("Attendance saved, but dashboard refresh failed:", refreshError);
+      }
     } catch (err) {
+      console.error("Attendance scan failed:", err);
       alert("Scan failed");
     } finally {
       setLoading(false);
