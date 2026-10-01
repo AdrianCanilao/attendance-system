@@ -847,7 +847,7 @@ let scheduledClockOut = profile.clock_out
             ? "maintenance"
             : "employee",
           action: "TIME_OUT",
-          description: `${profile.full_name} timed out${overtimeMinutes > 0 ? ` with ${overtimeMinutes} minutes overtime` : ""}`,
+          description: `${profile.full_name} timed out${updatedAttendance?.overtime_minutes > 0 ? ` with ${updatedAttendance.overtime_minutes} minutes overtime` : ""}`,
         });
       }
 
