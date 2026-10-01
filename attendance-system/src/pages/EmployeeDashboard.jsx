@@ -795,7 +795,7 @@ let scheduledClockOut = profile.clock_out
           description: `${profile.full_name} timed in with status ${attendanceStatus}${lateMinutes > 0 ? ` (${lateMinutes} minutes late)` : ""}`,
         });
       } else {
-        const { data: updatedAttendance, error: attendanceUpdateError } =
+        const { error: attendanceUpdateError } =
           await supabase
             .from("attendance_logs")
             .update({
@@ -806,11 +806,10 @@ let scheduledClockOut = profile.clock_out
             })
             .eq("employee_id", employeeId)
             .eq("log_date", today)
-            .is("time_out", null)
-            .select("id,time_out,overtime_minutes")
-            .maybeSingle();
+            .is("time_out", null);
 
         if (attendanceUpdateError) {
+          console.error("TIME_OUT UPDATE ERROR:", attendanceUpdateError);
           await logAudit({
             user_id: employeeId,
             user_name: profile.full_name,
@@ -825,31 +824,40 @@ let scheduledClockOut = profile.clock_out
           );
         }
 
-        if (!updatedAttendance) {
-          await logAudit({
-            user_id: employeeId,
-            user_name: profile.full_name,
-            role: managerMode ? "maintenance" : "employee",
-            action: "ATTENDANCE_ERROR_WEB",
-            description: "Web TIME_OUT database update affected no attendance row",
-          });
+        // Verify the saved row separately. This avoids relying on
+        // PostgREST UPDATE ... RETURNING behavior while still making sure
+        // the employee never receives a false success message.
+        const { data: savedAttendance, error: verifyError } =
+          await supabase
+            .from("attendance_logs")
+            .select("id,time_out,overtime_minutes,time_out_face_url,time_out_location")
+            .eq("employee_id", employeeId)
+            .eq("log_date", today)
+            .maybeSingle();
 
+        if (verifyError) {
+          console.error("TIME_OUT VERIFY ERROR:", verifyError);
           throw new Error(
-            "Your Time Out could not be saved. Please try again."
+            "Time Out was submitted, but the saved attendance could not be verified: " +
+            verifyError.message
+          );
+        }
+
+        if (!savedAttendance?.time_out) {
+          console.error("TIME_OUT VERIFY FAILED: no saved time_out", savedAttendance);
+          throw new Error(
+            "Time Out was not saved. Please try again."
           );
         }
 
         await logAudit({
           user_id: employeeId,
-          user_name:
-            profile.full_name,
-          role: managerMode
-            ? "maintenance"
-            : "employee",
+          user_name: profile.full_name,
+          role: managerMode ? "maintenance" : "employee",
           action: "TIME_OUT",
-          description: `${profile.full_name} timed out${updatedAttendance?.overtime_minutes > 0 ? ` with ${updatedAttendance.overtime_minutes} minutes overtime` : ""}`,
+          description: `${profile.full_name} timed out${savedAttendance.overtime_minutes > 0 ? ` with ${savedAttendance.overtime_minutes} minutes overtime` : ""}`,
         });
-      }
+
 
       setShowCamera(false);
       setScanAction(null);
