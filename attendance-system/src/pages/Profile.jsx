@@ -38,7 +38,7 @@ export default function Profile() {
     // ✅ GET EMPLOYEE PROFILE
     const { data: emp, error } = await supabase
       .from("employee_profiles")
-      .select("*")
+      .select("*, branches:branch_id(branch_name)")
       .eq("email", user.email)
       .single();
 
@@ -332,6 +332,17 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                     <span style={styles.value}>
                       {profile?.contact_number ||
                         "N/A"}
+                    </span>
+                  </div>
+
+                  <div style={styles.infoItem}>
+                    <span style={styles.label}>
+                      Branch:
+                    </span>
+
+                    <span style={styles.value}>
+                      {profile?.branches?.branch_name ||
+                        "Not assigned"}
                     </span>
                   </div>
                 </div>
