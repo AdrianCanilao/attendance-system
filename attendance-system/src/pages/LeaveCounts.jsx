@@ -14,7 +14,6 @@ export default function LeaveCounts() {
     emergency_leave: 0,
     service_incentive_leave: 0,
     birthday_leave: 0,
-    official_business: 0,
   });
 
   useEffect(() => {
@@ -42,7 +41,6 @@ export default function LeaveCounts() {
       service_incentive_leave:
         employee.service_incentive_leave || 0,
       birthday_leave: employee.birthday_leave || 0,
-      official_business: employee.official_business || 0,
     });
   };
 
@@ -58,7 +56,6 @@ export default function LeaveCounts() {
         service_incentive_leave:
           leaveCounts.service_incentive_leave,
         birthday_leave: leaveCounts.birthday_leave,
-        official_business: leaveCounts.official_business,
       })
       .eq("id", selectedEmployee.id);
 
@@ -70,7 +67,14 @@ export default function LeaveCounts() {
 
       alert("Leave counts updated successfully");
       fetchEmployees();
+      return;
     }
+
+    console.error("Leave counts update failed:", error);
+    alert(
+      "Failed to update leave counts:\n\n" +
+      (error.message || "Unknown database error.")
+    );
   };
 
   const filteredEmployees = employees.filter((emp) =>
@@ -189,16 +193,6 @@ export default function LeaveCounts() {
                     }
                   />
 
-                  <InputField
-                    label="Official Business"
-                    value={leaveCounts.official_business}
-                    onChange={(value) =>
-                      setLeaveCounts({
-                        ...leaveCounts,
-                        official_business: value,
-                      })
-                    }
-                  />
                 </div>
 
                 <button
