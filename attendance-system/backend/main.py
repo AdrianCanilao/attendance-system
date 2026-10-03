@@ -576,6 +576,71 @@ def clear_verification_failures(employee_id: str):
     )
 
 
+def send_verification_lock_email(employee_id: str, failure_state: dict):
+    """Notify the employee when the fifth verification failure creates a lock.
+
+    The kiosk itself has no Supabase user session, so the trusted FastAPI
+    backend calls the existing notification-email Edge Function.
+    """
+    try:
+        profile_response = (
+            supabase
+            .table("employee_profiles")
+            .select("id, full_name, email")
+            .eq("id", employee_id)
+            .limit(1)
+            .execute()
+        )
+
+        profiles = profile_response.data or []
+        if not profiles or not profiles[0].get("email"):
+            print(
+                "⚠️ VERIFICATION LOCK EMAIL SKIPPED: employee email not found",
+                employee_id,
+                flush=True
+            )
+            return
+
+        payload = {
+            "notification_type": "verification-lock",
+            "employee_id": employee_id,
+            "failed_attempts": failure_state.get("failed_attempts", 5),
+            "locked_until": failure_state.get("locked_until"),
+        }
+
+        response = requests.post(
+            f"{SUPABASE_URL}/functions/v1/notification-email",
+            headers={
+                "Content-Type": "application/json",
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+            },
+            json=payload,
+            timeout=15,
+        )
+
+        if response.ok:
+            print(
+                "📧 VERIFICATION LOCK EMAIL REQUESTED:",
+                profiles[0].get("email"),
+                flush=True
+            )
+        else:
+            print(
+                "❌ VERIFICATION LOCK EMAIL FAILED:",
+                response.status_code,
+                response.text,
+                flush=True
+            )
+
+    except Exception as e:
+        print(
+            "❌ VERIFICATION LOCK EMAIL ERROR:",
+            str(e),
+            flush=True
+        )
+
+
 @app.get("/attendance-verification-lock/{employee_id}")
 async def attendance_verification_lock(employee_id: str):
     try:
@@ -2804,6 +2869,12 @@ async def kiosk_verify_live(
                     recognized_employee_id
                 )
 
+                if failure.get("just_locked"):
+                    send_verification_lock_email(
+                        recognized_employee_id,
+                        failure
+                    )
+
                 return {
                     "status": (
                         "Locked"
@@ -2889,6 +2960,12 @@ async def kiosk_verify_live(
                 failure = record_verification_failure(
                     recognized_employee_id
                 )
+
+                if failure.get("just_locked"):
+                    send_verification_lock_email(
+                        recognized_employee_id,
+                        failure
+                    )
 
                 return {
                     "status": (
@@ -3096,6 +3173,12 @@ async def kiosk_verify_live(
                     recognized_employee_id
                 )
 
+                if failure.get("just_locked"):
+                    send_verification_lock_email(
+                        recognized_employee_id,
+                        failure
+                    )
+
                 return {
                     "status": (
                         "Locked"
@@ -3199,6 +3282,12 @@ async def kiosk_verify_live(
                     recognized_employee_id
                 )
 
+                if failure.get("just_locked"):
+                    send_verification_lock_email(
+                        recognized_employee_id,
+                        failure
+                    )
+
                 return {
                     "status": (
                         "Locked"
@@ -3245,6 +3334,12 @@ async def kiosk_verify_live(
                     recognized_employee_id
                 )
 
+                if failure.get("just_locked"):
+                    send_verification_lock_email(
+                        recognized_employee_id,
+                        failure
+                    )
+
                 return {
                     "status": (
                         "Locked"
@@ -3283,6 +3378,12 @@ async def kiosk_verify_live(
                 failure = record_verification_failure(
                     recognized_employee_id
                 )
+
+                if failure.get("just_locked"):
+                    send_verification_lock_email(
+                        recognized_employee_id,
+                        failure
+                    )
 
                 return {
                     "status": (
