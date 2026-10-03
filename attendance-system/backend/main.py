@@ -55,6 +55,43 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
+def log_kiosk_audit(user_id, user_name, action, description):
+    """Write kiosk audit entries from the trusted backend service role.
+
+    Kiosks are intentionally not signed in as Supabase users, so the browser
+    cannot satisfy the authenticated audit_logs INSERT policy (user_id=auth.uid()).
+    Kiosk audit records are therefore written here after the attendance
+    transaction succeeds, using the backend's service-role client.
+    """
+    try:
+        result = (
+            supabase
+            .table("audit_logs")
+            .insert({
+                "user_id": user_id,
+                "user_name": user_name,
+                "role": "kiosk",
+                "action": action,
+                "description": description,
+            })
+            .execute()
+        )
+        print(
+            "🧾 KIOSK AUDIT LOGGED:",
+            action,
+            user_name,
+            flush=True
+        )
+        return result
+    except Exception as e:
+        print(
+            "⚠️ KIOSK AUDIT LOG FAILED:",
+            str(e),
+            flush=True
+        )
+        return None
+
+
 class UpdatePasswordRequest(BaseModel):
     target_user_id: str
     password: str
@@ -2250,6 +2287,13 @@ async def record_kiosk_attendance(employee, action, face_url=None, location=None
                     "message": "Unable to create attendance record."
                 }
 
+            log_kiosk_audit(
+                employee_id,
+                employee["full_name"],
+                "KIOSK_TIME_IN",
+                f'{employee["full_name"]} timed in successfully through the kiosk.'
+            )
+
             return {
                 "status": "Time In Recorded",
                 "message": (
@@ -2479,6 +2523,20 @@ async def record_kiosk_attendance(employee, action, face_url=None, location=None
                     "status": "Error",
                     "message": "Time Out was not saved."
                 }
+
+            log_kiosk_audit(
+                employee_id,
+                employee["full_name"],
+                "KIOSK_TIME_OUT",
+                (
+                    f'{employee["full_name"]} timed out successfully through the kiosk.'
+                    if overtime_minutes == 0
+                    else (
+                        f'{employee["full_name"]} timed out successfully through the kiosk '
+                        f'with {overtime_minutes} minutes overtime.'
+                    )
+                )
+            )
 
             return {
                 "status": "Time Out Recorded",
