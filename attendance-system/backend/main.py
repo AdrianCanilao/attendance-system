@@ -571,7 +571,7 @@ def get_verification_lock(employee_id: str):
         raise
 
 
-def record_verification_failure(employee_id: str):
+def record_verification_failure(employee_id: str, source: str = "web"):
     print(
         "🔢 RECORDING VERIFICATION FAILURE FOR:",
         repr(employee_id),
@@ -606,7 +606,66 @@ def record_verification_failure(employee_id: str):
                 "Unable to record attendance verification failure."
             )
 
-        return rows[0]
+        failure_state = rows[0]
+
+        # Record every failed verification in the HR Audit Trail.
+        # Kiosks use the trusted backend service role because they do not
+        # have a Supabase user session.
+        try:
+            profile_response = (
+                supabase
+                .table("employee_profiles")
+                .select("id, full_name")
+                .eq("id", employee_id)
+                .limit(1)
+                .execute()
+            )
+            profiles = profile_response.data or []
+            employee_name = (
+                profiles[0].get("full_name")
+                if profiles
+                else "Unknown employee"
+            )
+
+            attempt_count = int(
+                failure_state.get("failed_attempts") or 0
+            )
+            locked_until = failure_state.get("locked_until")
+            is_locked = bool(failure_state.get("just_locked"))
+
+            audit_action = (
+                "KIOSK_VERIFICATION_FAILED"
+                if source == "kiosk"
+                else "VERIFICATION_FAILED"
+            )
+
+            if is_locked:
+                description = (
+                    f"{employee_name} failed attendance verification "
+                    f"(attempt {attempt_count}/5) and was locked for 5 minutes."
+                )
+            else:
+                description = (
+                    f"{employee_name} failed attendance verification "
+                    f"(attempt {attempt_count}/5)."
+                )
+
+            log_kiosk_audit(
+                employee_id,
+                employee_name,
+                audit_action,
+                description,
+            )
+        except Exception as audit_error:
+            # A missing audit row must never break the attendance
+            # verification response itself.
+            print(
+                "⚠️ VERIFICATION FAILURE AUDIT LOG FAILED:",
+                str(audit_error),
+                flush=True
+            )
+
+        return failure_state
 
     except Exception as e:
         print(
@@ -2923,7 +2982,8 @@ async def kiosk_verify_live(
         if len(ear_values) < 2:
             if recognized_employee_id:
                 failure = record_verification_failure(
-                    recognized_employee_id
+                    recognized_employee_id,
+                    source="kiosk"
                 )
 
                 if failure.get("just_locked"):
@@ -3015,7 +3075,8 @@ async def kiosk_verify_live(
         if not blink_detected:
             if recognized_employee_id:
                 failure = record_verification_failure(
-                    recognized_employee_id
+                    recognized_employee_id,
+                    source="kiosk"
                 )
 
                 if failure.get("just_locked"):
@@ -3227,7 +3288,8 @@ async def kiosk_verify_live(
 
             if recognized_employee_id:
                 failure = record_verification_failure(
-                    recognized_employee_id
+                    recognized_employee_id,
+                    source="kiosk"
                 )
 
                 if failure.get("just_locked"):
@@ -3336,7 +3398,8 @@ async def kiosk_verify_live(
 
             if recognized_employee_id:
                 failure = record_verification_failure(
-                    recognized_employee_id
+                    recognized_employee_id,
+                    source="kiosk"
                 )
 
                 if failure.get("just_locked"):
@@ -3388,7 +3451,8 @@ async def kiosk_verify_live(
 
             if recognized_employee_id:
                 failure = record_verification_failure(
-                    recognized_employee_id
+                    recognized_employee_id,
+                    source="kiosk"
                 )
 
                 if failure.get("just_locked"):
@@ -3433,7 +3497,8 @@ async def kiosk_verify_live(
 
             if recognized_employee_id:
                 failure = record_verification_failure(
-                    recognized_employee_id
+                    recognized_employee_id,
+                    source="kiosk"
                 )
 
                 if failure.get("just_locked"):
