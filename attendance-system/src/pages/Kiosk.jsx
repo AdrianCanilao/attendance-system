@@ -303,7 +303,7 @@ export default function Kiosk() {
             scanStartedRef.current = true;
 
             setTimeout(() => {
-              startAttendanceScan();
+              startAttendanceScan(employeeId);
             }, 1200);
           }
 
@@ -452,7 +452,7 @@ export default function Kiosk() {
   // - record attendance
   // ------------------------------------------------------------
 
-  const startAttendanceScan = async () => {
+  const startAttendanceScan = async (recognizedEmployeeId = "") => {
     if (!selectedAction) return;
     if (!webcamRef.current) return;
     if (attendanceLoading) return;
@@ -473,12 +473,9 @@ export default function Kiosk() {
 
       const formData = new FormData();
 
-      const recognizedEmployeeId =
-        recognition?.employee_id || "";
-
       formData.append(
         "recognized_employee_id",
-        recognizedEmployeeId
+        recognizedEmployeeId || ""
       );
 
       formData.append(
