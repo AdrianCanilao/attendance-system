@@ -3,7 +3,7 @@ import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
 import { getStorageAccessUrl } from "../utils/storageAccess";
 import { FaSearch } from "react-icons/fa";
-import * as XLSX from "xlsx-js-style";
+import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 export default function EmployeeList() {
@@ -156,44 +156,34 @@ export default function EmployeeList() {
       }
 
       const now = new Date();
-
-      const manilaDateParts = new Intl.DateTimeFormat("en-US", {
+      const parts = new Intl.DateTimeFormat("en-US", {
         timeZone: "Asia/Manila",
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
       }).formatToParts(now);
 
-      const manilaYear = Number(
-        manilaDateParts.find((p) => p.type === "year")?.value
+      const year = Number(
+        parts.find((p) => p.type === "year")?.value
       );
-      const manilaMonth = Number(
-        manilaDateParts.find((p) => p.type === "month")?.value
+      const month = Number(
+        parts.find((p) => p.type === "month")?.value
       );
       const todayDay = Number(
-        manilaDateParts.find((p) => p.type === "day")?.value
+        parts.find((p) => p.type === "day")?.value
       );
 
-      const monthStart = new Date(
-        manilaYear,
-        manilaMonth - 1,
-        1
-      );
-      const nextMonthStart = new Date(
-        manilaYear,
-        manilaMonth,
-        1
-      );
+      const monthStart = new Date(year, month - 1, 1);
+      const nextMonthStart = new Date(year, month, 1);
+      const daysInMonth = new Date(year, month, 0).getDate();
 
-      const toManilaDate = (value) => {
-        if (!value) return "";
-        return new Intl.DateTimeFormat("en-CA", {
+      const toManilaDate = (value) =>
+        new Intl.DateTimeFormat("en-CA", {
           timeZone: "Asia/Manila",
           year: "numeric",
           month: "2-digit",
           day: "2-digit",
         }).format(new Date(value));
-      };
 
       const formatTime = (value) =>
         value
@@ -209,7 +199,6 @@ export default function EmployeeList() {
         const total = Number(minutes || 0);
         const hours = Math.floor(total / 60);
         const mins = total % 60;
-
         return hours > 0
           ? hours + "h " + mins + "m"
           : mins + "m";
@@ -226,7 +215,7 @@ export default function EmployeeList() {
         throw new Error("Unable to load branch information.");
       }
 
-      const { data: employeeData, error: employeeError } =
+      const { data: branchMembers, error: employeeError } =
         await supabase
           .from("employee_profiles")
           .select("id, full_name")
@@ -237,9 +226,7 @@ export default function EmployeeList() {
         throw new Error(employeeError.message);
       }
 
-      const branchMembers = employeeData || [];
-
-      if (!branchMembers.length) {
+      if (!branchMembers?.length) {
         throw new Error("No personnel were found in your branch.");
       }
 
@@ -259,7 +246,7 @@ export default function EmployeeList() {
         throw new Error(attendanceError.message);
       }
 
-      const { data: leaveData, error: leaveError } =
+      const { data: leaves, error: leaveError } =
         await supabase
           .from("leave_requests")
           .select("*")
@@ -273,57 +260,16 @@ export default function EmployeeList() {
         throw new Error(leaveError.message);
       }
 
-      const leaves = leaveData || [];
       const logs = attendanceData || [];
+      const approvedLeaves = leaves || [];
 
-      const daysInMonth = new Date(
-        manilaYear,
-        manilaMonth,
-        0
-      ).getDate();
-
-      const dayInfo = Array.from(
-        { length: daysInMonth },
-        (_, index) => {
-          const dayNumber = index + 1;
-          const date = new Date(
-            manilaYear,
-            manilaMonth - 1,
-            dayNumber
-          );
-
-          const dateKey =
-            manilaYear +
-            "-" +
-            String(manilaMonth).padStart(2, "0") +
-            "-" +
-            String(dayNumber).padStart(2, "0");
-
-          return {
-            dayNumber,
-            dateKey,
-            weekday: date.toLocaleDateString("en-US", {
-              weekday: "long",
-            }),
-            isFuture: dayNumber > todayDay,
-          };
-        }
-      );
-
-      const getLeave = (employeeId, dateKey) =>
-        leaves.find((leave) => {
-          if (leave.employee_id !== employeeId) return false;
-
-          const start = String(
-            leave.start_date || ""
-          ).slice(0, 10);
-
-          const end = String(
-            leave.end_date || leave.start_date || ""
-          ).slice(0, 10);
-
-          return dateKey >= start && dateKey <= end;
-        });
+      const escapeXml = (value) =>
+        String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
 
       const getLog = (employeeId, dateKey) =>
         logs.find(
@@ -333,255 +279,181 @@ export default function EmployeeList() {
               dateKey
         );
 
-      const styles = {
-        title: {
-          font: { bold: true, sz: 14 },
-          alignment: { horizontal: "left" },
-        },
-        infoLabel: {
-          font: { bold: true },
-          alignment: { horizontal: "left" },
-        },
-        infoValue: {
-          alignment: { horizontal: "left" },
-        },
-        header: {
-          fill: { fgColor: { rgb: "E5E7EB" } },
-          font: { bold: true, color: { rgb: "111827" } },
-          alignment: {
-            horizontal: "center",
-            vertical: "center",
-          },
-          border: {
-            top: { style: "thin", color: { rgb: "B7B7B7" } },
-            bottom: { style: "thin", color: { rgb: "B7B7B7" } },
-            left: { style: "thin", color: { rgb: "B7B7B7" } },
-            right: { style: "thin", color: { rgb: "B7B7B7" } },
-          },
-        },
-        normal: {
-          alignment: {
-            horizontal: "center",
-            vertical: "center",
-          },
-          border: {
-            top: { style: "thin", color: { rgb: "D1D5DB" } },
-            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-            left: { style: "thin", color: { rgb: "D1D5DB" } },
-            right: { style: "thin", color: { rgb: "D1D5DB" } },
-          },
-        },
-        name: {
-          alignment: { horizontal: "left", vertical: "center" },
-          border: {
-            top: { style: "thin", color: { rgb: "D1D5DB" } },
-            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-            left: { style: "thin", color: { rgb: "D1D5DB" } },
-            right: { style: "thin", color: { rgb: "D1D5DB" } },
-          },
-        },
-        green: {
-          fill: { fgColor: { rgb: "C6EFCE" } },
-          font: { color: { rgb: "006100" } },
-          alignment: { horizontal: "center", vertical: "center" },
-          border: {
-            top: { style: "thin", color: { rgb: "D1D5DB" } },
-            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-            left: { style: "thin", color: { rgb: "D1D5DB" } },
-            right: { style: "thin", color: { rgb: "D1D5DB" } },
-          },
-        },
-        orange: {
-          fill: { fgColor: { rgb: "FCE4D6" } },
-          font: { color: { rgb: "9C0006" } },
-          alignment: { horizontal: "center", vertical: "center" },
-          border: {
-            top: { style: "thin", color: { rgb: "D1D5DB" } },
-            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-            left: { style: "thin", color: { rgb: "D1D5DB" } },
-            right: { style: "thin", color: { rgb: "D1D5DB" } },
-          },
-        },
-        red: {
-          fill: { fgColor: { rgb: "FFC7CE" } },
-          font: { color: { rgb: "9C0006" } },
-          alignment: { horizontal: "center", vertical: "center" },
-          border: {
-            top: { style: "thin", color: { rgb: "D1D5DB" } },
-            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-            left: { style: "thin", color: { rgb: "D1D5DB" } },
-            right: { style: "thin", color: { rgb: "D1D5DB" } },
-          },
-        },
-        yellow: {
-          fill: { fgColor: { rgb: "FFEB9C" } },
-          font: { color: { rgb: "9C6500" } },
-          alignment: { horizontal: "center", vertical: "center" },
-          border: {
-            top: { style: "thin", color: { rgb: "D1D5DB" } },
-            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-            left: { style: "thin", color: { rgb: "D1D5DB" } },
-            right: { style: "thin", color: { rgb: "D1D5DB" } },
-          },
-        },
-        summary: {
-          fill: { fgColor: { rgb: "F3F4F6" } },
-          font: { bold: true },
-          alignment: { horizontal: "center", vertical: "center" },
-          border: {
-            top: { style: "thin", color: { rgb: "D1D5DB" } },
-            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-            left: { style: "thin", color: { rgb: "D1D5DB" } },
-            right: { style: "thin", color: { rgb: "D1D5DB" } },
-          },
-        },
-      };
+      const getLeave = (employeeId, dateKey) =>
+        approvedLeaves.find((leave) => {
+          if (leave.employee_id !== employeeId) return false;
 
-      const wb = XLSX.utils.book_new();
-      const ws = {};
+          const start = String(
+            leave.start_date || ""
+          ).slice(0, 10);
+          const end = String(
+            leave.end_date || leave.start_date || ""
+          ).slice(0, 10);
 
-      const setCell = (address, value, style) => {
-        ws[address] = {
-          v: value,
-          t: "s",
-          s: style,
-        };
-      };
+          return dateKey >= start && dateKey <= end;
+        });
 
-      setCell("A1", "CIBO ATTENDANCE REPORT", styles.title);
-      setCell("A2", "Branch", styles.infoLabel);
-      setCell("B2", branch.branch_name || "-", styles.infoValue);
-      setCell("A3", "Branch Code", styles.infoLabel);
-      setCell("B3", branch.branch_code || "-", styles.infoValue);
-      setCell("A4", "Report Period", styles.infoLabel);
-      setCell(
-        "B4",
-        monthStart.toLocaleDateString("en-US", {
-          month: "short",
-          year: "2-digit",
-        }),
-        styles.infoValue
-      );
-      setCell("A5", "Generated", styles.infoLabel);
-      setCell(
-        "B5",
-        now.toLocaleString("en-US", {
-          timeZone: "Asia/Manila",
-        }),
-        styles.infoValue
+      const dayInfo = Array.from(
+        { length: daysInMonth },
+        (_, index) => {
+          const day = index + 1;
+          const date = new Date(year, month - 1, day);
+
+          return {
+            day,
+            dateKey:
+              year +
+              "-" +
+              String(month).padStart(2, "0") +
+              "-" +
+              String(day).padStart(2, "0"),
+            weekday: date.toLocaleDateString("en-US", {
+              weekday: "long",
+            }),
+            future: day > todayDay,
+          };
+        }
       );
 
-      const headerRow1 = 7;
-      const headerRow2 = 8;
-      const headerRow3 = 9;
-      const dataStartRow = 10;
+      // Simple Excel colors:
+      // green = present, orange = late, red = absent,
+      // yellow = overtime, white = OL / future "-" / normal.
+      const styleXml = `
+        <Styles>
+          <Style ss:ID="Default" ss:Name="Normal">
+            <Font ss:FontName="Arial" ss:Size="10"/>
+            <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+            <Borders>
+              <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D1D5DB"/>
+              <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D1D5DB"/>
+              <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D1D5DB"/>
+              <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D1D5DB"/>
+            </Borders>
+          </Style>
+          <Style ss:ID="Header">
+            <Font ss:FontName="Arial" ss:Size="10" ss:Bold="1"/>
+            <Interior ss:Color="#E5E7EB" ss:Pattern="Solid"/>
+            <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+          </Style>
+          <Style ss:ID="Title">
+            <Font ss:FontName="Arial" ss:Size="14" ss:Bold="1"/>
+          </Style>
+          <Style ss:ID="Info">
+            <Font ss:FontName="Arial" ss:Size="10" ss:Bold="1"/>
+          </Style>
+          <Style ss:ID="Name">
+            <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+          </Style>
+          <Style ss:ID="Green">
+            <Interior ss:Color="#C6EFCE" ss:Pattern="Solid"/>
+            <Font ss:Color="#006100"/>
+          </Style>
+          <Style ss:ID="Orange">
+            <Interior ss:Color="#FCE4D6" ss:Pattern="Solid"/>
+            <Font ss:Color="#9C0006"/>
+          </Style>
+          <Style ss:ID="Red">
+            <Interior ss:Color="#FFC7CE" ss:Pattern="Solid"/>
+            <Font ss:Color="#9C0006"/>
+          </Style>
+          <Style ss:ID="Yellow">
+            <Interior ss:Color="#FFEB9C" ss:Pattern="Solid"/>
+            <Font ss:Color="#9C6500"/>
+          </Style>
+        </Styles>
+      `;
 
-      setCell("A7", "No.", styles.header);
-      setCell("A8", "", styles.header);
-      setCell("A9", "", styles.header);
-      setCell("B7", "Name", styles.header);
-      setCell("B8", "", styles.header);
-      setCell("B9", "", styles.header);
+      const cell = (value, style = "Default", mergeAcross = null) => `
+        <Cell ss:StyleID="${style}"${mergeAcross !== null ? ` ss:MergeAcross="${mergeAcross}"` : ""}>
+          <Data ss:Type="String">${escapeXml(value)}</Data>
+        </Cell>`;
 
-      let col = 2;
+      let rows = `
+        <Row>
+          ${cell("CIBO ATTENDANCE REPORT", "Title", 1 + daysInMonth * 2 + 3)}
+        </Row>
+        <Row>
+          ${cell("Branch", "Info")}
+          ${cell(branch.branch_name || "-")}
+        </Row>
+        <Row>
+          ${cell("Branch Code", "Info")}
+          ${cell(branch.branch_code || "-")}
+        </Row>
+        <Row>
+          ${cell("Report Period", "Info")}
+          ${cell(
+            monthStart.toLocaleDateString("en-US", {
+              month: "short",
+              year: "numeric",
+            })
+          )}
+        </Row>
+        <Row>
+          ${cell("Generated", "Info")}
+          ${cell(
+            now.toLocaleString("en-US", {
+              timeZone: "Asia/Manila",
+            })
+          )}
+        </Row>
+        <Row></Row>
+        <Row>
+          ${cell("No.", "Header")}
+          ${cell("Name", "Header")}
+      `;
 
       dayInfo.forEach((day) => {
-        const timeInCol = col;
-        const timeOutCol = col + 1;
-
-        setCell(
-          XLSX.utils.encode_cell({ r: headerRow1 - 1, c: timeInCol }),
-          String(day.dayNumber),
-          styles.header
-        );
-        setCell(
-          XLSX.utils.encode_cell({ r: headerRow2 - 1, c: timeInCol }),
-          day.weekday,
-          styles.header
-        );
-        setCell(
-          XLSX.utils.encode_cell({ r: headerRow3 - 1, c: timeInCol }),
-          "Time-In",
-          styles.header
-        );
-        setCell(
-          XLSX.utils.encode_cell({ r: headerRow3 - 1, c: timeOutCol }),
-          "Time-Out",
-          styles.header
-        );
-
-        col += 2;
+        rows += cell(day.day, "Header", 1);
       });
 
-      const summaryHeaders = [
-        "Total Late Hours",
-        "Total Overtime Hours",
-        "Leaves",
-        "Total Hours Worked",
-      ];
+      rows += `
+          ${cell("Total Late Hours", "Header")}
+          ${cell("Total Overtime Hours", "Header")}
+          ${cell("Leaves", "Header")}
+          ${cell("Total Hours Worked", "Header")}
+        </Row>
+        <Row>
+          ${cell("", "Header")}
+          ${cell("", "Header")}
+      `;
 
-      summaryHeaders.forEach((header, index) => {
-        setCell(
-          XLSX.utils.encode_cell({
-            r: headerRow1 - 1,
-            c: col + index,
-          }),
-          header,
-          styles.header
-        );
-        setCell(
-          XLSX.utils.encode_cell({
-            r: headerRow2 - 1,
-            c: col + index,
-          }),
-          "",
-          styles.header
-        );
-        setCell(
-          XLSX.utils.encode_cell({
-            r: headerRow3 - 1,
-            c: col + index,
-          }),
-          "",
-          styles.header
-        );
+      dayInfo.forEach((day) => {
+        rows += cell(day.weekday, "Header", 1);
       });
 
-      const merges = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: col + 3 } },
-        { s: { r: 6, c: 0 }, e: { r: 8, c: 0 } },
-        { s: { r: 6, c: 1 }, e: { r: 8, c: 1 } },
-      ];
+      rows += `
+          ${cell("", "Header")}
+          ${cell("", "Header")}
+          ${cell("", "Header")}
+          ${cell("", "Header")}
+        </Row>
+        <Row>
+          ${cell("", "Header")}
+          ${cell("", "Header")}
+      `;
 
-      dayInfo.forEach((day, index) => {
-        const dayCol = 2 + index * 2;
-
-        merges.push({
-          s: { r: 6, c: dayCol },
-          e: { r: 6, c: dayCol + 1 },
-        });
-
-        merges.push({
-          s: { r: 7, c: dayCol },
-          e: { r: 7, c: dayCol + 1 },
-        });
+      dayInfo.forEach(() => {
+        rows += cell("Time-In", "Header");
+        rows += cell("Time-Out", "Header");
       });
 
-      summaryHeaders.forEach((_, index) => {
-        merges.push({
-          s: { r: 6, c: col + index },
-          e: { r: 8, c: col + index },
-        });
-      });
+      rows += `
+          ${cell("", "Header")}
+          ${cell("", "Header")}
+          ${cell("", "Header")}
+          ${cell("", "Header")}
+        </Row>
+      `;
 
-      branchMembers.forEach((employee, employeeIndex) => {
-        const row = dataStartRow - 1 + employeeIndex;
+      branchMembers.forEach((employee, index) => {
         const employeeLogs = logs.filter(
           (log) => log.employee_id === employee.id
         );
 
         const lateMinutes = employeeLogs.reduce(
-          (sum, log) => sum + Number(log.late_minutes || 0),
+          (sum, log) =>
+            sum + Number(log.late_minutes || 0),
           0
         );
 
@@ -606,7 +478,7 @@ export default function EmployeeList() {
           0
         );
 
-        const employeeLeaves = leaves.filter(
+        const employeeLeaves = approvedLeaves.filter(
           (leave) => leave.employee_id === employee.id
         );
 
@@ -637,19 +509,13 @@ export default function EmployeeList() {
           0
         );
 
-        setCell(
-          XLSX.utils.encode_cell({ r: row, c: 0 }),
-          String(employeeIndex + 1),
-          styles.normal
-        );
+        rows += `
+          <Row>
+            ${cell(index + 1)}
+            ${cell(employee.full_name || "-", "Name")}
+        `;
 
-        setCell(
-          XLSX.utils.encode_cell({ r: row, c: 1 }),
-          employee.full_name || "-",
-          styles.name
-        );
-
-        dayInfo.forEach((day, dayIndex) => {
+        dayInfo.forEach((day) => {
           const leave = getLeave(
             employee.id,
             day.dateKey
@@ -659,119 +525,96 @@ export default function EmployeeList() {
             day.dateKey
           );
 
-          const timeInCol = 2 + dayIndex * 2;
-          const timeOutCol = timeInCol + 1;
-
-          let timeInValue = "-";
-          let timeOutValue = "-";
-          let timeInStyle = styles.normal;
-          let timeOutStyle = styles.normal;
-
           if (leave) {
-            timeInValue = "OL";
-            timeOutValue = "OL";
-            // OL deliberately stays white.
-          } else if (day.isFuture) {
-            // Future days are not yet attendance days.
-            timeInValue = "-";
-            timeOutValue = "-";
-          } else if (!log || !log.time_in) {
-            timeInValue = "Absent";
-            timeOutValue = "Absent";
-            timeInStyle = styles.red;
-            timeOutStyle = styles.red;
-          } else {
-            const isLate =
-              Number(log.late_minutes || 0) > 0;
-            const hasOvertime =
-              Number(log.overtime_minutes || 0) > 0;
-
-            timeInValue = formatTime(log.time_in);
-            timeOutValue = formatTime(log.time_out) || "-";
-
-            timeInStyle = isLate
-              ? styles.orange
-              : styles.green;
-
-            timeOutStyle = hasOvertime
-              ? styles.yellow
-              : log.time_out
-                ? styles.green
-                : styles.normal;
+            rows += cell("OL");
+            rows += cell("OL");
+            return;
           }
 
-          setCell(
-            XLSX.utils.encode_cell({
-              r: row,
-              c: timeInCol,
-            }),
-            timeInValue,
-            timeInStyle
+          if (day.future) {
+            rows += cell("-");
+            rows += cell("-");
+            return;
+          }
+
+          if (!log || !log.time_in) {
+            rows += cell("Absent", "Red");
+            rows += cell("Absent", "Red");
+            return;
+          }
+
+          const late =
+            Number(log.late_minutes || 0) > 0;
+          const overtime =
+            Number(log.overtime_minutes || 0) > 0;
+
+          rows += cell(
+            formatTime(log.time_in),
+            late ? "Orange" : "Green"
           );
 
-          setCell(
-            XLSX.utils.encode_cell({
-              r: row,
-              c: timeOutCol,
-            }),
-            timeOutValue,
-            timeOutStyle
-          );
-        });
-
-        const summaryValues = [
-          formatMinutes(lateMinutes),
-          formatMinutes(overtimeMinutes),
-          String(leaveDays),
-          formatMinutes(workedMinutes),
-        ];
-
-        summaryValues.forEach((value, index) => {
-          setCell(
-            XLSX.utils.encode_cell({
-              r: row,
-              c: col + index,
-            }),
-            value,
-            styles.summary
+          rows += cell(
+            formatTime(log.time_out) || "-",
+            overtime
+              ? "Yellow"
+              : log.time_out
+                ? "Green"
+                : "Default"
           );
         });
+
+        rows += `
+            ${cell(formatMinutes(lateMinutes))}
+            ${cell(formatMinutes(overtimeMinutes))}
+            ${cell(leaveDays)}
+            ${cell(formatMinutes(workedMinutes))}
+          </Row>
+        `;
       });
 
-      ws["!merges"] = merges;
-      ws["!ref"] = XLSX.utils.encode_range({
-        s: { r: 0, c: 0 },
-        e: {
-          r: dataStartRow - 1 + branchMembers.length,
-          c: col + 3,
-        },
-      });
-
-      ws["!cols"] = [
-        { wch: 6 },
-        { wch: 24 },
-        ...dayInfo.flatMap(() => [
-          { wch: 12 },
-          { wch: 12 },
-        ]),
-        { wch: 18 },
-        { wch: 21 },
-        { wch: 10 },
-        { wch: 18 },
+      const columnWidths = [
+        40,
+        170,
+        ...dayInfo.flatMap(() => [75, 75]),
+        110,
+        120,
+        55,
+        110,
       ];
 
-      XLSX.utils.book_append_sheet(
-        wb,
-        ws,
-        "Attendance"
+      const columns = columnWidths
+        .map(
+          (width) =>
+            `<Column ss:AutoFitWidth="0" ss:Width="${width}"/>`
+        )
+        .join("");
+
+      const xml = `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  ${styleXml}
+  <Worksheet ss:Name="Attendance">
+    <Table>
+      ${columns}
+      ${rows}
+    </Table>
+  </Worksheet>
+</Workbook>`;
+
+      const blob = new Blob(
+        [xml],
+        { type: "application/xml;charset=utf-8" }
       );
 
-      const fileName =
+      saveAs(
+        blob,
         "cibo-attendance-report-" +
-        toManilaDate(now) +
-        ".xlsx";
-
-      XLSX.writeFile(wb, fileName);
+          toManilaDate(now) +
+          ".xml"
+      );
     } catch (error) {
       console.error("Attendance export failed:", error);
       alert(
