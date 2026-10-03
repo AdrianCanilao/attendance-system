@@ -205,7 +205,7 @@ export default function Kiosk() {
       if (recognitionBusyRef.current) return;
       if (scanStartedRef.current) return;
       if (attendanceLoading) return;
-      if (scanState === "scanning" || scanState === "success") {
+      if (scanState === "scanning" || scanState === "success" || scanState === "failed") {
         return;
       }
 
@@ -531,7 +531,7 @@ export default function Kiosk() {
       }
 
       if (data.status === "Locked") {
-        setScanState("recognized");
+        setScanState("failed");
 
         setAttendanceResult({
           type: "warning",
@@ -545,7 +545,7 @@ export default function Kiosk() {
       }
 
       if (data.status !== "Match") {
-        setScanState("recognized");
+        setScanState("failed");
 
         setAttendanceResult({
           type:
@@ -596,7 +596,7 @@ export default function Kiosk() {
 
     } catch (error) {
 
-      setScanState("recognized");
+      setScanState("failed");
 
       setAttendanceResult({
         type: "error",
