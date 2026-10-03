@@ -1,12 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { supabase } from "../supabaseClient";
+import { createClient } from "@supabase/supabase-js";
 import ManagerLayout from "../layouts/ManagerLayout";
 import { logAudit } from "../utils/auditlogger";
 import { isValidEmail } from "../utils/emailValidation";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
+
+// Separate Auth client used only to create the new employee.
+// This prevents signUp() from replacing the logged-in Maintenance Specialist session.
+const signupClient = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  }
+);
 
 const isStrongPassword = (password) =>
   password.length >= 8 &&
@@ -279,7 +294,7 @@ export default function RegisterEmployee() {
       setLoading(true);
 
       const { data: authData, error: authError } =
-        await supabase.auth.signUp({ email, password });
+        await signupClient.auth.signUp({ email, password });
 
       if (authError) {
         alert(authError.message);
