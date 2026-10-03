@@ -4226,6 +4226,26 @@ async def kiosk_verify(
                 face_url
             )
 
+            # Do not report a facial-recognition match as a successful
+            # attendance transaction when the database operation failed.
+            # record_kiosk_attendance returns its own status so the kiosk
+            # UI can distinguish a recognized face from a saved attendance.
+            if attendance_result.get("status") not in (
+                "Time In Recorded",
+                "Time Out Recorded",
+                "Already In",
+                "Already Recorded",
+                "Already Out",
+            ):
+                return {
+                    "status": "Error",
+                    "message": attendance_result.get(
+                        "message",
+                        "Attendance could not be saved."
+                    ),
+                    "attendance": attendance_result
+                }
+
             return {
                 "status": "Match",
                 "employee": employee_result,
