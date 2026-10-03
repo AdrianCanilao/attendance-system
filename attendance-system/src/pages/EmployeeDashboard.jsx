@@ -795,12 +795,23 @@ let scheduledClockOut = profile.clock_out
           description: `${profile.full_name} timed in with status ${attendanceStatus}${lateMinutes > 0 ? ` (${lateMinutes} minutes late)` : ""}`,
         });
       } else {
+        // Calculate overtime from the saved attendance schedule snapshot.
+        // The schedule may be different from the employee's current shift
+        // after a transfer, so use scheduledClockOut resolved above.
+        let overtimeMinutes = 0;
+
+        if (scheduledClockOut && now > scheduledClockOut) {
+          overtimeMinutes = Math.floor(
+            (now - scheduledClockOut) / 60000
+          );
+        }
+
         const { error: attendanceUpdateError } =
           await supabase
             .from("attendance_logs")
             .update({
               time_out: now.toISOString(),
-              overtime_minutes: 0,
+              overtime_minutes: overtimeMinutes,
               time_out_face_url: faceUrl,
               time_out_location: deviceLocation?.label || null,
             })
