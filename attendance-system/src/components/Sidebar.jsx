@@ -27,8 +27,11 @@ export default function Sidebar({ role }) {
       <div className="cibo-sidebar" style={styles.sidebar}>
       {/* LOGO */}
       <div style={styles.logoContainer}>
-        <div style={styles.logoCircle}>C</div>
-        <h3 className="cibo-sidebar-logo-text" style={styles.logoText}>CIBO</h3>
+        <img
+          src="/cibologo.png"
+          alt="CIBO"
+          style={styles.logoImage}
+        />
       </div>
 
       {/* ================= EMPLOYEE ================= */}
@@ -401,22 +404,12 @@ const styles = {
     marginBottom: "28px",
   },
 
-  logoCircle: {
-    width: "42px",
+  logoImage: {
+    width: "96px",
     height: "42px",
-    borderRadius: "10px",
-    background: "#f97316",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: "bold",
-    fontSize: "18px",
-  },
-
-  logoText: {
-    margin: 0,
-    fontSize: "18px",
-    fontWeight: "600",
+    objectFit: "contain",
+    objectPosition: "left center",
+    display: "block",
   },
 
   link: {
