@@ -310,7 +310,7 @@ export default function EmployeeList() {
             weekday: date.toLocaleDateString("en-US", {
               weekday: "long",
             }),
-            future: day > todayDay,
+            future: day >= todayDay,
           };
         }
       );
