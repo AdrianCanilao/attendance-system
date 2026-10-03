@@ -633,7 +633,7 @@ export default function Kiosk() {
     return (
       <div style={styles.authPage}>
         <div style={styles.authCard}>
-          <div style={styles.authLogo}>CIBO</div>
+          <img src="/cibologo.png" alt="CIBO" style={styles.authLogo} />
           <div style={styles.authSpinner}></div>
           <h1 style={styles.authTitle}>Verifying kiosk device...</h1>
           <p style={styles.authMessage}>
@@ -668,7 +668,7 @@ export default function Kiosk() {
       <div style={styles.container}>
         <header style={styles.header}>
           <div style={styles.brandBlock}>
-            <div style={styles.logo}>CIBO</div>
+            <img src="/cibologo.png" alt="CIBO" style={styles.logo} />
             <h1 style={styles.title}>ATTENDANCE KIOSK</h1>
             <div style={styles.tagline}>
               GOOD PEOPLE&nbsp;&nbsp; GREAT FOOD&nbsp;&nbsp; BRIGHTER DAYS
@@ -907,7 +907,7 @@ export default function Kiosk() {
 const styles = {
   authPage: { minHeight: "100vh", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#172033", fontFamily: "Arial, Helvetica, sans-serif", padding: "24px", boxSizing: "border-box" },
   authCard: { width: "min(520px, 100%)", background: "#fff", borderRadius: "22px", padding: "42px", boxSizing: "border-box", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.35)" },
-  authLogo: { fontSize: "52px", lineHeight: 1, fontWeight: "900", color: "#f97316", letterSpacing: "-2px", marginBottom: "24px" },
+  authLogo: { width: "220px", height: "auto", objectFit: "contain", display: "block", margin: "0 auto 24px" },
   authSpinner: { width: "38px", height: "38px", border: "4px solid #fed7aa", borderTop: "4px solid #f97316", borderRadius: "50%", margin: "0 auto 20px", animation: "spin 1s linear infinite" },
   authLockIcon: { width: "48px", height: "48px", borderRadius: "50%", background: "#fff7ed", color: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: "28px", fontWeight: "900" },
   authTitle: { margin: "0 0 12px", color: "#172033", fontSize: "26px", fontWeight: "900" },
@@ -918,7 +918,7 @@ const styles = {
   container: { position: "relative", zIndex: 1, width: "min(1600px, 96vw)", height: "100%", margin: "0 auto", display: "flex", flexDirection: "column", boxSizing: "border-box", padding: "10px 0 8px" },
   header: { position: "relative", display: "flex", justifyContent: "space-between", alignItems: "flex-start", color: "#fff", flexShrink: 0, minHeight: "72px" },
   brandBlock: { textAlign: "left" },
-  logo: { fontSize: "clamp(36px, 4vw, 62px)", lineHeight: 0.9, fontWeight: "900", color: "#f97316", letterSpacing: "-2px" },
+  logo: { width: "clamp(150px, 18vw, 260px)", height: "auto", objectFit: "contain", display: "block" },
   title: { display: "none" },
   tagline: { display: "none" },
   clockBlock: { textAlign: "right", paddingTop: "4px" },
