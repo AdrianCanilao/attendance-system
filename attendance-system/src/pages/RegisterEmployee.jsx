@@ -278,107 +278,65 @@ export default function RegisterEmployee() {
     try {
       setLoading(true);
 
-      // Save the logged-in Maintenance Specialist session before creating the employee.
-      // Supabase returns a new session from signUp() when email confirmation is disabled,
-      // which would otherwise replace the MS session used by the RLS-protected insert.
-      const { data: currentSessionData, error: currentSessionError } =
-        await supabase.auth.getSession();
+      // Create the employee through the trusted FastAPI backend.
+      // This keeps the Branch Supervisor's Supabase browser session intact.
+      const {
+        data: currentSessionData,
+        error: currentSessionError,
+      } = await supabase.auth.getSession();
 
       if (currentSessionError) {
         throw new Error(
-          "Unable to read the current Maintenance Specialist session: " +
+          "Unable to read the current Branch Supervisor session: " +
           currentSessionError.message
         );
       }
 
-      const maintenanceSession = currentSessionData?.session;
+      const accessToken = currentSessionData?.session?.access_token;
 
-      const { data: authData, error: authError } =
-        await supabase.auth.signUp({ email, password });
-
-      if (authError) {
-        alert(authError.message);
-        return;
+      if (!accessToken) {
+        throw new Error("Your session has expired. Please log in again.");
       }
 
-      if (!authData?.user?.id) {
-        throw new Error("Employee account could not be created.");
-      }
-
-      // Restore the Maintenance Specialist session before any employee_profiles
-      // operation so the existing RLS policy evaluates the insert as the MS.
-      if (maintenanceSession) {
-        const { error: restoreSessionError } = await supabase.auth.setSession({
-          access_token: maintenanceSession.access_token,
-          refresh_token: maintenanceSession.refresh_token,
-        });
-
-        if (restoreSessionError) {
-          throw new Error(
-            "Unable to restore the Maintenance Specialist session: " +
-            restoreSessionError.message
-          );
-        }
-      }
-
-      const userId = authData.user.id;
-      const EMPLOYEE_ROLE_ID = "e4dbb928-7f0e-4da9-9eff-d7700d37b25a";
-
-      // GET SELECTED SHIFT DETAILS
-      const { data: selectedShift } = await supabase
-        .from("branch_shifts")
-        .select("time_in, time_out, grace_minutes")
-        .eq("id", form.shift_id)
-        .single();
-
-      if (!selectedShift) {
-        alert("Selected shift not found.");
-        return;
-      }
-
-      const { error: profileInsertError } = await supabase
-        .from("employee_profiles")
-        .insert([
-          {
-            id: userId,
-            full_name: name,
+      const registrationResponse = await fetch(
+        API_URL + "/admin/register-employee",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + accessToken,
+          },
+          body: JSON.stringify({
+            name,
             email,
-            contact_number: contact,
+            password,
+            contact,
             position,
-            role_id: EMPLOYEE_ROLE_ID,
             branch_id: form.branch_id,
             shift_id: form.shift_id,
-            clock_in: selectedShift.time_in,
-            clock_out: selectedShift.time_out,
-            grace_minutes: selectedShift.grace_minutes,
-          },
-        ]);
+          }),
+        }
+      );
 
-      if (profileInsertError) {
-        console.error("Employee profile insert failed:", profileInsertError);
+      let registrationData = null;
+
+      try {
+        registrationData = await registrationResponse.json();
+      } catch {
+        registrationData = null;
+      }
+
+      if (!registrationResponse.ok) {
         throw new Error(
-          "Employee profile could not be created: " +
-          (profileInsertError.message || "Unknown database error")
+          registrationData?.detail ||
+          "Employee registration request failed."
         );
       }
 
-      // Keep the employee's scheduled clock times synchronized
-      // with the selected branch shift.
-      const { error: shiftSyncError } = await supabase
-        .from("employee_profiles")
-        .update({
-          shift_id: form.shift_id,
-          clock_in: selectedShift.time_in,
-          clock_out: selectedShift.time_out,
-          grace_minutes: selectedShift.grace_minutes,
-        })
-        .eq("id", userId);
+      const userId = registrationData?.user_id;
 
-      if (shiftSyncError) {
-        throw new Error(
-          "Employee shift could not be assigned: " +
-          shiftSyncError.message
-        );
+      if (!userId) {
+        throw new Error("Employee account could not be created.");
       }
 
       // UPLOAD MULTIPLE IMAGES
