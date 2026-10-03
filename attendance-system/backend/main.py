@@ -27,14 +27,24 @@ app = FastAPI()
 # ✅ CORS
 # Kiosk device credentials are sent in a custom header, so the
 # frontend origins are explicitly allowlisted instead of using '*'.
-ALLOWED_ORIGINS = [
+DEFAULT_ALLOWED_ORIGINS = [
+    "https://ciboattendance.com",
+    "https://www.ciboattendance.com",
+    "https://cibo-attendance.vercel.app",
+    "https://attendance-system-git-test-deployment-adriancanilao.vercel.app",
+    "https://attendance-system-m3v6bp7a0-adriancanilao.vercel.app",
+    "http://localhost:5173",
+]
+
+CONFIGURED_ALLOWED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv(
-        "ALLOWED_ORIGINS",
-        "https://attendance-system-git-test-deployment-adriancanilao.vercel.app,https://cibo-attendance.vercel.app,http://localhost:5173"
-    ).split(",")
+    for origin in os.getenv("ALLOWED_ORIGINS", "").split(",")
     if origin.strip()
 ]
+
+ALLOWED_ORIGINS = list(dict.fromkeys(
+    CONFIGURED_ALLOWED_ORIGINS + DEFAULT_ALLOWED_ORIGINS
+))
 
 app.add_middleware(
     CORSMiddleware,
