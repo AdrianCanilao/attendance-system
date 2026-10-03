@@ -824,8 +824,8 @@ export default function Kiosk() {
                   <div style={styles.scanningBox}>
                     <div style={styles.smallSpinner}></div>
                     <div>
-                      <strong>Verifying attendance...</strong>
-                      <span>Checking liveness and recording your attendance.</span>
+                      <strong style={{ fontSize: "20px" }}>Verifying attendance...</strong>
+                      <span style={{ fontSize: "18px" }}>Checking liveness and recording your attendance.</span>
                     </div>
                   </div>
                 )}
