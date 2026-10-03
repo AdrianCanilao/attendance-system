@@ -107,6 +107,15 @@ class UpdatePasswordRequest(BaseModel):
     password: str
 
 
+class UpdateEmployeeProfileRequest(BaseModel):
+    target_user_id: str
+    name: str
+    contact: str
+    position: str
+    branch_id: str | None = None
+    shift_id: str | None = None
+
+
 class RegisterEmployeeRequest(BaseModel):
     name: str
     email: str
@@ -583,6 +592,147 @@ async def admin_register_manager(
         "email": payload.email,
         "branch_id": payload.branch_id,
         "shift_id": payload.shift_id,
+    }
+
+
+
+@app.post("/admin/update-employee-profile")
+async def admin_update_employee_profile(
+    payload: UpdateEmployeeProfileRequest,
+    authorization: str | None = Header(default=None),
+):
+    """
+    Update an employee profile using the trusted backend client so a
+    Branch Supervisor does not hit employee_profiles RLS when transferring
+    an employee between branches.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required.")
+
+    token = authorization[7:].strip()
+
+    try:
+        caller_response = supabase.auth.get_user(token)
+        caller = caller_response.user
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    if not caller:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    caller_result = (
+        supabase
+        .from_("employee_profiles")
+        .select("id, role_id, branch_id")
+        .eq("id", caller.id)
+        .single()
+        .execute()
+    )
+    caller_profile = caller_result.data
+
+    if not caller_profile:
+        raise HTTPException(status_code=403, detail="Your employee profile was not found.")
+
+    caller_role_result = (
+        supabase
+        .from_("roles")
+        .select("name")
+        .eq("id", caller_profile["role_id"])
+        .single()
+        .execute()
+    )
+    caller_role = (caller_role_result.data or {}).get("name", "").strip().lower()
+
+    if caller_role != "maintenance":
+        raise HTTPException(
+            status_code=403,
+            detail="Only a Branch Supervisor can update employees.",
+        )
+
+    target_result = (
+        supabase
+        .from_("employee_profiles")
+        .select("id, role_id, branch_id")
+        .eq("id", payload.target_user_id)
+        .single()
+        .execute()
+    )
+    target = target_result.data
+
+    if not target:
+        raise HTTPException(status_code=404, detail="Employee profile was not found.")
+
+    target_role_result = (
+        supabase
+        .from_("roles")
+        .select("name")
+        .eq("id", target["role_id"])
+        .single()
+        .execute()
+    )
+    target_role = (target_role_result.data or {}).get("name", "").strip().lower()
+
+    if target_role != "employee":
+        raise HTTPException(
+            status_code=403,
+            detail="Only employee profiles can be updated from this page.",
+        )
+
+    if not payload.branch_id:
+        raise HTTPException(status_code=400, detail="Branch assignment is required.")
+
+    if not payload.shift_id:
+        raise HTTPException(status_code=400, detail="Shift assignment is required.")
+
+    shift_result = (
+        supabase
+        .from_("branch_shifts")
+        .select("id, branch_id, time_in, time_out, grace_minutes, is_active")
+        .eq("id", payload.shift_id)
+        .eq("branch_id", payload.branch_id)
+        .eq("is_active", True)
+        .single()
+        .execute()
+    )
+    selected_shift = shift_result.data
+
+    if not selected_shift:
+        raise HTTPException(
+            status_code=400,
+            detail="The selected shift could not be found or is inactive for the selected branch.",
+        )
+
+    profile_result = (
+        supabase
+        .from_("employee_profiles")
+        .update({
+            "full_name": payload.name,
+            "contact_number": payload.contact,
+            "position": payload.position,
+            "branch_id": payload.branch_id,
+            "shift_id": payload.shift_id,
+            "clock_in": selected_shift["time_in"],
+            "clock_out": selected_shift["time_out"],
+            "grace_minutes": selected_shift["grace_minutes"],
+        })
+        .eq("id", payload.target_user_id)
+        .execute()
+    )
+
+    if not profile_result.data:
+        raise HTTPException(
+            status_code=400,
+            detail="Employee profile could not be updated.",
+        )
+
+    return {
+        "status": "OK",
+        "user_id": payload.target_user_id,
+        "branch_id": payload.branch_id,
+        "shift_id": payload.shift_id,
+        "clock_in": selected_shift["time_in"],
+        "clock_out": selected_shift["time_out"],
+        "grace_minutes": selected_shift["grace_minutes"],
     }
 
 
