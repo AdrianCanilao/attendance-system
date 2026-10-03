@@ -232,110 +232,129 @@ export default function EmployeeList() {
     const employeeMap = Object.fromEntries(branchMembers.map((employee) => [employee.id, employee]));
     const leaves = leaveData || [];
 
-    const detailRows = (attendanceData || []).map((log) => {
-      const employee = employeeMap[log.employee_id] || {};
-      const status = log.time_in
-        ? Number(log.late_minutes || 0) > 0 ? "Late" : "Present"
-        : "Absent";
-      return {
-        Date: log.log_date || "-",
-        "Employee ID": employee.id || "-",
-        Employee: employee.full_name || "-",
-        Position: employee.position || "-",
-        "Time In": formatTime(log.time_in),
-        "Time In Location": log.time_in_location || "-",
-        "Time Out": formatTime(log.time_out),
-        "Time Out Location": log.time_out_location || "-",
-        Late: formatMinutes(log.late_minutes),
-        Overtime: formatMinutes(log.overtime_minutes),
-        "Hours Worked": formatHoursWorked(log.time_in, log.time_out),
-        Status: status,
-      };
-    });
+    // SIMPLE EMPLOYEE ATTENDANCE EXPORT
+    // One row per recorded attendance day, with monthly totals repeated
+    // for that employee so the spreadsheet is easy to read and print.
+    const summaryByEmployee = {};
 
-    const summaryRows = branchMembers.map((employee) => {
-      const logs = (attendanceData || []).filter((log) => log.employee_id === employee.id);
-      const present = logs.filter((log) => log.time_in).length;
-      const late = logs.filter((log) => Number(log.late_minutes || 0) > 0).length;
-      const overtime = logs.filter((log) => Number(log.overtime_minutes || 0) > 0).length;
-      const leaveDays = leaves.filter((leave) => leave.employee_id === employee.id).reduce((total, leave) => {
-        const start = new Date(String(leave.start_date || "").slice(0, 10) + "T00:00:00");
-        const end = new Date(String(leave.end_date || leave.start_date || "").slice(0, 10) + "T00:00:00");
-        return total + Math.max(0, Math.floor((end - start) / 86400000) + 1);
-      }, 0);
-      const lateMinutes = logs.reduce((sum, log) => sum + Number(log.late_minutes || 0), 0);
-      const overtimeMinutes = logs.reduce((sum, log) => sum + Number(log.overtime_minutes || 0), 0);
+    branchMembers.forEach((employee) => {
+      const logs = (attendanceData || []).filter(
+        (log) => log.employee_id === employee.id
+      );
+
+      const lateMinutes = logs.reduce(
+        (sum, log) => sum + Number(log.late_minutes || 0),
+        0
+      );
+
+      const overtimeMinutes = logs.reduce(
+        (sum, log) => sum + Number(log.overtime_minutes || 0),
+        0
+      );
+
       const workedMinutes = logs.reduce((sum, log) => {
         if (!log.time_in || !log.time_out) return sum;
-        const diff = Math.floor((new Date(log.time_out) - new Date(log.time_in)) / 60000);
+
+        const diff = Math.floor(
+          (new Date(log.time_out) - new Date(log.time_in)) / 60000
+        );
+
         return sum + (diff > 0 ? diff : 0);
       }, 0);
-      return {
-        "Employee ID": employee.employee_id || employee.id || "-",
-        Employee: employee.full_name || "-",
-        Position: employee.position || "-",
-        Role: employee.role_id === "b381a7a0-9595-4c69-abf1-5c15a827647a" ? "Maintenance Specialist" : "Employee",
-        Present: present,
-        Late: late,
-        "Late Minutes": formatMinutes(lateMinutes),
-        Overtime: overtime,
-        "Overtime Minutes": formatMinutes(overtimeMinutes),
-        "Leave Days": leaveDays,
-        "Hours Worked": formatMinutes(workedMinutes),
+
+      const leaveDays = leaves
+        .filter((leave) => leave.employee_id === employee.id)
+        .reduce((total, leave) => {
+          const start = new Date(
+            String(leave.start_date || "").slice(0, 10) + "T00:00:00"
+          );
+          const end = new Date(
+            String(leave.end_date || leave.start_date || "").slice(0, 10) +
+              "T00:00:00"
+          );
+
+          return (
+            total +
+            Math.max(0, Math.floor((end - start) / 86400000) + 1)
+          );
+        }, 0);
+
+      summaryByEmployee[employee.id] = {
+        lateMinutes,
+        overtimeMinutes,
+        workedMinutes,
+        leaveDays,
       };
     });
 
-    const reportInfo = [
-      ["CIBO ATTENDANCE REPORT"],
-      ["Branch", branch.branch_name || "-"],
-      ["Branch Code", branch.branch_code || "-"],
-      ["Report Period", monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" })],
-      ["Generated", now.toLocaleString("en-US", { timeZone: "Asia/Manila" })],
-      [],
-      ["Branch Personnel", branchMembers.length],
-      ["Present Records", detailRows.filter((row) => row.Status === "Present").length],
-      ["Late Records", detailRows.filter((row) => row.Status === "Late").length],
-      ["Absent Records", detailRows.filter((row) => row.Status === "Absent").length],
-      ["Approved Leave Records", leaves.length],
-      ["Overtime Records", detailRows.filter((row) => row.Overtime !== "0m").length],
-    ];
+    const exportRows = [];
+
+    branchMembers.forEach((employee) => {
+      const logs = (attendanceData || [])
+        .filter((log) => log.employee_id === employee.id)
+        .sort((a, b) => String(a.log_date).localeCompare(String(b.log_date)));
+
+      const totals = summaryByEmployee[employee.id];
+
+      if (!logs.length) {
+        exportRows.push({
+          Date: "-",
+          Name: employee.full_name || "-",
+          "Recorded Time In": "-",
+          "Recorded Time Out": "-",
+          Late: "-",
+          Overtime: "-",
+          "Total Late Hours": formatMinutes(totals.lateMinutes),
+          "Total Overtime Hours": formatMinutes(totals.overtimeMinutes),
+          Leaves: totals.leaveDays,
+          "Total Hours Worked": formatMinutes(totals.workedMinutes),
+        });
+        return;
+      }
+
+      logs.forEach((log) => {
+        exportRows.push({
+          Date: log.log_date || "-",
+          Name: employee.full_name || "-",
+          "Recorded Time In": formatTime(log.time_in),
+          "Recorded Time Out": formatTime(log.time_out),
+          Late:
+            Number(log.late_minutes || 0) > 0
+              ? formatMinutes(log.late_minutes)
+              : "0m",
+          Overtime:
+            Number(log.overtime_minutes || 0) > 0
+              ? formatMinutes(log.overtime_minutes)
+              : "0m",
+          "Total Late Hours": formatMinutes(totals.lateMinutes),
+          "Total Overtime Hours": formatMinutes(totals.overtimeMinutes),
+          Leaves: totals.leaveDays,
+          "Total Hours Worked": formatMinutes(totals.workedMinutes),
+        });
+      });
+    });
 
     const workbook = XLSX.utils.book_new();
-    const summarySheet = XLSX.utils.aoa_to_sheet(reportInfo);
-    summarySheet["!cols"] = [{ wch: 26 }, { wch: 42 }];
-    XLSX.utils.book_append_sheet(workbook, summarySheet, "Report Summary");
+    const employeeSheet = XLSX.utils.json_to_sheet(exportRows);
 
-    const employeeSheet = XLSX.utils.json_to_sheet(summaryRows);
     employeeSheet["!cols"] = [
-      { wch: 18 }, { wch: 28 }, { wch: 24 }, { wch: 22 }, { wch: 12 },
-      { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 18 }
+      { wch: 14 },
+      { wch: 30 },
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 12 },
+      { wch: 14 },
+      { wch: 22 },
+      { wch: 24 },
+      { wch: 12 },
+      { wch: 22 },
     ];
-    XLSX.utils.book_append_sheet(workbook, employeeSheet, "Personnel Summary");
 
-    const detailSheet = XLSX.utils.json_to_sheet(detailRows);
-    detailSheet["!cols"] = [
-      { wch: 14 }, { wch: 18 }, { wch: 28 }, { wch: 24 },
-      { wch: 14 }, { wch: 34 }, { wch: 14 }, { wch: 34 }, { wch: 12 },
-      { wch: 14 }, { wch: 16 }, { wch: 14 }
-    ];
-    XLSX.utils.book_append_sheet(workbook, detailSheet, "Attendance Details");
-
-    const leaveSheet = XLSX.utils.json_to_sheet(leaves.map((leave) => {
-      const employee = employeeMap[leave.employee_id] || {};
-      return {
-        Employee: employee.full_name || "-",
-        "Employee ID": employee.employee_id || employee.id || "-",
-        "Leave Type": leave.leave_type || leave.type || "-",
-        "Start Date": leave.start_date || "-",
-        "End Date": leave.end_date || leave.start_date || "-",
-        Status: leave.status || "-",
-        Reason: leave.reason || "-",
-      };
-    }));
-    leaveSheet["!cols"] = [
-      { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 42 }
-    ];
-    XLSX.utils.book_append_sheet(workbook, leaveSheet, "Approved Leave");
+    XLSX.utils.book_append_sheet(
+      workbook,
+      employeeSheet,
+      "Employee Attendance"
+    );
 
     const fileName =
       "cibo-attendance-report-" + toManilaDate(now) + ".xlsx";
