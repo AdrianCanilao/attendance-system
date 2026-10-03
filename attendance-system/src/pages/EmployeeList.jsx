@@ -3,7 +3,7 @@ import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
 import { getStorageAccessUrl } from "../utils/storageAccess";
 import { FaSearch } from "react-icons/fa";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { saveAs } from "file-saver";
 
 export default function EmployeeList() {
@@ -136,523 +136,646 @@ export default function EmployeeList() {
     setIsExporting(true);
 
     try {
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    const currentUserId = authData?.user?.id;
-    if (authError || !currentUserId) {
-      throw new Error(authError?.message || "No authenticated user found.");
-    }
+      const { data: authData, error: authError } =
+        await supabase.auth.getUser();
 
-    const { data: profile, error: profileError } = await supabase
-      .from("employee_profiles")
-      .select("branch_id")
-      .eq("id", currentUserId)
-      .single();
-    if (profileError || !profile?.branch_id) {
-      throw new Error(profileError?.message || "Your employee profile has no branch assigned.");
-    }
-
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-    const toManilaDate = (value) => {
-      if (!value) return "";
-      return new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit"
-      }).format(new Date(value));
-    };
-
-    const formatTime = (value) => value ? new Date(value).toLocaleTimeString("en-US", {
-      hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Manila"
-    }) : "-";
-
-    const formatMinutes = (minutes) => {
-      const total = Number(minutes || 0);
-      if (total <= 0) return "0m";
-      const hours = Math.floor(total / 60);
-      const mins = total % 60;
-      return hours > 0 ? hours + "h " + mins + "m" : mins + "m";
-    };
-
-    const formatHoursWorked = (timeIn, timeOut) => {
-      if (!timeIn || !timeOut) return "-";
-      const diff = Math.floor((new Date(timeOut) - new Date(timeIn)) / 60000);
-      if (diff <= 0) return "-";
-      return Math.floor(diff / 60) + "h " + (diff % 60) + "m";
-    };
-
-    const { data: branch, error: branchError } = await supabase
-      .from("branches")
-      .select("id, branch_name, branch_code")
-      .eq("id", profile.branch_id)
-      .single();
-    if (branchError || !branch) {
-      
-      alert("Unable to export attendance data. Please try again.");
-      return;
-    }
-
-    const { data: employeeData, error: employeeError } = await supabase
-      .from("employee_profiles")
-      .select("id, full_name, email, position, role_id")
-      .eq("branch_id", profile.branch_id)
-      .order("full_name", { ascending: true });
-
-    if (employeeError) {
-      throw new Error(employeeError.message);
-    }
-
-    const branchMembers = employeeData || [];
-    if (!branchMembers.length) {
-      throw new Error("No personnel were found in your current branch.");
-    }
-
-    const { data: attendanceData, error: attendanceError } = await supabase
-      .from("attendance_logs")
-      .select("*")
-      .in("employee_id", branchMembers.map((employee) => employee.id))
-      .gte("log_date", toManilaDate(monthStart))
-      .lt("log_date", toManilaDate(nextMonthStart))
-      .order("log_date", { ascending: true });
-
-    if (attendanceError) {
-      throw new Error(attendanceError.message);
-    }
-
-    const { data: leaveData, error: leaveError } = await supabase
-      .from("leave_requests")
-      .select("*")
-      .in("employee_id", branchMembers.map((employee) => employee.id))
-      .eq("status", "Approved");
-
-    if (leaveError) {
-      throw new Error(leaveError.message);
-    }
-
-    const employeeMap = Object.fromEntries(branchMembers.map((employee) => [employee.id, employee]));
-    const leaves = leaveData || [];
-
-    // MONTHLY ATTENDANCE SHEET EXPORT
-    // Calendar-style layout: each day has Time-In and Time-Out columns.
-    // Uses an Excel-compatible HTML workbook so cell colors are preserved.
-    const monthYear = now.toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric",
-      timeZone: "Asia/Manila",
-    });
-
-    const daysInMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0
-    ).getDate();
-
-    const monthDates = Array.from(
-      { length: daysInMonth },
-      (_, index) => {
-        const date = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          index + 1
-        );
-
-        const dateKey =
-          date.getFullYear() +
-          "-" +
-          String(date.getMonth() + 1).padStart(2, "0") +
-          "-" +
-          String(date.getDate()).padStart(2, "0");
-
-        return {
-          date,
-          dateKey,
-          dayNumber: index + 1,
-          weekday: date.toLocaleDateString("en-US", {
-            weekday: "long",
-          }),
-        };
+      const currentUserId = authData?.user?.id;
+      if (authError || !currentUserId) {
+        throw new Error("No authenticated user found.");
       }
-    );
 
-    const escapeHtml = (value) =>
-      String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+      const { data: profile, error: profileError } =
+        await supabase
+          .from("employee_profiles")
+          .select("branch_id")
+          .eq("id", currentUserId)
+          .single();
 
-    const formatExcelTime = (value) =>
-      value
-        ? new Date(value).toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-            timeZone: "Asia/Manila",
-          })
-        : "";
+      if (profileError || !profile?.branch_id) {
+        throw new Error("Your profile has no branch assigned.");
+      }
 
-    const formatSummaryMinutes = (minutes) => {
-      const total = Number(minutes || 0);
-      const hours = Math.floor(total / 60);
-      const mins = total % 60;
+      const now = new Date();
 
-      return hours > 0
-        ? hours + "h " + mins + "m"
-        : mins + "m";
-    };
+      const manilaDateParts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Manila",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).formatToParts(now);
 
-    const getEmployeeSummary = (employee) => {
-      const logs = (attendanceData || []).filter(
-        (log) => log.employee_id === employee.id
+      const manilaYear = Number(
+        manilaDateParts.find((p) => p.type === "year")?.value
+      );
+      const manilaMonth = Number(
+        manilaDateParts.find((p) => p.type === "month")?.value
+      );
+      const todayDay = Number(
+        manilaDateParts.find((p) => p.type === "day")?.value
       );
 
-      const employeeLeaves = leaves.filter(
-        (leave) => leave.employee_id === employee.id
+      const monthStart = new Date(
+        manilaYear,
+        manilaMonth - 1,
+        1
+      );
+      const nextMonthStart = new Date(
+        manilaYear,
+        manilaMonth,
+        1
       );
 
-      const lateMinutes = logs.reduce(
-        (sum, log) => sum + Number(log.late_minutes || 0),
-        0
-      );
-
-      const overtimeMinutes = logs.reduce(
-        (sum, log) => sum + Number(log.overtime_minutes || 0),
-        0
-      );
-
-      const workedMinutes = logs.reduce((sum, log) => {
-        if (!log.time_in || !log.time_out) return sum;
-
-        const diff = Math.floor(
-          (new Date(log.time_out) - new Date(log.time_in)) / 60000
-        );
-
-        return sum + (diff > 0 ? diff : 0);
-      }, 0);
-
-      const leaveDays = employeeLeaves.reduce(
-        (total, leave) => {
-          const start = new Date(
-            String(leave.start_date || "").slice(0, 10) +
-              "T00:00:00"
-          );
-          const end = new Date(
-            String(
-              leave.end_date || leave.start_date || ""
-            ).slice(0, 10) + "T00:00:00"
-          );
-
-          return (
-            total +
-            Math.max(
-              0,
-              Math.floor((end - start) / 86400000) + 1
-            )
-          );
-        },
-        0
-      );
-
-      return {
-        logs,
-        employeeLeaves,
-        lateMinutes,
-        overtimeMinutes,
-        workedMinutes,
-        leaveDays,
+      const toManilaDate = (value) => {
+        if (!value) return "";
+        return new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Manila",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(new Date(value));
       };
-    };
 
-    const getLeaveForDate = (employeeLeaves, dateKey) =>
-      employeeLeaves.find((leave) => {
-        const start = String(
-          leave.start_date || ""
-        ).slice(0, 10);
+      const formatTime = (value) =>
+        value
+          ? new Date(value).toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+              timeZone: "Asia/Manila",
+            })
+          : "";
 
-        const end = String(
-          leave.end_date || leave.start_date || ""
-        ).slice(0, 10);
+      const formatMinutes = (minutes) => {
+        const total = Number(minutes || 0);
+        const hours = Math.floor(total / 60);
+        const mins = total % 60;
 
-        return dateKey >= start && dateKey <= end;
-      });
+        return hours > 0
+          ? hours + "h " + mins + "m"
+          : mins + "m";
+      };
 
-    const getLogForDate = (logs, dateKey) =>
-      logs.find(
-        (log) =>
-          String(log.log_date || "").slice(0, 10) ===
-          dateKey
+      const { data: branch, error: branchError } =
+        await supabase
+          .from("branches")
+          .select("id, branch_name, branch_code")
+          .eq("id", profile.branch_id)
+          .single();
+
+      if (branchError || !branch) {
+        throw new Error("Unable to load branch information.");
+      }
+
+      const { data: employeeData, error: employeeError } =
+        await supabase
+          .from("employee_profiles")
+          .select("id, full_name")
+          .eq("branch_id", profile.branch_id)
+          .order("full_name", { ascending: true });
+
+      if (employeeError) {
+        throw new Error(employeeError.message);
+      }
+
+      const branchMembers = employeeData || [];
+
+      if (!branchMembers.length) {
+        throw new Error("No personnel were found in your branch.");
+      }
+
+      const { data: attendanceData, error: attendanceError } =
+        await supabase
+          .from("attendance_logs")
+          .select("*")
+          .in(
+            "employee_id",
+            branchMembers.map((employee) => employee.id)
+          )
+          .gte("log_date", toManilaDate(monthStart))
+          .lt("log_date", toManilaDate(nextMonthStart))
+          .order("log_date", { ascending: true });
+
+      if (attendanceError) {
+        throw new Error(attendanceError.message);
+      }
+
+      const { data: leaveData, error: leaveError } =
+        await supabase
+          .from("leave_requests")
+          .select("*")
+          .in(
+            "employee_id",
+            branchMembers.map((employee) => employee.id)
+          )
+          .eq("status", "Approved");
+
+      if (leaveError) {
+        throw new Error(leaveError.message);
+      }
+
+      const leaves = leaveData || [];
+      const logs = attendanceData || [];
+
+      const daysInMonth = new Date(
+        manilaYear,
+        manilaMonth,
+        0
+      ).getDate();
+
+      const dayInfo = Array.from(
+        { length: daysInMonth },
+        (_, index) => {
+          const dayNumber = index + 1;
+          const date = new Date(
+            manilaYear,
+            manilaMonth - 1,
+            dayNumber
+          );
+
+          const dateKey =
+            manilaYear +
+            "-" +
+            String(manilaMonth).padStart(2, "0") +
+            "-" +
+            String(dayNumber).padStart(2, "0");
+
+          return {
+            dayNumber,
+            dateKey,
+            weekday: date.toLocaleDateString("en-US", {
+              weekday: "long",
+            }),
+            isFuture: dayNumber > todayDay,
+          };
+        }
       );
 
-    const COLORS = {
-      header: "#1f2937",
-      subHeader: "#f3f4f6",
-      green: "#c6efce",
-      greenText: "#006100",
-      orange: "#fce4d6",
-      orangeText: "#9c0006",
-      red: "#ffc7ce",
-      redText: "#9c0006",
-      yellow: "#ffeb9c",
-      yellowText: "#9c6500",
-      white: "#ffffff",
-      border: "#b7b7b7",
-    };
+      const getLeave = (employeeId, dateKey) =>
+        leaves.find((leave) => {
+          if (leave.employee_id !== employeeId) return false;
 
-    let html = `
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            font-size: 10pt;
-          }
+          const start = String(
+            leave.start_date || ""
+          ).slice(0, 10);
 
-          table {
-            border-collapse: collapse;
-          }
+          const end = String(
+            leave.end_date || leave.start_date || ""
+          ).slice(0, 10);
 
-          td, th {
-            border: 1px solid ${COLORS.border};
-            padding: 5px;
-            text-align: center;
-            vertical-align: middle;
-            white-space: nowrap;
-          }
+          return dateKey >= start && dateKey <= end;
+        });
 
-          .title {
-            font-size: 16pt;
-            font-weight: bold;
-            text-align: left;
-            border: none;
-          }
-
-          .info {
-            text-align: left;
-            border: none;
-          }
-
-          .day {
-            background: ${COLORS.header};
-            color: white;
-            font-weight: bold;
-          }
-
-          .subheader {
-            background: ${COLORS.subHeader};
-            font-weight: bold;
-          }
-
-          .name {
-            text-align: left;
-            font-weight: bold;
-          }
-
-          .green {
-            background: ${COLORS.green};
-            color: ${COLORS.greenText};
-          }
-
-          .orange {
-            background: ${COLORS.orange};
-            color: ${COLORS.orangeText};
-          }
-
-          .red {
-            background: ${COLORS.red};
-            color: ${COLORS.redText};
-          }
-
-          .yellow {
-            background: ${COLORS.yellow};
-            color: ${COLORS.yellowText};
-          }
-
-          .ol {
-            background: #fff2cc;
-            color: #7f6000;
-            font-weight: bold;
-          }
-
-          .summary {
-            background: #e2e3e5;
-            font-weight: bold;
-          }
-        </style>
-      </head>
-      <body>
-        <table>
-          <tr>
-            <td colspan="${2 + daysInMonth * 2 + 4}" class="title">
-              CIBO ATTENDANCE REPORT
-            </td>
-          </tr>
-          <tr>
-            <td colspan="2" class="info"><b>Branch</b></td>
-            <td colspan="${daysInMonth * 2 + 4}" class="info">
-              ${escapeHtml(branch.branch_name || "-")}
-            </td>
-          </tr>
-          <tr>
-            <td colspan="2" class="info"><b>Branch Code</b></td>
-            <td colspan="${daysInMonth * 2 + 4}" class="info">
-              ${escapeHtml(branch.branch_code || "-")}
-            </td>
-          </tr>
-          <tr>
-            <td colspan="2" class="info"><b>Report Period</b></td>
-            <td colspan="${daysInMonth * 2 + 4}" class="info">
-              ${escapeHtml(monthYear)}
-            </td>
-          </tr>
-          <tr>
-            <td colspan="2" class="info"><b>Generated</b></td>
-            <td colspan="${daysInMonth * 2 + 4}" class="info">
-              ${escapeHtml(
-                now.toLocaleString("en-US", {
-                  timeZone: "Asia/Manila",
-                })
-              )}
-            </td>
-          </tr>
-          <tr><td colspan="${2 + daysInMonth * 2 + 4}" style="border:none;height:8px;"></td></tr>
-          <tr>
-            <th rowspan="3" class="day">No.</th>
-            <th rowspan="3" class="day">Name</th>
-    `;
-
-    monthDates.forEach((day) => {
-      html += `
-        <th colspan="2" class="day">${day.dayNumber}</th>
-      `;
-    });
-
-    html += `
-            <th rowspan="3" class="day">Total Late Hours</th>
-            <th rowspan="3" class="day">Total Overtime Hours</th>
-            <th rowspan="3" class="day">Leaves</th>
-            <th rowspan="3" class="day">Total Hours Worked</th>
-          </tr>
-          <tr>
-    `;
-
-    monthDates.forEach((day) => {
-      html += `
-        <th colspan="2" class="subheader">${escapeHtml(day.weekday)}</th>
-      `;
-    });
-
-    html += `
-          </tr>
-          <tr>
-    `;
-
-    monthDates.forEach(() => {
-      html += `
-        <th class="subheader">Time-In</th>
-        <th class="subheader">Time-Out</th>
-      `;
-    });
-
-    html += `
-          </tr>
-    `;
-
-    branchMembers.forEach((employee, employeeIndex) => {
-      const summary = getEmployeeSummary(employee);
-
-      html += `
-        <tr>
-          <td>${employeeIndex + 1}</td>
-          <td class="name">${escapeHtml(employee.full_name || "-")}</td>
-      `;
-
-      monthDates.forEach((day) => {
-        const leave = getLeaveForDate(
-          summary.employeeLeaves,
-          day.dateKey
+      const getLog = (employeeId, dateKey) =>
+        logs.find(
+          (log) =>
+            log.employee_id === employeeId &&
+            String(log.log_date || "").slice(0, 10) ===
+              dateKey
         );
 
-        const log = getLogForDate(
-          summary.logs,
-          day.dateKey
+      const styles = {
+        title: {
+          font: { bold: true, sz: 14 },
+          alignment: { horizontal: "left" },
+        },
+        infoLabel: {
+          font: { bold: true },
+          alignment: { horizontal: "left" },
+        },
+        infoValue: {
+          alignment: { horizontal: "left" },
+        },
+        header: {
+          fill: { fgColor: { rgb: "E5E7EB" } },
+          font: { bold: true, color: { rgb: "111827" } },
+          alignment: {
+            horizontal: "center",
+            vertical: "center",
+          },
+          border: {
+            top: { style: "thin", color: { rgb: "B7B7B7" } },
+            bottom: { style: "thin", color: { rgb: "B7B7B7" } },
+            left: { style: "thin", color: { rgb: "B7B7B7" } },
+            right: { style: "thin", color: { rgb: "B7B7B7" } },
+          },
+        },
+        normal: {
+          alignment: {
+            horizontal: "center",
+            vertical: "center",
+          },
+          border: {
+            top: { style: "thin", color: { rgb: "D1D5DB" } },
+            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
+            left: { style: "thin", color: { rgb: "D1D5DB" } },
+            right: { style: "thin", color: { rgb: "D1D5DB" } },
+          },
+        },
+        name: {
+          alignment: { horizontal: "left", vertical: "center" },
+          border: {
+            top: { style: "thin", color: { rgb: "D1D5DB" } },
+            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
+            left: { style: "thin", color: { rgb: "D1D5DB" } },
+            right: { style: "thin", color: { rgb: "D1D5DB" } },
+          },
+        },
+        green: {
+          fill: { fgColor: { rgb: "C6EFCE" } },
+          font: { color: { rgb: "006100" } },
+          alignment: { horizontal: "center", vertical: "center" },
+          border: {
+            top: { style: "thin", color: { rgb: "D1D5DB" } },
+            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
+            left: { style: "thin", color: { rgb: "D1D5DB" } },
+            right: { style: "thin", color: { rgb: "D1D5DB" } },
+          },
+        },
+        orange: {
+          fill: { fgColor: { rgb: "FCE4D6" } },
+          font: { color: { rgb: "9C0006" } },
+          alignment: { horizontal: "center", vertical: "center" },
+          border: {
+            top: { style: "thin", color: { rgb: "D1D5DB" } },
+            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
+            left: { style: "thin", color: { rgb: "D1D5DB" } },
+            right: { style: "thin", color: { rgb: "D1D5DB" } },
+          },
+        },
+        red: {
+          fill: { fgColor: { rgb: "FFC7CE" } },
+          font: { color: { rgb: "9C0006" } },
+          alignment: { horizontal: "center", vertical: "center" },
+          border: {
+            top: { style: "thin", color: { rgb: "D1D5DB" } },
+            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
+            left: { style: "thin", color: { rgb: "D1D5DB" } },
+            right: { style: "thin", color: { rgb: "D1D5DB" } },
+          },
+        },
+        yellow: {
+          fill: { fgColor: { rgb: "FFEB9C" } },
+          font: { color: { rgb: "9C6500" } },
+          alignment: { horizontal: "center", vertical: "center" },
+          border: {
+            top: { style: "thin", color: { rgb: "D1D5DB" } },
+            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
+            left: { style: "thin", color: { rgb: "D1D5DB" } },
+            right: { style: "thin", color: { rgb: "D1D5DB" } },
+          },
+        },
+        summary: {
+          fill: { fgColor: { rgb: "F3F4F6" } },
+          font: { bold: true },
+          alignment: { horizontal: "center", vertical: "center" },
+          border: {
+            top: { style: "thin", color: { rgb: "D1D5DB" } },
+            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
+            left: { style: "thin", color: { rgb: "D1D5DB" } },
+            right: { style: "thin", color: { rgb: "D1D5DB" } },
+          },
+        },
+      };
+
+      const wb = XLSX.utils.book_new();
+      const ws = {};
+
+      const setCell = (address, value, style) => {
+        ws[address] = {
+          v: value,
+          t: "s",
+          s: style,
+        };
+      };
+
+      setCell("A1", "CIBO ATTENDANCE REPORT", styles.title);
+      setCell("A2", "Branch", styles.infoLabel);
+      setCell("B2", branch.branch_name || "-", styles.infoValue);
+      setCell("A3", "Branch Code", styles.infoLabel);
+      setCell("B3", branch.branch_code || "-", styles.infoValue);
+      setCell("A4", "Report Period", styles.infoLabel);
+      setCell(
+        "B4",
+        monthStart.toLocaleDateString("en-US", {
+          month: "short",
+          year: "2-digit",
+        }),
+        styles.infoValue
+      );
+      setCell("A5", "Generated", styles.infoLabel);
+      setCell(
+        "B5",
+        now.toLocaleString("en-US", {
+          timeZone: "Asia/Manila",
+        }),
+        styles.infoValue
+      );
+
+      const headerRow1 = 7;
+      const headerRow2 = 8;
+      const headerRow3 = 9;
+      const dataStartRow = 10;
+
+      setCell("A7", "No.", styles.header);
+      setCell("A8", "", styles.header);
+      setCell("A9", "", styles.header);
+      setCell("B7", "Name", styles.header);
+      setCell("B8", "", styles.header);
+      setCell("B9", "", styles.header);
+
+      let col = 2;
+
+      dayInfo.forEach((day) => {
+        const timeInCol = col;
+        const timeOutCol = col + 1;
+
+        setCell(
+          XLSX.utils.encode_cell({ r: headerRow1 - 1, c: timeInCol }),
+          String(day.dayNumber),
+          styles.header
+        );
+        setCell(
+          XLSX.utils.encode_cell({ r: headerRow2 - 1, c: timeInCol }),
+          day.weekday,
+          styles.header
+        );
+        setCell(
+          XLSX.utils.encode_cell({ r: headerRow3 - 1, c: timeInCol }),
+          "Time-In",
+          styles.header
+        );
+        setCell(
+          XLSX.utils.encode_cell({ r: headerRow3 - 1, c: timeOutCol }),
+          "Time-Out",
+          styles.header
         );
 
-        if (leave) {
-          html += `
-            <td colspan="2" class="ol">OL</td>
-          `;
-          return;
-        }
-
-        if (!log || !log.time_in) {
-          html += `
-            <td class="red">Absent</td>
-            <td class="red">Absent</td>
-          `;
-          return;
-        }
-
-        const isLate =
-          Number(log.late_minutes || 0) > 0;
-
-        const hasOvertime =
-          Number(log.overtime_minutes || 0) > 0;
-
-        const timeInClass = isLate
-          ? "orange"
-          : "green";
-
-        const timeOutClass = hasOvertime
-          ? "yellow"
-          : "green";
-
-        html += `
-          <td class="${timeInClass}">
-            ${escapeHtml(formatExcelTime(log.time_in))}
-          </td>
-          <td class="${timeOutClass}">
-            ${escapeHtml(formatExcelTime(log.time_out) || "-")}
-          </td>
-        `;
+        col += 2;
       });
 
-      html += `
-          <td class="summary">
-            ${formatSummaryMinutes(summary.lateMinutes)}
-          </td>
-          <td class="summary">
-            ${formatSummaryMinutes(summary.overtimeMinutes)}
-          </td>
-          <td class="summary">
-            ${summary.leaveDays}
-          </td>
-          <td class="summary">
-            ${formatSummaryMinutes(summary.workedMinutes)}
-          </td>
-        </tr>
-      `;
-    });
+      const summaryHeaders = [
+        "Total Late Hours",
+        "Total Overtime Hours",
+        "Leaves",
+        "Total Hours Worked",
+      ];
 
-    html += `
-        </table>
-      </body>
-      </html>
-    `;
+      summaryHeaders.forEach((header, index) => {
+        setCell(
+          XLSX.utils.encode_cell({
+            r: headerRow1 - 1,
+            c: col + index,
+          }),
+          header,
+          styles.header
+        );
+        setCell(
+          XLSX.utils.encode_cell({
+            r: headerRow2 - 1,
+            c: col + index,
+          }),
+          "",
+          styles.header
+        );
+        setCell(
+          XLSX.utils.encode_cell({
+            r: headerRow3 - 1,
+            c: col + index,
+          }),
+          "",
+          styles.header
+        );
+      });
 
-    const excelBlob = new Blob(
-      [html],
-      { type: "application/vnd.ms-excel;charset=utf-8;" }
-    );
+      const merges = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: col + 3 } },
+        { s: { r: 6, c: 0 }, e: { r: 8, c: 0 } },
+        { s: { r: 6, c: 1 }, e: { r: 8, c: 1 } },
+      ];
 
-    const fileName =
-      "cibo-attendance-report-" + toManilaDate(now) + ".xls";
+      dayInfo.forEach((day, index) => {
+        const dayCol = 2 + index * 2;
 
-    saveAs(excelBlob, fileName);
+        merges.push({
+          s: { r: 6, c: dayCol },
+          e: { r: 6, c: dayCol + 1 },
+        });
+
+        merges.push({
+          s: { r: 7, c: dayCol },
+          e: { r: 7, c: dayCol + 1 },
+        });
+      });
+
+      summaryHeaders.forEach((_, index) => {
+        merges.push({
+          s: { r: 6, c: col + index },
+          e: { r: 8, c: col + index },
+        });
+      });
+
+      branchMembers.forEach((employee, employeeIndex) => {
+        const row = dataStartRow - 1 + employeeIndex;
+        const employeeLogs = logs.filter(
+          (log) => log.employee_id === employee.id
+        );
+
+        const lateMinutes = employeeLogs.reduce(
+          (sum, log) => sum + Number(log.late_minutes || 0),
+          0
+        );
+
+        const overtimeMinutes = employeeLogs.reduce(
+          (sum, log) =>
+            sum + Number(log.overtime_minutes || 0),
+          0
+        );
+
+        const workedMinutes = employeeLogs.reduce(
+          (sum, log) => {
+            if (!log.time_in || !log.time_out) return sum;
+
+            const diff = Math.floor(
+              (new Date(log.time_out) -
+                new Date(log.time_in)) /
+                60000
+            );
+
+            return sum + (diff > 0 ? diff : 0);
+          },
+          0
+        );
+
+        const employeeLeaves = leaves.filter(
+          (leave) => leave.employee_id === employee.id
+        );
+
+        const leaveDays = employeeLeaves.reduce(
+          (total, leave) => {
+            const start = new Date(
+              String(leave.start_date || "").slice(0, 10) +
+                "T00:00:00"
+            );
+            const end = new Date(
+              String(
+                leave.end_date ||
+                  leave.start_date ||
+                  ""
+              ).slice(0, 10) + "T00:00:00"
+            );
+
+            return (
+              total +
+              Math.max(
+                0,
+                Math.floor(
+                  (end - start) / 86400000
+                ) + 1
+              )
+            );
+          },
+          0
+        );
+
+        setCell(
+          XLSX.utils.encode_cell({ r: row, c: 0 }),
+          String(employeeIndex + 1),
+          styles.normal
+        );
+
+        setCell(
+          XLSX.utils.encode_cell({ r: row, c: 1 }),
+          employee.full_name || "-",
+          styles.name
+        );
+
+        dayInfo.forEach((day, dayIndex) => {
+          const leave = getLeave(
+            employee.id,
+            day.dateKey
+          );
+          const log = getLog(
+            employee.id,
+            day.dateKey
+          );
+
+          const timeInCol = 2 + dayIndex * 2;
+          const timeOutCol = timeInCol + 1;
+
+          let timeInValue = "-";
+          let timeOutValue = "-";
+          let timeInStyle = styles.normal;
+          let timeOutStyle = styles.normal;
+
+          if (leave) {
+            timeInValue = "OL";
+            timeOutValue = "OL";
+            // OL deliberately stays white.
+          } else if (day.isFuture) {
+            // Future days are not yet attendance days.
+            timeInValue = "-";
+            timeOutValue = "-";
+          } else if (!log || !log.time_in) {
+            timeInValue = "Absent";
+            timeOutValue = "Absent";
+            timeInStyle = styles.red;
+            timeOutStyle = styles.red;
+          } else {
+            const isLate =
+              Number(log.late_minutes || 0) > 0;
+            const hasOvertime =
+              Number(log.overtime_minutes || 0) > 0;
+
+            timeInValue = formatTime(log.time_in);
+            timeOutValue = formatTime(log.time_out) || "-";
+
+            timeInStyle = isLate
+              ? styles.orange
+              : styles.green;
+
+            timeOutStyle = hasOvertime
+              ? styles.yellow
+              : log.time_out
+                ? styles.green
+                : styles.normal;
+          }
+
+          setCell(
+            XLSX.utils.encode_cell({
+              r: row,
+              c: timeInCol,
+            }),
+            timeInValue,
+            timeInStyle
+          );
+
+          setCell(
+            XLSX.utils.encode_cell({
+              r: row,
+              c: timeOutCol,
+            }),
+            timeOutValue,
+            timeOutStyle
+          );
+        });
+
+        const summaryValues = [
+          formatMinutes(lateMinutes),
+          formatMinutes(overtimeMinutes),
+          String(leaveDays),
+          formatMinutes(workedMinutes),
+        ];
+
+        summaryValues.forEach((value, index) => {
+          setCell(
+            XLSX.utils.encode_cell({
+              r: row,
+              c: col + index,
+            }),
+            value,
+            styles.summary
+          );
+        });
+      });
+
+      ws["!merges"] = merges;
+      ws["!ref"] = XLSX.utils.encode_range({
+        s: { r: 0, c: 0 },
+        e: {
+          r: dataStartRow - 1 + branchMembers.length,
+          c: col + 3,
+        },
+      });
+
+      ws["!cols"] = [
+        { wch: 6 },
+        { wch: 24 },
+        ...dayInfo.flatMap(() => [
+          { wch: 12 },
+          { wch: 12 },
+        ]),
+        { wch: 18 },
+        { wch: 21 },
+        { wch: 10 },
+        { wch: 18 },
+      ];
+
+      XLSX.utils.book_append_sheet(
+        wb,
+        ws,
+        "Attendance"
+      );
+
+      const fileName =
+        "cibo-attendance-report-" +
+        toManilaDate(now) +
+        ".xlsx";
+
+      XLSX.writeFile(wb, fileName);
     } catch (error) {
-      
+      console.error("Attendance export failed:", error);
       alert(
-        "Unable to export attendance data. Please check the browser console for details."
+        "Unable to export attendance data. Please try again."
       );
     } finally {
       setIsExporting(false);
