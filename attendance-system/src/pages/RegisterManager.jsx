@@ -267,53 +267,52 @@ const captureFace = () => {
     try {
       setLoading(true);
 
-      const { data: authData, error: authError } =
-        await supabase.auth.signUp({ email, password });
+      const { data: currentSessionData, error: currentSessionError } =
+        await supabase.auth.getSession();
 
-      if (authError) {
-        alert(authError.message);
-        return;
+      if (currentSessionError || !currentSessionData?.session?.access_token) {
+        throw new Error("Your HR session could not be verified. Please log in again.");
       }
 
-      const userId = authData.user.id;
-      const MANAGER_ROLE_ID = "b381a7a0-9595-4c69-abf1-5c15a827647a";
+      const accessToken = currentSessionData.session.access_token;
 
-      // Get the selected branch shift so the Maintenance Specialist
-      // also receives the scheduled clock-in/out times.
-      const { data: selectedShift, error: selectedShiftError } = await supabase
-        .from("branch_shifts")
-        .select("time_in, time_out, grace_minutes")
-        .eq("id", form.shift_id)
-        .single();
-
-      if (selectedShiftError || !selectedShift) {
-        throw new Error("Selected shift not found.");
-      }
-
-      const { error: profileInsertError } = await supabase
-        .from("employee_profiles")
-        .insert([
-          {
-            id: userId,
-            full_name: name,
+      const registrationResponse = await fetch(
+        API_URL + "/admin/register-manager",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + accessToken,
+          },
+          body: JSON.stringify({
+            name,
             email,
-            contact_number: contact,
+            password,
+            contact,
             position,
-            role_id: MANAGER_ROLE_ID,
             branch_id: form.branch_id,
             shift_id: form.shift_id,
-            clock_in: selectedShift.time_in,
-            clock_out: selectedShift.time_out,
-            grace_minutes: selectedShift.grace_minutes,
-          },
-        ]);
+          }),
+        }
+      );
 
-      if (profileInsertError) {
+      let registrationData = {};
+      try {
+        registrationData = await registrationResponse.json();
+      } catch {
+        registrationData = {};
+      }
+
+      if (!registrationResponse.ok) {
         throw new Error(
-          "Maintenance Specialist profile could not be created: " +
-          profileInsertError.message
+          registrationData.detail ||
+          registrationData.message ||
+          "Branch Supervisor registration failed."
         );
       }
+
+      const userId = registrationData.user_id;
+
 
       // 🔥 UPLOAD MULTIPLE IMAGES
       for (let i = 0; i < capturedImages.length; i++) {
@@ -391,7 +390,11 @@ shift_id: "",
       setImageSrc(null);
 
     } catch (err) {
-      alert("Registration failed");
+      console.error("Maintenance Specialist registration failed:", err);
+      alert(
+        "Registration failed:\n\n" +
+        (err?.message || "Unknown error. Check the browser console for details.")
+      );
     } finally {
       setLoading(false);
     }
