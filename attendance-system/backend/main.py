@@ -1,4 +1,6 @@
 import os
+import hashlib
+import secrets
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from fastapi import FastAPI, File, UploadFile, Form, Header, HTTPException
 from pydantic import BaseModel
@@ -23,10 +25,21 @@ from zoneinfo import ZoneInfo
 app = FastAPI()
 
 # ✅ CORS
+# Kiosk device credentials are sent in a custom header, so the
+# frontend origins are explicitly allowlisted instead of using '*'.
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "ALLOWED_ORIGINS",
+        "https://attendance-system-git-test-deployment-adriancanilao.vercel.app,https://cibo-attendance.vercel.app,http://localhost:5173"
+    ).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -45,6 +58,312 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 class UpdatePasswordRequest(BaseModel):
     target_user_id: str
     password: str
+
+
+class KioskActivationRequest(BaseModel):
+    activation_token: str
+
+
+class KioskDeviceRequest(BaseModel):
+    device_token: str
+
+
+KIOSK_DEVICE_HEADER = "X-Kiosk-Token"
+KIOSK_DEVICE_TOKEN_TTL_DAYS = 365
+KIOSK_ACTIVATION_TTL_MINUTES = 30
+
+
+def hash_kiosk_secret(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def get_kiosk_from_device_token(device_token: str):
+    if not device_token:
+        return None
+
+    token_hash = hash_kiosk_secret(device_token.strip())
+
+    result = (
+        supabase
+        .from_("kiosks")
+        .select(
+            "id,kiosk_code,branch_id,device_name,is_active,last_seen,activated_at,"
+            "branches:branch_id(branch_name,branch_code,is_active)"
+        )
+        .eq("device_token_hash", token_hash)
+        .eq("is_active", True)
+        .limit(1)
+        .execute()
+    )
+
+    rows = result.data or []
+
+    if not rows:
+        return None
+
+    kiosk = rows[0]
+    branch = kiosk.get("branches") or {}
+
+    if branch and branch.get("is_active") is False:
+        return None
+
+    return kiosk
+
+
+def authenticate_hr_bearer(token: str):
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+
+    try:
+        caller_response = supabase.auth.get_user(token)
+        caller = caller_response.user
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    if not caller:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    profile_result = (
+        supabase
+        .from_("employee_profiles")
+        .select("id,role_id")
+        .eq("id", caller.id)
+        .limit(1)
+        .execute()
+    )
+    profile_rows = profile_result.data or []
+
+    if not profile_rows:
+        raise HTTPException(status_code=403, detail="Your employee profile was not found.")
+
+    role_result = (
+        supabase
+        .from_("roles")
+        .select("name")
+        .eq("id", profile_rows[0]["role_id"])
+        .limit(1)
+        .execute()
+    )
+    role_rows = role_result.data or []
+    role_name = (role_rows[0].get("name") if role_rows else "") or ""
+
+    if role_name.strip().lower() != "hr":
+        raise HTTPException(status_code=403, detail="Only HR can manage kiosk devices.")
+
+    return caller
+
+
+@app.get("/kiosk/status")
+async def kiosk_status(
+    x_kiosk_token: str | None = Header(default=None, alias=KIOSK_DEVICE_HEADER),
+):
+    kiosk = get_kiosk_from_device_token(x_kiosk_token or "")
+
+    if not kiosk:
+        return {
+            "status": "Unauthorized",
+            "message": "This device is not registered as a CIBO kiosk."
+        }
+
+    now = datetime.now(ZoneInfo("UTC")).isoformat()
+
+    try:
+        supabase.from_("kiosks").update({"last_seen": now}).eq("id", kiosk["id"]).execute()
+    except Exception:
+        pass
+
+    branch = kiosk.get("branches") or {}
+
+    return {
+        "status": "Authorized",
+        "kiosk": {
+            "id": kiosk["id"],
+            "kiosk_code": kiosk["kiosk_code"],
+            "device_name": kiosk.get("device_name"),
+            "branch_id": kiosk.get("branch_id"),
+            "branch_name": branch.get("branch_name"),
+            "branch_code": branch.get("branch_code"),
+            "is_active": kiosk.get("is_active", False),
+        }
+    }
+
+
+@app.post("/kiosk/activate")
+async def kiosk_activate(payload: KioskActivationRequest):
+    activation_token = (payload.activation_token or "").strip()
+
+    if not activation_token:
+        raise HTTPException(status_code=400, detail="Kiosk activation token is required.")
+
+    token_hash = hash_kiosk_secret(activation_token)
+    now = datetime.now(ZoneInfo("UTC"))
+
+    result = (
+        supabase
+        .from_("kiosks")
+        .select(
+            "id,kiosk_code,branch_id,device_name,is_active,activation_expires_at,"
+            "branches:branch_id(branch_name,branch_code,is_active)"
+        )
+        .eq("activation_token_hash", token_hash)
+        .limit(1)
+        .execute()
+    )
+    rows = result.data or []
+
+    if not rows:
+        raise HTTPException(status_code=401, detail="Invalid or expired kiosk activation token.")
+
+    kiosk = rows[0]
+    expires_at = kiosk.get("activation_expires_at")
+
+    if not expires_at:
+        raise HTTPException(status_code=401, detail="Invalid or expired kiosk activation token.")
+
+    try:
+        expires_dt = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+        if expires_dt <= now:
+            raise HTTPException(status_code=401, detail="Invalid or expired kiosk activation token.")
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid or expired kiosk activation token.")
+
+    branch = kiosk.get("branches") or {}
+
+    if kiosk.get("is_active") is not True or branch.get("is_active") is False:
+        raise HTTPException(status_code=403, detail="This kiosk or branch is inactive.")
+
+    device_token = secrets.token_urlsafe(48)
+    device_token_hash = hash_kiosk_secret(device_token)
+
+    update_result = (
+        supabase
+        .from_("kiosks")
+        .update({
+            "device_token_hash": device_token_hash,
+            "activation_token_hash": None,
+            "activation_expires_at": None,
+            "activated_at": now.isoformat(),
+            "last_seen": now.isoformat(),
+        })
+        .eq("id", kiosk["id"])
+        .execute()
+    )
+
+    if not update_result.data:
+        raise HTTPException(status_code=500, detail="Unable to register this device.")
+
+    return {
+        "status": "Activated",
+        "device_token": device_token,
+        "kiosk": {
+            "id": kiosk["id"],
+            "kiosk_code": kiosk["kiosk_code"],
+            "device_name": kiosk.get("device_name"),
+            "branch_id": kiosk.get("branch_id"),
+            "branch_name": branch.get("branch_name"),
+            "branch_code": branch.get("branch_code"),
+        }
+    }
+
+
+@app.get("/admin/kiosks")
+async def admin_kiosk_list(
+    authorization: str | None = Header(default=None),
+):
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    authenticate_hr_bearer(token)
+
+    result = (
+        supabase
+        .from_("kiosks")
+        .select(
+            "id,kiosk_code,branch_id,device_name,is_active,last_seen,activated_at,"
+            "branches:branch_id(branch_name,branch_code,is_active)"
+        )
+        .order("kiosk_code")
+        .execute()
+    )
+
+    kiosks = []
+    for kiosk in result.data or []:
+        branch = kiosk.get("branches") or {}
+        kiosks.append({
+            "id": kiosk["id"],
+            "kiosk_code": kiosk["kiosk_code"],
+            "branch_id": kiosk.get("branch_id"),
+            "branch_name": branch.get("branch_name"),
+            "branch_code": branch.get("branch_code"),
+            "device_name": kiosk.get("device_name"),
+            "is_active": kiosk.get("is_active", False),
+            "activated_at": kiosk.get("activated_at"),
+            "last_seen": kiosk.get("last_seen"),
+            "is_paired": bool(kiosk.get("activated_at")) and bool(kiosk.get("device_token_hash")),
+        })
+
+    return {"status": "OK", "kiosks": kiosks}
+
+
+@app.post("/admin/kiosks/{branch_id}/activation")
+async def admin_generate_kiosk_activation(
+    branch_id: str,
+    authorization: str | None = Header(default=None),
+):
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    authenticate_hr_bearer(token)
+
+    kiosk_result = (
+        supabase
+        .from_("kiosks")
+        .select(
+            "id,kiosk_code,branch_id,device_name,is_active,"
+            "branches:branch_id(branch_name,branch_code,is_active)"
+        )
+        .eq("branch_id", branch_id)
+        .limit(1)
+        .execute()
+    )
+    kiosks = kiosk_result.data or []
+
+    if not kiosks:
+        raise HTTPException(status_code=404, detail="No kiosk is configured for this branch.")
+
+    kiosk = kiosks[0]
+    branch = kiosk.get("branches") or {}
+
+    if kiosk.get("is_active") is not True or branch.get("is_active") is False:
+        raise HTTPException(status_code=403, detail="This kiosk or branch is inactive.")
+
+    activation_token = secrets.token_urlsafe(32)
+    now = datetime.now(ZoneInfo("UTC"))
+    expires_at = now + timedelta(minutes=KIOSK_ACTIVATION_TTL_MINUTES)
+
+    update_result = (
+        supabase
+        .from_("kiosks")
+        .update({
+            "activation_token_hash": hash_kiosk_secret(activation_token),
+            "activation_expires_at": expires_at.isoformat(),
+            # Re-pairing a branch revokes the previous physical device.
+            "device_token_hash": None,
+            "activated_at": None,
+        })
+        .eq("id", kiosk["id"])
+        .execute()
+    )
+
+    if not update_result.data:
+        raise HTTPException(status_code=500, detail="Unable to create kiosk setup credentials.")
+
+    return {
+        "status": "OK",
+        "kiosk_code": kiosk["kiosk_code"],
+        "branch_id": kiosk["branch_id"],
+        "branch_name": branch.get("branch_name"),
+        "branch_code": branch.get("branch_code"),
+        "activation_token": activation_token,
+        "expires_at": expires_at.isoformat(),
+        "activation_ttl_minutes": KIOSK_ACTIVATION_TTL_MINUTES,
+    }
 
 
 def validate_strong_password(password: str):
@@ -2217,7 +2536,8 @@ async def kiosk_verify_live(
     files: List[UploadFile] = File(...),
     action: str = Form(...),
     kiosk_code: str = Form(...),
-    recognized_employee_id: str = Form("")
+    recognized_employee_id: str = Form(""),
+    x_kiosk_token: str | None = Header(default=None, alias=KIOSK_DEVICE_HEADER),
 ):
     print("🔥 KIOSK LIVE VERIFICATION STARTED", flush=True)
     print("ACTION:", action, flush=True)
@@ -2238,69 +2558,45 @@ async def kiosk_verify_live(
             }
 
         # =====================================================
-        # 2. VERIFY KIOSK
+        # 2. VERIFY REGISTERED DEVICE
         # =====================================================
 
-        kiosk_response = (
-            supabase
-            .rpc(
-                "verify_kiosk",
-                {
-                    "p_kiosk_code": kiosk_code
-                }
-            )
-            .execute()
-        )
+        kiosk = get_kiosk_from_device_token(x_kiosk_token or "")
 
-        registered_kiosks = (
-            kiosk_response.data or []
-        )
-
-        print(
-            "🏪 KIOSK REGISTRATION RESULT:",
-            registered_kiosks,
-            flush=True
-        )
-
-        if not registered_kiosks:
+        if not kiosk:
             return {
                 "status": "Error",
-                "message": "This kiosk is not registered."
+                "message": "This device is not registered as an active CIBO kiosk."
             }
 
-        kiosk = registered_kiosks[0]
-
-        if not kiosk.get("is_active"):
+        if kiosk.get("kiosk_code") != kiosk_code:
             return {
                 "status": "Error",
-                "message": "This kiosk is inactive."
+                "message": "Kiosk identity does not match the registered device."
             }
 
+        now_for_kiosk = datetime.now(ZoneInfo("UTC")).isoformat()
+        try:
+            supabase.from_("kiosks").update({"last_seen": now_for_kiosk}).eq("id", kiosk["id"]).execute()
+        except Exception:
+            pass
+
+        branch = kiosk.get("branches") or {}
+        kiosk_location = branch.get("branch_name") or branch.get("branch_code")
+
         print(
-            "✅ REGISTERED KIOSK:",
+            "🏪 REGISTERED KIOSK:",
             kiosk.get("kiosk_code"),
+            "BRANCH:",
+            kiosk_location,
             flush=True
-        )
-
-        KIOSK_LOCATIONS = {
-            "KIOSK-TEST-001": "Cubao"
-        }
-
-        kiosk_location = KIOSK_LOCATIONS.get(
-            kiosk.get("kiosk_code")
         )
 
         if not kiosk_location:
             return {
                 "status": "Error",
-                "message": "No branch location is configured for this kiosk."
+                "message": "No branch is configured for this kiosk."
             }
-
-        print(
-            "📍 KIOSK LOCATION:",
-            kiosk_location,
-            flush=True
-        )
 
         # =====================================================
         # 3. CHECK ATTENDANCE VERIFICATION LOCK
