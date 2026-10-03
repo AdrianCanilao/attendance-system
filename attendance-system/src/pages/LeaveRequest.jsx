@@ -152,7 +152,11 @@ export default function LeaveRequest() {
         ]);
 
       if (error) {
-        alert("Failed to submit leave");
+        console.error("Leave request insert failed:", error);
+        alert(
+          "Failed to submit leave:\n\n" +
+          (error.message || "Unknown database error.")
+        );
         return;
       }
 
@@ -178,7 +182,11 @@ export default function LeaveRequest() {
       setAttachment(null);
 
     } catch (err) {
-      alert("Something went wrong");
+      console.error("Leave request failed:", err);
+      alert(
+        "Failed to submit leave:\n\n" +
+        (err?.message || "Unknown error.")
+      );
     }
   };
 
