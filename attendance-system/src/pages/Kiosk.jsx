@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
-import { logAudit } from "../utils/auditlogger";
 
 const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
 const BACKEND_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
@@ -583,14 +582,6 @@ export default function Kiosk() {
 
       setScanState("success");
 
-      await logAudit({
-        user_id: employee.id || null,
-        user_name: employee.full_name || "Unknown employee",
-        role: "kiosk",
-        action: selectedAction === "TIME IN" ? "KIOSK_TIME_IN" : "KIOSK_TIME_OUT",
-        description: `${selectedAction} recorded successfully for ${employee.full_name || "employee"}`,
-      });
-
       setAttendanceResult({
         type: "success",
         recordedAt: new Date(),
@@ -604,14 +595,6 @@ export default function Kiosk() {
       });
 
     } catch (error) {
-
-      await logAudit({
-        user_id: recognition?.employee_id || null,
-        user_name: recognition?.full_name || "Kiosk",
-        role: "kiosk",
-        action: "KIOSK_ATTENDANCE_ERROR",
-        description: `${selectedAction || "ATTENDANCE"} failed: ${error.message || "Unable to record attendance"}`,
-      });
 
       setScanState("recognized");
 
