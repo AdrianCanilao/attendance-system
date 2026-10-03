@@ -232,14 +232,82 @@ export default function EmployeeList() {
     const employeeMap = Object.fromEntries(branchMembers.map((employee) => [employee.id, employee]));
     const leaves = leaveData || [];
 
-    // SIMPLE EMPLOYEE ATTENDANCE EXPORT
-    // One row per recorded attendance day, with monthly totals repeated
-    // for that employee so the spreadsheet is easy to read and print.
-    const summaryByEmployee = {};
+    // MONTHLY ATTENDANCE SHEET EXPORT
+    // Calendar-style layout: each day has Time-In and Time-Out columns.
+    // Uses an Excel-compatible HTML workbook so cell colors are preserved.
+    const monthYear = now.toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: "Asia/Manila",
+    });
 
-    branchMembers.forEach((employee) => {
+    const daysInMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0
+    ).getDate();
+
+    const monthDates = Array.from(
+      { length: daysInMonth },
+      (_, index) => {
+        const date = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          index + 1
+        );
+
+        const dateKey =
+          date.getFullYear() +
+          "-" +
+          String(date.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(date.getDate()).padStart(2, "0");
+
+        return {
+          date,
+          dateKey,
+          dayNumber: index + 1,
+          weekday: date.toLocaleDateString("en-US", {
+            weekday: "long",
+          }),
+        };
+      }
+    );
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    const formatExcelTime = (value) =>
+      value
+        ? new Date(value).toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+            timeZone: "Asia/Manila",
+          })
+        : "";
+
+    const formatSummaryMinutes = (minutes) => {
+      const total = Number(minutes || 0);
+      const hours = Math.floor(total / 60);
+      const mins = total % 60;
+
+      return hours > 0
+        ? hours + "h " + mins + "m"
+        : mins + "m";
+    };
+
+    const getEmployeeSummary = (employee) => {
       const logs = (attendanceData || []).filter(
         (log) => log.employee_id === employee.id
+      );
+
+      const employeeLeaves = leaves.filter(
+        (leave) => leave.employee_id === employee.id
       );
 
       const lateMinutes = logs.reduce(
@@ -262,104 +330,325 @@ export default function EmployeeList() {
         return sum + (diff > 0 ? diff : 0);
       }, 0);
 
-      const leaveDays = leaves
-        .filter((leave) => leave.employee_id === employee.id)
-        .reduce((total, leave) => {
+      const leaveDays = employeeLeaves.reduce(
+        (total, leave) => {
           const start = new Date(
-            String(leave.start_date || "").slice(0, 10) + "T00:00:00"
+            String(leave.start_date || "").slice(0, 10) +
+              "T00:00:00"
           );
           const end = new Date(
-            String(leave.end_date || leave.start_date || "").slice(0, 10) +
-              "T00:00:00"
+            String(
+              leave.end_date || leave.start_date || ""
+            ).slice(0, 10) + "T00:00:00"
           );
 
           return (
             total +
-            Math.max(0, Math.floor((end - start) / 86400000) + 1)
+            Math.max(
+              0,
+              Math.floor((end - start) / 86400000) + 1
+            )
           );
-        }, 0);
+        },
+        0
+      );
 
-      summaryByEmployee[employee.id] = {
+      return {
+        logs,
+        employeeLeaves,
         lateMinutes,
         overtimeMinutes,
         workedMinutes,
         leaveDays,
       };
-    });
+    };
 
-    const exportRows = [];
+    const getLeaveForDate = (employeeLeaves, dateKey) =>
+      employeeLeaves.find((leave) => {
+        const start = String(
+          leave.start_date || ""
+        ).slice(0, 10);
 
-    branchMembers.forEach((employee) => {
-      const logs = (attendanceData || [])
-        .filter((log) => log.employee_id === employee.id)
-        .sort((a, b) => String(a.log_date).localeCompare(String(b.log_date)));
+        const end = String(
+          leave.end_date || leave.start_date || ""
+        ).slice(0, 10);
 
-      const totals = summaryByEmployee[employee.id];
-
-      if (!logs.length) {
-        exportRows.push({
-          Date: "-",
-          Name: employee.full_name || "-",
-          "Recorded Time In": "-",
-          "Recorded Time Out": "-",
-          Late: "-",
-          Overtime: "-",
-          "Total Late Hours": formatMinutes(totals.lateMinutes),
-          "Total Overtime Hours": formatMinutes(totals.overtimeMinutes),
-          Leaves: totals.leaveDays,
-          "Total Hours Worked": formatMinutes(totals.workedMinutes),
-        });
-        return;
-      }
-
-      logs.forEach((log) => {
-        exportRows.push({
-          Date: log.log_date || "-",
-          Name: employee.full_name || "-",
-          "Recorded Time In": formatTime(log.time_in),
-          "Recorded Time Out": formatTime(log.time_out),
-          Late:
-            Number(log.late_minutes || 0) > 0
-              ? formatMinutes(log.late_minutes)
-              : "0m",
-          Overtime:
-            Number(log.overtime_minutes || 0) > 0
-              ? formatMinutes(log.overtime_minutes)
-              : "0m",
-          "Total Late Hours": formatMinutes(totals.lateMinutes),
-          "Total Overtime Hours": formatMinutes(totals.overtimeMinutes),
-          Leaves: totals.leaveDays,
-          "Total Hours Worked": formatMinutes(totals.workedMinutes),
-        });
+        return dateKey >= start && dateKey <= end;
       });
+
+    const getLogForDate = (logs, dateKey) =>
+      logs.find(
+        (log) =>
+          String(log.log_date || "").slice(0, 10) ===
+          dateKey
+      );
+
+    const COLORS = {
+      header: "#1f2937",
+      subHeader: "#f3f4f6",
+      green: "#c6efce",
+      greenText: "#006100",
+      orange: "#fce4d6",
+      orangeText: "#9c0006",
+      red: "#ffc7ce",
+      redText: "#9c0006",
+      yellow: "#ffeb9c",
+      yellowText: "#9c6500",
+      white: "#ffffff",
+      border: "#b7b7b7",
+    };
+
+    let html = `
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+          }
+
+          table {
+            border-collapse: collapse;
+          }
+
+          td, th {
+            border: 1px solid ${COLORS.border};
+            padding: 5px;
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+          }
+
+          .title {
+            font-size: 16pt;
+            font-weight: bold;
+            text-align: left;
+            border: none;
+          }
+
+          .info {
+            text-align: left;
+            border: none;
+          }
+
+          .day {
+            background: ${COLORS.header};
+            color: white;
+            font-weight: bold;
+          }
+
+          .subheader {
+            background: ${COLORS.subHeader};
+            font-weight: bold;
+          }
+
+          .name {
+            text-align: left;
+            font-weight: bold;
+          }
+
+          .green {
+            background: ${COLORS.green};
+            color: ${COLORS.greenText};
+          }
+
+          .orange {
+            background: ${COLORS.orange};
+            color: ${COLORS.orangeText};
+          }
+
+          .red {
+            background: ${COLORS.red};
+            color: ${COLORS.redText};
+          }
+
+          .yellow {
+            background: ${COLORS.yellow};
+            color: ${COLORS.yellowText};
+          }
+
+          .ol {
+            background: #fff2cc;
+            color: #7f6000;
+            font-weight: bold;
+          }
+
+          .summary {
+            background: #e2e3e5;
+            font-weight: bold;
+          }
+        </style>
+      </head>
+      <body>
+        <table>
+          <tr>
+            <td colspan="${2 + daysInMonth * 2 + 4}" class="title">
+              CIBO ATTENDANCE REPORT
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" class="info"><b>Branch</b></td>
+            <td colspan="${daysInMonth * 2 + 4}" class="info">
+              ${escapeHtml(branch.branch_name || "-")}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" class="info"><b>Branch Code</b></td>
+            <td colspan="${daysInMonth * 2 + 4}" class="info">
+              ${escapeHtml(branch.branch_code || "-")}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" class="info"><b>Report Period</b></td>
+            <td colspan="${daysInMonth * 2 + 4}" class="info">
+              ${escapeHtml(monthYear)}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="2" class="info"><b>Generated</b></td>
+            <td colspan="${daysInMonth * 2 + 4}" class="info">
+              ${escapeHtml(
+                now.toLocaleString("en-US", {
+                  timeZone: "Asia/Manila",
+                })
+              )}
+            </td>
+          </tr>
+          <tr><td colspan="${2 + daysInMonth * 2 + 4}" style="border:none;height:8px;"></td></tr>
+          <tr>
+            <th rowspan="3" class="day">No.</th>
+            <th rowspan="3" class="day">Name</th>
+    `;
+
+    monthDates.forEach((day) => {
+      html += `
+        <th colspan="2" class="day">${day.dayNumber}</th>
+      `;
     });
 
-    const workbook = XLSX.utils.book_new();
-    const employeeSheet = XLSX.utils.json_to_sheet(exportRows);
+    html += `
+            <th rowspan="3" class="day">Total Late Hours</th>
+            <th rowspan="3" class="day">Total Overtime Hours</th>
+            <th rowspan="3" class="day">Leaves</th>
+            <th rowspan="3" class="day">Total Hours Worked</th>
+          </tr>
+          <tr>
+    `;
 
-    employeeSheet["!cols"] = [
-      { wch: 14 },
-      { wch: 30 },
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 12 },
-      { wch: 14 },
-      { wch: 22 },
-      { wch: 24 },
-      { wch: 12 },
-      { wch: 22 },
-    ];
+    monthDates.forEach((day) => {
+      html += `
+        <th colspan="2" class="subheader">${escapeHtml(day.weekday)}</th>
+      `;
+    });
 
-    XLSX.utils.book_append_sheet(
-      workbook,
-      employeeSheet,
-      "Employee Attendance"
+    html += `
+          </tr>
+          <tr>
+    `;
+
+    monthDates.forEach(() => {
+      html += `
+        <th class="subheader">Time-In</th>
+        <th class="subheader">Time-Out</th>
+      `;
+    });
+
+    html += `
+          </tr>
+    `;
+
+    branchMembers.forEach((employee, employeeIndex) => {
+      const summary = getEmployeeSummary(employee);
+
+      html += `
+        <tr>
+          <td>${employeeIndex + 1}</td>
+          <td class="name">${escapeHtml(employee.full_name || "-")}</td>
+      `;
+
+      monthDates.forEach((day) => {
+        const leave = getLeaveForDate(
+          summary.employeeLeaves,
+          day.dateKey
+        );
+
+        const log = getLogForDate(
+          summary.logs,
+          day.dateKey
+        );
+
+        if (leave) {
+          html += `
+            <td colspan="2" class="ol">OL</td>
+          `;
+          return;
+        }
+
+        if (!log || !log.time_in) {
+          html += `
+            <td class="red">Absent</td>
+            <td class="red">Absent</td>
+          `;
+          return;
+        }
+
+        const isLate =
+          Number(log.late_minutes || 0) > 0;
+
+        const hasOvertime =
+          Number(log.overtime_minutes || 0) > 0;
+
+        const timeInClass = isLate
+          ? "orange"
+          : "green";
+
+        const timeOutClass = hasOvertime
+          ? "yellow"
+          : "green";
+
+        html += `
+          <td class="${timeInClass}">
+            ${escapeHtml(formatExcelTime(log.time_in))}
+          </td>
+          <td class="${timeOutClass}">
+            ${escapeHtml(formatExcelTime(log.time_out) || "-")}
+          </td>
+        `;
+      });
+
+      html += `
+          <td class="summary">
+            ${formatSummaryMinutes(summary.lateMinutes)}
+          </td>
+          <td class="summary">
+            ${formatSummaryMinutes(summary.overtimeMinutes)}
+          </td>
+          <td class="summary">
+            ${summary.leaveDays}
+          </td>
+          <td class="summary">
+            ${formatSummaryMinutes(summary.workedMinutes)}
+          </td>
+        </tr>
+      `;
+    });
+
+    html += `
+        </table>
+      </body>
+      </html>
+    `;
+
+    const excelBlob = new Blob(
+      [html],
+      { type: "application/vnd.ms-excel;charset=utf-8;" }
     );
 
     const fileName =
-      "cibo-attendance-report-" + toManilaDate(now) + ".xlsx";
+      "cibo-attendance-report-" + toManilaDate(now) + ".xls";
 
-    XLSX.writeFile(workbook, fileName);
+    saveAs(excelBlob, fileName);
     } catch (error) {
       
       alert(
