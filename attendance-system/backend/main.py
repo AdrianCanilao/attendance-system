@@ -523,46 +523,98 @@ async def admin_update_password(
 # ============================================================
 
 def get_verification_lock(employee_id: str):
-    response = (
-        supabase
-        .rpc(
-            "get_attendance_verification_lock",
-            {"p_employee_id": employee_id}
-        )
-        .execute()
+    print(
+        "🔐 CHECKING VERIFICATION LOCK FOR:",
+        repr(employee_id),
+        flush=True
     )
 
-    rows = response.data or []
+    try:
+        response = (
+            supabase
+            .rpc(
+                "get_attendance_verification_lock",
+                {"p_employee_id": employee_id}
+            )
+            .execute()
+        )
 
-    if not rows:
-        return {
-            "failed_attempts": 0,
-            "locked_until": None,
-            "is_locked": False,
-            "remaining_seconds": 0
-        }
+        print(
+            "🔐 LOCK RPC DATA:",
+            response.data,
+            flush=True
+        )
+        print(
+            "🔐 LOCK RPC ERROR:",
+            getattr(response, "error", None),
+            flush=True
+        )
 
-    return rows[0]
+        rows = response.data or []
+
+        if not rows:
+            return {
+                "failed_attempts": 0,
+                "locked_until": None,
+                "is_locked": False,
+                "remaining_seconds": 0
+            }
+
+        return rows[0]
+
+    except Exception as e:
+        print(
+            "❌ LOCK RPC EXCEPTION:",
+            str(e),
+            flush=True
+        )
+        raise
 
 
 def record_verification_failure(employee_id: str):
-    response = (
-        supabase
-        .rpc(
-            "record_attendance_verification_failure",
-            {"p_employee_id": employee_id}
-        )
-        .execute()
+    print(
+        "🔢 RECORDING VERIFICATION FAILURE FOR:",
+        repr(employee_id),
+        flush=True
     )
 
-    rows = response.data or []
-
-    if not rows:
-        raise RuntimeError(
-            "Unable to record attendance verification failure."
+    try:
+        response = (
+            supabase
+            .rpc(
+                "record_attendance_verification_failure",
+                {"p_employee_id": employee_id}
+            )
+            .execute()
         )
 
-    return rows[0]
+        print(
+            "🔢 FAILURE RPC DATA:",
+            response.data,
+            flush=True
+        )
+        print(
+            "🔢 FAILURE RPC ERROR:",
+            getattr(response, "error", None),
+            flush=True
+        )
+
+        rows = response.data or []
+
+        if not rows:
+            raise RuntimeError(
+                "Unable to record attendance verification failure."
+            )
+
+        return rows[0]
+
+    except Exception as e:
+        print(
+            "❌ FAILURE RPC EXCEPTION:",
+            str(e),
+            flush=True
+        )
+        raise
 
 
 def clear_verification_failures(employee_id: str):
@@ -2665,6 +2717,11 @@ async def kiosk_verify_live(
     print("🔥 KIOSK LIVE VERIFICATION STARTED", flush=True)
     print("ACTION:", action, flush=True)
     print("KIOSK CODE:", kiosk_code, flush=True)
+    print(
+        "🆔 RECOGNIZED EMPLOYEE ID RECEIVED:",
+        repr(recognized_employee_id),
+        flush=True
+    )
 
     try:
 
