@@ -320,9 +320,10 @@ export default function RegisterEmployee() {
         ]);
 
       if (profileInsertError) {
+        console.error("Employee profile insert failed:", profileInsertError);
         throw new Error(
           "Employee profile could not be created: " +
-          profileInsertError.message
+          (profileInsertError.message || "Unknown database error")
         );
       }
 
@@ -417,7 +418,11 @@ export default function RegisterEmployee() {
       setImageSrc(null);
 
     } catch (err) {
-      alert("Registration failed");
+      console.error("Employee registration failed:", err);
+      alert(
+        "Registration failed:\n\n" +
+        (err?.message || "Unknown error. Check the browser console for details.")
+      );
     } finally {
       setLoading(false);
     }
