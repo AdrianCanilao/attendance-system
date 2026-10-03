@@ -270,8 +270,7 @@ const { data: employees } =
       position,
       clock_in,
       clock_out,
-      branch_id,
-      face_url
+      branch_id
     `)
     .eq(
       "branch_id",
@@ -389,11 +388,9 @@ if (correctionError) {
             : "0m"
           : "-",
 
-        time_in_face_url: attendanceToday?.time_in_face_url || null,
+        time_in_face_url:attendanceToday?.time_in_face_url || null,
 
-        time_out_face_url: attendanceToday?.time_out_face_url || null,
-
-        profile_face_url: emp.face_url || null,
+        time_out_face_url:attendanceToday?.time_out_face_url || null,
 
         time_in_location: attendanceToday?.time_in_location || null,
 
@@ -412,14 +409,14 @@ correction:
     const resolvedResult = await Promise.all(
       result.map(async (log) => ({
         ...log,
-        time_in_face_url:
-          (await getStorageAccessUrl("faces", log.time_in_face_url)) ||
-          (await getStorageAccessUrl("faces", log.profile_face_url)) ||
-          null,
-        time_out_face_url:
-          (await getStorageAccessUrl("faces", log.time_out_face_url)) ||
-          (await getStorageAccessUrl("faces", log.profile_face_url)) ||
-          null,
+        time_in_face_url: await getStorageAccessUrl(
+          "faces",
+          log.time_in_face_url
+        ),
+        time_out_face_url: await getStorageAccessUrl(
+          "faces",
+          log.time_out_face_url
+        ),
       }))
     );
 
