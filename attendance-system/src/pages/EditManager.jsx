@@ -542,22 +542,45 @@ const uploadFaces = async () => {
         selectedShift = shiftData;
       }
 
-      const { error: profileUpdateError } = await supabase
-        .from("employee_profiles")
-        .update({
-          full_name: form.name,
-          contact_number: form.contact,
-          position: form.position,
-          branch_id: form.branch_id || null,
-          shift_id: form.shift_id || null,
-          clock_in: selectedShift?.time_in || null,
-          clock_out: selectedShift?.time_out || null,
-          grace_minutes: selectedShift?.grace_minutes ?? 10,
-        })
-        .eq("id", selected.id);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
 
-      if (profileUpdateError) {
-        throw new Error(profileUpdateError.message);
+      if (!accessToken) {
+        throw new Error("Your session has expired. Please log in again.");
+      }
+
+      const profileResponse = await fetch(
+        API_URL + "/admin/update-manager-profile",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + accessToken,
+          },
+          body: JSON.stringify({
+            target_user_id: selected.id,
+            name: form.name,
+            contact: form.contact,
+            position: form.position,
+            branch_id: form.branch_id || null,
+            shift_id: form.shift_id || null,
+          }),
+        }
+      );
+
+      let profileData = {};
+      try {
+        profileData = await profileResponse.json();
+      } catch {
+        profileData = {};
+      }
+
+      if (!profileResponse.ok) {
+        throw new Error(
+          profileData.detail ||
+          profileData.message ||
+          "Unable to update Branch Supervisor profile."
+        );
       }
 
       const previousBranch = branches.find((branch) => branch.id === selected.branch_id);
@@ -587,8 +610,12 @@ const uploadFaces = async () => {
       alert("✅ Updated!");
       closeModal();
       fetchEmployees();
-    } catch {
-      alert("Update failed");
+    } catch (error) {
+      console.error("Branch Supervisor update failed:", error);
+      alert(
+        "Update failed:\n\n" +
+        (error?.message || "Unknown error. Check the browser console for details.")
+      );
     } finally {
       setLoading(false);
     }
