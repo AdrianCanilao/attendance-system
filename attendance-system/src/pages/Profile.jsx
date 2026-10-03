@@ -123,14 +123,14 @@ const resolvedLogs = await Promise.all(
   (logs || []).map(async (log) => ({
     ...log,
     correction: latestCorrectionByLog.get(log.id) || null,
-    time_in_face_url:
-      (await getStorageAccessUrl("faces", log.time_in_face_url)) ||
-      profileFaceUrl ||
-      null,
-    time_out_face_url:
-      (await getStorageAccessUrl("faces", log.time_out_face_url)) ||
-      profileFaceUrl ||
-      null,
+    time_in_face_url: await getStorageAccessUrl(
+      "faces",
+      log.time_in_face_url
+    ),
+    time_out_face_url: await getStorageAccessUrl(
+      "faces",
+      log.time_out_face_url
+    ),
   }))
 );
 
