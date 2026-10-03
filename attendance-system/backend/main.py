@@ -55,7 +55,7 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
-def log_kiosk_audit(user_id, user_name, action, description):
+def log_kiosk_audit(user_id, user_name, action, description, role="kiosk"):
     """Write kiosk audit entries from the trusted backend service role.
 
     Kiosks are intentionally not signed in as Supabase users, so the browser
@@ -70,7 +70,7 @@ def log_kiosk_audit(user_id, user_name, action, description):
             .insert({
                 "user_id": user_id,
                 "user_name": user_name,
-                "role": "kiosk",
+                "role": role,
                 "action": action,
                 "description": description,
             })
@@ -655,6 +655,7 @@ def record_verification_failure(employee_id: str, source: str = "web"):
                 employee_name,
                 audit_action,
                 description,
+                role=("kiosk" if source == "kiosk" else "web"),
             )
         except Exception as audit_error:
             # A missing audit row must never break the attendance
