@@ -87,7 +87,7 @@ def get_kiosk_from_device_token(device_token: str):
         supabase
         .from_("kiosks")
         .select(
-            "id,kiosk_code,branch_id,device_name,is_active,last_seen,activated_at,"
+            "id,kiosk_code,branch_id,device_name,is_active,last_seen,activated_at,device_token_hash,"
             "branches:branch_id(branch_name,branch_code,is_active)"
         )
         .eq("device_token_hash", token_hash)
