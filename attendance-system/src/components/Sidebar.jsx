@@ -32,6 +32,7 @@ export default function Sidebar({ role }) {
           alt="CIBO"
           style={styles.logoImage}
         />
+        <h3 className="cibo-sidebar-logo-text" style={styles.logoText}>CIBO</h3>
       </div>
 
       {/* ================= EMPLOYEE ================= */}
@@ -405,11 +406,17 @@ const styles = {
   },
 
   logoImage: {
-    width: "96px",
+    width: "42px",
     height: "42px",
     objectFit: "contain",
-    objectPosition: "left center",
     display: "block",
+    flexShrink: 0,
+  },
+
+  logoText: {
+    margin: 0,
+    fontSize: "18px",
+    fontWeight: "600",
   },
 
   link: {
