@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
-import { KIOSK_CODE } from "../kioskConfig";
 import { logAudit } from "../utils/auditlogger";
 
 const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
@@ -41,10 +40,125 @@ export default function Kiosk() {
     useState(null);
 
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [kioskAuth, setKioskAuth] = useState(null);
+  const [kioskAuthLoading, setKioskAuthLoading] = useState(true);
+  const [kioskAuthError, setKioskAuthError] = useState("");
+
+  const KIOSK_DEVICE_STORAGE_KEY = "cibo_kiosk_device_token";
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+
+    const authenticateKiosk = async () => {
+      setKioskAuthLoading(true);
+      setKioskAuthError("");
+
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const setupToken = params.get("setup");
+        let deviceToken = localStorage.getItem(KIOSK_DEVICE_STORAGE_KEY);
+
+        if (setupToken) {
+          const activationResponse = await fetch(
+            BACKEND_URL + "/kiosk/activate",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                activation_token: setupToken,
+              }),
+            }
+          );
+
+          const activationData = await activationResponse.json();
+
+          if (!activationResponse.ok) {
+            throw new Error(
+              activationData.detail ||
+              activationData.message ||
+              "Kiosk activation failed."
+            );
+          }
+
+          deviceToken = activationData.device_token;
+          localStorage.setItem(
+            KIOSK_DEVICE_STORAGE_KEY,
+            deviceToken
+          );
+
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          );
+        }
+
+        if (!deviceToken) {
+          if (!cancelled) {
+            setKioskAuth(null);
+            setKioskAuthError(
+              "This device is not registered as a CIBO kiosk. Ask HR to pair this device with a branch."
+            );
+          }
+          return;
+        }
+
+        const statusResponse = await fetch(
+          BACKEND_URL + "/kiosk/status",
+          {
+            headers: {
+              "X-Kiosk-Token": deviceToken,
+            },
+          }
+        );
+
+        const statusData = await statusResponse.json();
+
+        if (!statusResponse.ok || statusData.status !== "Authorized") {
+          localStorage.removeItem(KIOSK_DEVICE_STORAGE_KEY);
+
+          if (!cancelled) {
+            setKioskAuth(null);
+            setKioskAuthError(
+              statusData.message ||
+              "This device is not authorized as a CIBO kiosk."
+            );
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          setKioskAuth({
+            deviceToken,
+            ...statusData.kiosk,
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setKioskAuth(null);
+          setKioskAuthError(
+            error.message ||
+            "Unable to verify this kiosk device."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setKioskAuthLoading(false);
+        }
+      }
+    };
+
+    authenticateKiosk();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const formatDate = (date) =>
@@ -375,7 +489,7 @@ export default function Kiosk() {
 
       formData.append(
         "kiosk_code",
-        KIOSK_CODE
+        kioskAuth?.kiosk_code || ""
       );
 
       for (
@@ -398,13 +512,13 @@ export default function Kiosk() {
       }
 
 
-      const response = await fetch(
-        `${BACKEND_URL}/kiosk-verify-live`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response = await fetch(BACKEND_URL + "/kiosk-verify-live", {
+        method: "POST",
+        headers: {
+          "X-Kiosk-Token": kioskAuth?.deviceToken || "",
+        },
+        body: formData,
+      });
 
       const data =
         await response.json();
@@ -535,8 +649,41 @@ export default function Kiosk() {
   // MAIN KIOSK SCREEN
   // ------------------------------------------------------------
 
-  return (
-    <div style={styles.page}>
+  if (kioskAuthLoading) {
+    return (
+      <div style={styles.authPage}>
+        <div style={styles.authCard}>
+          <div style={styles.authLogo}>CIBO</div>
+          <div style={styles.authSpinner}></div>
+          <h1 style={styles.authTitle}>Verifying kiosk device...</h1>
+          <p style={styles.authMessage}>
+            Please wait while this device is checked against the registered kiosk.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!kioskAuth) {
+    return (
+      <div style={styles.authPage}>
+        <div style={styles.authCard}>
+          <div style={styles.authLogo}>CIBO</div>
+          <div style={styles.authLockIcon}>!</div>
+          <h1 style={styles.authTitle}>Unauthorized Kiosk Device</h1>
+          <p style={styles.authMessage}>
+            {kioskAuthError ||
+              "This device is not registered as an active CIBO kiosk."}
+          </p>
+          <p style={styles.authHelp}>
+            Ask HR to generate a kiosk setup link for this branch, then open that link on this device.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (    <div style={styles.page}>
       <div style={styles.overlay}></div>
       <div style={styles.container}>
         <header style={styles.header}>
@@ -742,7 +889,7 @@ export default function Kiosk() {
                         </div>
                         <div style={styles.infoRow}>
                           <span>Kiosk</span>
-                          <strong>{KIOSK_CODE}</strong>
+                          <strong>{kioskAuth.kiosk_code}</strong>
                         </div>
                         <div style={styles.infoRow}>
                           <span>Status</span>
@@ -770,7 +917,7 @@ export default function Kiosk() {
 
         <footer style={styles.footer}>
           <strong>CIBO</strong> Attendance Monitoring System
-          <span> • {KIOSK_CODE}</span>
+          <span> • {kioskAuth.kiosk_code} • {kioskAuth.branch_name || kioskAuth.branch_code}</span>
         </footer>
       </div>
     </div>
@@ -778,6 +925,14 @@ export default function Kiosk() {
 }
 
 const styles = {
+  authPage: { minHeight: "100vh", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#172033", fontFamily: "Arial, Helvetica, sans-serif", padding: "24px", boxSizing: "border-box" },
+  authCard: { width: "min(520px, 100%)", background: "#fff", borderRadius: "22px", padding: "42px", boxSizing: "border-box", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.35)" },
+  authLogo: { fontSize: "52px", lineHeight: 1, fontWeight: "900", color: "#f97316", letterSpacing: "-2px", marginBottom: "24px" },
+  authSpinner: { width: "38px", height: "38px", border: "4px solid #fed7aa", borderTop: "4px solid #f97316", borderRadius: "50%", margin: "0 auto 20px", animation: "spin 1s linear infinite" },
+  authLockIcon: { width: "48px", height: "48px", borderRadius: "50%", background: "#fff7ed", color: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: "28px", fontWeight: "900" },
+  authTitle: { margin: "0 0 12px", color: "#172033", fontSize: "26px", fontWeight: "900" },
+  authMessage: { margin: "0", color: "#475569", fontSize: "15px", lineHeight: 1.6 },
+  authHelp: { margin: "18px 0 0", color: "#64748b", fontSize: "13px", lineHeight: 1.6 },
   page: { position: "relative", height: "100vh", width: "100%", overflow: "hidden", backgroundImage: "linear-gradient(90deg, rgba(10,15,25,0.82), rgba(10,15,25,0.58)), " + KIOSK_BACKGROUND, backgroundSize: "cover", backgroundPosition: "center", fontFamily: "Arial, Helvetica, sans-serif", boxSizing: "border-box" },
   overlay: { position: "absolute", inset: 0, background: "rgba(255,255,255,0.04)", pointerEvents: "none" },
   container: { position: "relative", zIndex: 1, width: "min(1600px, 96vw)", height: "100%", margin: "0 auto", display: "flex", flexDirection: "column", boxSizing: "border-box", padding: "10px 0 8px" },
