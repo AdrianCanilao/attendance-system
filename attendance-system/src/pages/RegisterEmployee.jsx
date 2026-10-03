@@ -1,27 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { supabase } from "../supabaseClient";
-import { createClient } from "@supabase/supabase-js";
 import ManagerLayout from "../layouts/ManagerLayout";
 import { logAudit } from "../utils/auditlogger";
 import { isValidEmail } from "../utils/emailValidation";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
-
-// Separate Auth client used only to create the new employee.
-// This prevents signUp() from replacing the logged-in Maintenance Specialist session.
-const signupClient = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  }
-);
 
 const isStrongPassword = (password) =>
   password.length >= 8 &&
@@ -293,12 +278,47 @@ export default function RegisterEmployee() {
     try {
       setLoading(true);
 
+      // Save the logged-in Maintenance Specialist session before creating the employee.
+      // Supabase returns a new session from signUp() when email confirmation is disabled,
+      // which would otherwise replace the MS session used by the RLS-protected insert.
+      const { data: currentSessionData, error: currentSessionError } =
+        await supabase.auth.getSession();
+
+      if (currentSessionError) {
+        throw new Error(
+          "Unable to read the current Maintenance Specialist session: " +
+          currentSessionError.message
+        );
+      }
+
+      const maintenanceSession = currentSessionData?.session;
+
       const { data: authData, error: authError } =
-        await signupClient.auth.signUp({ email, password });
+        await supabase.auth.signUp({ email, password });
 
       if (authError) {
         alert(authError.message);
         return;
+      }
+
+      if (!authData?.user?.id) {
+        throw new Error("Employee account could not be created.");
+      }
+
+      // Restore the Maintenance Specialist session before any employee_profiles
+      // operation so the existing RLS policy evaluates the insert as the MS.
+      if (maintenanceSession) {
+        const { error: restoreSessionError } = await supabase.auth.setSession({
+          access_token: maintenanceSession.access_token,
+          refresh_token: maintenanceSession.refresh_token,
+        });
+
+        if (restoreSessionError) {
+          throw new Error(
+            "Unable to restore the Maintenance Specialist session: " +
+            restoreSessionError.message
+          );
+        }
       }
 
       const userId = authData.user.id;
