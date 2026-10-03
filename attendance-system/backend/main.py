@@ -441,6 +441,151 @@ def validate_strong_password(password: str):
         )
 
 
+
+@app.post("/admin/register-manager")
+async def admin_register_manager(
+    payload: RegisterEmployeeRequest,
+    authorization: str | None = Header(default=None),
+):
+    """
+    Create a Branch Supervisor account without changing the HR browser session.
+    HR is authorized to assign the Branch Supervisor to any active branch shift.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required.")
+
+    token = authorization[7:].strip()
+
+    try:
+        caller_response = supabase.auth.get_user(token)
+        caller = caller_response.user
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    if not caller:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    caller_result = (
+        supabase
+        .from_("employee_profiles")
+        .select("id, role_id")
+        .eq("id", caller.id)
+        .single()
+        .execute()
+    )
+    caller_profile = caller_result.data
+
+    if not caller_profile:
+        raise HTTPException(status_code=403, detail="Your employee profile was not found.")
+
+    caller_role_result = (
+        supabase
+        .from_("roles")
+        .select("name")
+        .eq("id", caller_profile["role_id"])
+        .single()
+        .execute()
+    )
+    caller_role = (caller_role_result.data or {}).get("name", "").strip().lower()
+
+    if caller_role != "hr":
+        raise HTTPException(
+            status_code=403,
+            detail="Only HR can register Branch Supervisors.",
+        )
+
+    validate_strong_password(payload.password)
+
+    shift_result = (
+        supabase
+        .from_("branch_shifts")
+        .select("id, branch_id, time_in, time_out, grace_minutes, is_active")
+        .eq("id", payload.shift_id)
+        .eq("branch_id", payload.branch_id)
+        .eq("is_active", True)
+        .single()
+        .execute()
+    )
+    selected_shift = shift_result.data
+
+    if not selected_shift:
+        raise HTTPException(
+            status_code=400,
+            detail="Selected shift was not found or is inactive for this branch.",
+        )
+
+    MANAGER_ROLE_ID = "b381a7a0-9595-4c69-abf1-5c15a827647a"
+
+    try:
+        auth_result = supabase.auth.admin.create_user({
+            "email": payload.email,
+            "password": payload.password,
+            "email_confirm": True,
+        })
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to create Branch Supervisor account: " + str(e),
+        )
+
+    new_user = getattr(auth_result, "user", None)
+
+    if not new_user:
+        auth_data = getattr(auth_result, "data", None)
+        new_user = getattr(auth_data, "user", None) if auth_data else None
+
+    if not new_user or not getattr(new_user, "id", None):
+        raise HTTPException(
+            status_code=500,
+            detail="Branch Supervisor account was created without a user ID.",
+        )
+
+    user_id = str(new_user.id)
+
+    try:
+        profile_result = (
+            supabase
+            .from_("employee_profiles")
+            .insert({
+                "id": user_id,
+                "full_name": payload.name,
+                "email": payload.email,
+                "contact_number": payload.contact,
+                "position": payload.position,
+                "role_id": MANAGER_ROLE_ID,
+                "branch_id": payload.branch_id,
+                "shift_id": payload.shift_id,
+                "clock_in": selected_shift["time_in"],
+                "clock_out": selected_shift["time_out"],
+                "grace_minutes": selected_shift["grace_minutes"],
+            })
+            .execute()
+        )
+
+        if not profile_result.data:
+            raise RuntimeError("Branch Supervisor profile could not be created.")
+
+    except Exception as e:
+        try:
+            supabase.auth.admin.delete_user(user_id)
+        except Exception:
+            pass
+
+        raise HTTPException(
+            status_code=400,
+            detail="Branch Supervisor profile could not be created: " + str(e),
+        )
+
+    return {
+        "status": "OK",
+        "user_id": user_id,
+        "name": payload.name,
+        "email": payload.email,
+        "branch_id": payload.branch_id,
+        "shift_id": payload.shift_id,
+    }
+
+
 @app.post("/admin/register-employee")
 async def admin_register_employee(
     payload: RegisterEmployeeRequest,
