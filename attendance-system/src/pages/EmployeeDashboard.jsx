@@ -270,10 +270,10 @@ const validateLiveFace = async () => {
     }
 
     const detectedEmployeeId =
-      recognitionData.employee_id;
+      recognitionData.employee_id || recognitionData.employee?.id;
 
     const detectedEmployeeName =
-      recognitionData.full_name;
+      recognitionData.full_name || recognitionData.employee?.full_name;
 
     setDetectedFace({
       name: detectedEmployeeName,
