@@ -97,6 +97,16 @@ class UpdatePasswordRequest(BaseModel):
     password: str
 
 
+class RegisterEmployeeRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    contact: str
+    position: str
+    branch_id: str
+    shift_id: str
+
+
 class KioskActivationRequest(BaseModel):
     activation_token: str
 
@@ -419,6 +429,163 @@ def validate_strong_password(password: str):
                 "1 number, and 1 special character."
             ),
         )
+
+
+@app.post("/admin/register-employee")
+async def admin_register_employee(
+    payload: RegisterEmployeeRequest,
+    authorization: str | None = Header(default=None),
+):
+    """
+    Create a branch employee without changing the Branch Supervisor's
+    browser Supabase session.
+
+    This endpoint uses the trusted backend Supabase client for Auth Admin
+    and employee_profiles writes. The service key never leaves the server.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required.")
+
+    token = authorization[7:].strip()
+
+    try:
+        caller_response = supabase.auth.get_user(token)
+        caller = caller_response.user
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    if not caller:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    caller_result = (
+        supabase
+        .from_("employee_profiles")
+        .select("id, role_id, branch_id")
+        .eq("id", caller.id)
+        .single()
+        .execute()
+    )
+    caller_profile = caller_result.data
+
+    if not caller_profile:
+        raise HTTPException(status_code=403, detail="Your employee profile was not found.")
+
+    caller_role_result = (
+        supabase
+        .from_("roles")
+        .select("name")
+        .eq("id", caller_profile["role_id"])
+        .single()
+        .execute()
+    )
+    caller_role = (caller_role_result.data or {}).get("name", "").strip().lower()
+
+    if caller_role != "maintenance":
+        raise HTTPException(
+            status_code=403,
+            detail="Only a Branch Supervisor can register employees.",
+        )
+
+    if str(payload.branch_id).strip() != str(caller_profile.get("branch_id") or "").strip():
+        raise HTTPException(
+            status_code=403,
+            detail="You can only register employees for your assigned branch.",
+        )
+
+    validate_strong_password(payload.password)
+
+    shift_result = (
+        supabase
+        .from_("branch_shifts")
+        .select("id, branch_id, time_in, time_out, grace_minutes, is_active")
+        .eq("id", payload.shift_id)
+        .eq("branch_id", payload.branch_id)
+        .eq("is_active", True)
+        .single()
+        .execute()
+    )
+    selected_shift = shift_result.data
+
+    if not selected_shift:
+        raise HTTPException(
+            status_code=400,
+            detail="Selected shift was not found or is inactive for this branch.",
+        )
+
+    EMPLOYEE_ROLE_ID = "e4dbb928-7f0e-4da9-9eff-d7700d37b25a"
+
+    try:
+        auth_result = supabase.auth.admin.create_user({
+            "email": payload.email,
+            "password": payload.password,
+            "email_confirm": True,
+        })
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to create employee account: " + str(e),
+        )
+
+    new_user = getattr(auth_result, "user", None)
+
+    if not new_user:
+        auth_data = getattr(auth_result, "data", None)
+        new_user = getattr(auth_data, "user", None) if auth_data else None
+
+    if not new_user or not getattr(new_user, "id", None):
+        raise HTTPException(
+            status_code=500,
+            detail="Employee account was created without a user ID.",
+        )
+
+    user_id = str(new_user.id)
+
+    try:
+        profile_result = (
+            supabase
+            .from_("employee_profiles")
+            .insert({
+                "id": user_id,
+                "full_name": payload.name,
+                "email": payload.email,
+                "contact_number": payload.contact,
+                "position": payload.position,
+                "role_id": EMPLOYEE_ROLE_ID,
+                "branch_id": payload.branch_id,
+                "shift_id": payload.shift_id,
+                "clock_in": selected_shift["time_in"],
+                "clock_out": selected_shift["time_out"],
+                "grace_minutes": selected_shift["grace_minutes"],
+            })
+            .execute()
+        )
+
+        if not profile_result.data:
+            raise RuntimeError("Employee profile could not be created.")
+
+    except Exception as e:
+        # Do not leave an orphaned Auth account if the profile insert fails.
+        try:
+            supabase.auth.admin.delete_user(user_id)
+        except Exception:
+            pass
+
+        raise HTTPException(
+            status_code=400,
+            detail="Employee profile could not be created: " + str(e),
+        )
+
+    return {
+        "status": "OK",
+        "user_id": user_id,
+        "employee": {
+            "id": user_id,
+            "full_name": payload.name,
+            "email": payload.email,
+            "branch_id": payload.branch_id,
+            "shift_id": payload.shift_id,
+        },
+    }
 
 
 @app.post("/admin/update-password")
