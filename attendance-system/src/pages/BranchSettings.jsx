@@ -3,12 +3,17 @@ import HRLayout from "../layouts/HRLayout";
 import { supabase } from "../supabaseClient";
 import { logCurrentUserAudit } from "../utils/auditlogger";
 
+const BACKEND_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+
 export default function BranchSettings() {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingBranch, setEditingBranch] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [kiosks, setKiosks] = useState([]);
+  const [setupInfo, setSetupInfo] = useState(null);
+  const [setupLoading, setSetupLoading] = useState(false);
   const [formData, setFormData] = useState({
     branch_name: "",
     branch_code: "",
@@ -18,6 +23,7 @@ export default function BranchSettings() {
 
   useEffect(() => {
     loadBranches();
+    loadKiosks();
   }, []);
 
   async function loadBranches() {
@@ -38,6 +44,97 @@ export default function BranchSettings() {
     setLoading(false);
   }
 
+  async function loadKiosks() {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
+      if (!accessToken) {
+        setKiosks([]);
+        return;
+      }
+
+      const response = await fetch(BACKEND_URL + "/admin/kiosks", {
+        headers: {
+          Authorization: "Bearer " + accessToken,
+        },
+      });
+
+      if (!response.ok) {
+        setKiosks([]);
+        return;
+      }
+
+      const data = await response.json();
+      setKiosks(data.kiosks || []);
+    } catch (error) {
+      console.error("Unable to load kiosk settings:", error);
+      setKiosks([]);
+    }
+  }
+
+  async function generateKioskSetup(branch) {
+    if (setupLoading) return;
+
+    setSetupLoading(true);
+    setSetupInfo(null);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error("Your HR session has expired. Please log in again.");
+      }
+
+      const response = await fetch(
+        BACKEND_URL + "/admin/kiosks/" + branch.id + "/activation",
+        {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer " + accessToken,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail || data.message || "Unable to generate kiosk setup credentials."
+        );
+      }
+
+      const setupUrl =
+        window.location.origin +
+        "/kiosk?setup=" +
+        encodeURIComponent(data.activation_token);
+
+      setSetupInfo({
+        branchName: branch.branch_name,
+        kioskCode: data.kiosk_code,
+        setupUrl,
+        expiresAt: data.expires_at,
+      });
+
+      await loadKiosks();
+    } catch (error) {
+      alert(error.message || "Unable to generate kiosk setup credentials.");
+    } finally {
+      setSetupLoading(false);
+    }
+  }
+
+  async function copySetupLink() {
+    if (!setupInfo?.setupUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(setupInfo.setupUrl);
+      alert("Kiosk setup link copied.");
+    } catch (error) {
+      alert("Copy failed. Select and copy the setup link manually.");
+    }
+  }
   function openAddForm() {
     setEditingBranch(null);
     setFormData({
@@ -125,6 +222,7 @@ export default function BranchSettings() {
       setShowForm(false);
       setEditingBranch(null);
       await loadBranches();
+      await loadKiosks();
     } catch (error) {
       alert(error.message || "Failed to save branch.");
     } finally {
@@ -152,6 +250,7 @@ export default function BranchSettings() {
     });
 
     await loadBranches();
+    await loadKiosks();
   }
 
   return (
@@ -199,6 +298,27 @@ export default function BranchSettings() {
                   {branch.address || "No address provided"}
                 </div>
 
+                {(() => {
+                  const kiosk = kiosks.find((item) => item.branch_id === branch.id);
+
+                  return (
+                    <div style={styles.kioskPanel}>
+                      <div style={styles.kioskMeta}>
+                        <span style={styles.kioskLabel}>Kiosk</span>
+                        <strong>{kiosk?.kiosk_code || "Assigning..."}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => generateKioskSetup(branch)}
+                        disabled={setupLoading || !kiosk}
+                        style={styles.kioskButton}
+                      >
+                        {setupLoading ? "Generating..." : kiosk?.is_paired ? "Re-pair Device" : "Pair Device"}
+                      </button>
+                    </div>
+                  );
+                })()}
+
                 <div className="cibo-branch-actions" style={styles.actions}>
                   <button onClick={() => openEditForm(branch)} style={styles.primary}>
                     Edit
@@ -216,6 +336,28 @@ export default function BranchSettings() {
           )}
         </div>
 
+        {setupInfo && (
+          <div className="cibo-branch-modal-overlay" style={styles.overlay}>
+            <div className="cibo-branch-modal" style={styles.setupModal}>
+              <h2 style={styles.modalTitle}>Kiosk Device Setup</h2>
+              <p style={styles.setupText}>
+                {setupInfo.branchName} — {setupInfo.kioskCode}
+              </p>
+              <p style={styles.setupText}>
+                Open this one-time link on the laptop or Raspberry Pi that will act as this branch kiosk.
+              </p>
+              <div style={styles.setupLinkBox}>{setupInfo.setupUrl}</div>
+              <div style={styles.modalActions}>
+                <button type="button" onClick={copySetupLink} style={styles.primary}>
+                  Copy Setup Link
+                </button>
+                <button type="button" onClick={() => setSetupInfo(null)} style={styles.cancel}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {showForm && (
           <div className="cibo-branch-modal-overlay" style={styles.overlay}>
             <div className="cibo-branch-modal" style={styles.modal}>
@@ -362,6 +504,66 @@ const styles = {
     marginTop: "18px",
     color: "#374151",
     minHeight: "20px",
+  },
+  kioskPanel: {
+    marginTop: "16px",
+    padding: "12px 14px",
+    borderRadius: "10px",
+    background: "#f8fafc",
+    border: "1px solid #e2e8f0",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+  },
+  kioskMeta: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "3px",
+    color: "#334155",
+    fontSize: "13px",
+  },
+  kioskLabel: {
+    color: "#64748b",
+    fontSize: "11px",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    fontWeight: "700",
+  },
+  kioskButton: {
+    background: "#172033",
+    color: "#fff",
+    border: "none",
+    padding: "9px 12px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: "700",
+    whiteSpace: "nowrap",
+  },
+  setupModal: {
+    background: "#fff",
+    width: "650px",
+    maxWidth: "100%",
+    borderRadius: "14px",
+    padding: "25px",
+    boxSizing: "border-box",
+  },
+  setupText: {
+    color: "#475569",
+    fontSize: "14px",
+    lineHeight: "1.5",
+  },
+  setupLinkBox: {
+    marginTop: "14px",
+    padding: "14px",
+    borderRadius: "9px",
+    border: "1px solid #d1d5db",
+    background: "#f8fafc",
+    color: "#172033",
+    fontSize: "13px",
+    lineHeight: "1.5",
+    wordBreak: "break-all",
+    userSelect: "all",
   },
   actions: {
     display: "flex",
