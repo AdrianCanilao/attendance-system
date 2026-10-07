@@ -635,7 +635,7 @@ export default function RegisterEmployee() {
             </div>
           </div>
 
-          <form onSubmit={handleRegister}>
+          <form onSubmit={handleRegister} noValidate>
             <div className="cibo-register-employee-grid" style={styles.grid}>
               <div>
                 <div style={styles.fieldHeader}>
