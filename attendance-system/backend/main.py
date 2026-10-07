@@ -530,7 +530,7 @@ async def admin_register_manager(
     if existing_profile_result.data:
         raise HTTPException(
             status_code=409,
-            detail="An employee with this email is already registered.",
+            detail="A Branch Supervisor with this email is already registered.",
         )
 
     validate_strong_password(payload.password)
@@ -967,6 +967,32 @@ async def admin_register_employee(
             status_code=403,
             detail="You can only register employees for your assigned branch.",
         )
+
+    normalized_email = payload.email.strip().lower()
+
+    existing_profile_result = (
+        supabase
+        .from_("employee_profiles")
+        .select("id")
+        .eq("email", normalized_email)
+        .limit(1)
+        .execute()
+    )
+
+    if existing_profile_result.data:
+        raise HTTPException(
+            status_code=409,
+            detail="An employee with this email is already registered.",
+        )
+
+    if len(payload.name.strip()) > 100:
+        raise HTTPException(status_code=400, detail="Full name must be 100 characters or fewer.")
+    if len(normalized_email) > 254:
+        raise HTTPException(status_code=400, detail="Email must be 254 characters or fewer.")
+    if len(payload.contact) > 11 or not payload.contact.isdigit():
+        raise HTTPException(status_code=400, detail="Contact number must contain digits only and be at most 11 digits.")
+    if len(payload.position.strip()) > 100:
+        raise HTTPException(status_code=400, detail="Position must be 100 characters or fewer.")
 
     validate_strong_password(payload.password)
 
