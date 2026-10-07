@@ -31,6 +31,7 @@ export default function Login() {
     } else {
       localStorage.removeItem("cibo_remember_me");
       localStorage.removeItem("sb-gncvkqqmreufoarakjmj-auth-token");
+      sessionStorage.removeItem("sb-gncvkqqmreufoarakjmj-auth-token");
     }
   };
 
@@ -50,9 +51,13 @@ export default function Login() {
     // Set the persistence choice before Supabase creates the session.
     if (rememberMe) {
       localStorage.setItem("cibo_remember_me", "true");
+      sessionStorage.removeItem("sb-gncvkqqmreufoarakjmj-auth-token");
     } else {
       localStorage.removeItem("cibo_remember_me");
       localStorage.removeItem("sb-gncvkqqmreufoarakjmj-auth-token");
+      sessionStorage.removeItem("sb-gncvkqqmreufoarakjmj-auth-token");
+      localStorage.removeItem("role");
+      sessionStorage.removeItem("role");
     }
 
     setLoading(true);
@@ -121,7 +126,14 @@ export default function Login() {
         description: `${user.email} logged into the system`,
       });
 
-      localStorage.setItem("role", role);
+      // Store the UI role in the same persistence scope as the auth session.
+      if (rememberMe) {
+        localStorage.setItem("role", role);
+        sessionStorage.removeItem("role");
+      } else {
+        sessionStorage.setItem("role", role);
+        localStorage.removeItem("role");
+      }
 
       setTimeout(() => {
         if (role === "maintenance") navigate("/manager/profile");
