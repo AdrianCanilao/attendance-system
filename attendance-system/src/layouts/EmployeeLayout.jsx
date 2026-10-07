@@ -30,8 +30,11 @@ export default function EmployeeLayout({ children }) {
     await supabase.auth.signOut();
 
     localStorage.removeItem("role");
+    sessionStorage.removeItem("role");
     localStorage.removeItem("email");
+    sessionStorage.removeItem("email");
     localStorage.removeItem("user_id");
+    sessionStorage.removeItem("user_id");
 
     navigate("/");
   };
