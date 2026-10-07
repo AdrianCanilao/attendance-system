@@ -22,18 +22,6 @@ export default function EditEmployee() {
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({});
   const [loading, setLoading] = useState(false);
-  const [touched, setTouched] = useState({});
-  const [submitAttempted, setSubmitAttempted] = useState(false);
-
-  const handleBlur = (e) => {
-    setTouched((prev) => ({ ...prev, [e.target.name]: true }));
-  };
-
-  const isFieldInvalid = (name) =>
-    ["name", "email", "contact", "position", "branch_id", "shift_id"].includes(name) &&
-    (touched[name] || submitAttempted) &&
-    !String(form[name] || "").trim();
-
   const getRemainingCharacters = (name, maxLength) =>
     Math.max(0, maxLength - String(form[name] || "").length);
   const [branches, setBranches] = useState([]);
@@ -127,11 +115,7 @@ const fetchEmployees = async () => {
   );
 
   const openModal = async (emp) => {
-    setTouched({});
-    setSubmitAttempted(false);
     setSelected(emp);
-    setTouched({});
-    setSubmitAttempted(false);
     setForm({
   name: emp.full_name,
   email: emp.email,
@@ -152,11 +136,7 @@ setImageSrc(resolvedFaceUrl || null);
   };
 
   const closeModal = () => {
-    setTouched({});
-    setSubmitAttempted(false);
     setSelected(null);
-    setTouched({});
-    setSubmitAttempted(false);
     setImageSrc(null);
     setShowCamera(false);
     setCapturedImages([]);
@@ -936,74 +916,60 @@ const handleDelete = async () => {
               <div style={styles.grid}>
                 <div>
                   <div style={styles.fieldHeader}>
-                    <label style={styles.label}>Full Name <span style={styles.required}>*</span></label>
+                    <label style={styles.label}>Full Name</label>
                     <span style={styles.counter}>Max 100 • {getRemainingCharacters("name", 100)} remaining</span>
                   </div>
                   <input
                     name="name"
                     value={form.name || ""}
                     onChange={handleChange}
-                    onBlur={handleBlur}
                     maxLength={100}
                     pattern="[A-Za-zÀ-ÖØ-öø-ÿ' .-]+"
                     title="Full name must not contain numbers."
-                    required
-                    aria-required="true"
-                    aria-invalid={isFieldInvalid("name")}
-                    style={{ ...styles.input, ...(isFieldInvalid("name") ? styles.inputError : {}) }}
+                    style={styles.input}
                   />
                 </div>
 
                 <div>
                   <div style={styles.fieldHeader}>
-                    <label style={styles.label}>Email <span style={styles.required}>*</span></label>
+                    <label style={styles.label}>Email</label>
                     <span style={styles.counter}>Max 254 • {getRemainingCharacters("email", 254)} remaining</span>
                   </div>
                   <input
                     value={form.email || ""}
                     disabled
                     maxLength={254}
-                    aria-required="true"
-                    aria-invalid={isFieldInvalid("email")}
-                    style={{ ...styles.disabledInput, ...(isFieldInvalid("email") ? styles.inputError : {}) }}
+                    style={styles.disabledInput}
                   />
                 </div>
 
                 <div>
                   <div style={styles.fieldHeader}>
-                    <label style={styles.label}>Contact <span style={styles.required}>*</span></label>
+                    <label style={styles.label}>Contact</label>
                     <span style={styles.counter}>Max 11 • {getRemainingCharacters("contact", 11)} remaining</span>
                   </div>
                   <input
                     name="contact"
                     value={form.contact || ""}
                     onChange={handleChange}
-                    onBlur={handleBlur}
                     inputMode="numeric"
                     pattern="[0-9]*"
                     maxLength={11}
-                    required
-                    aria-required="true"
-                    aria-invalid={isFieldInvalid("contact")}
-                    style={{ ...styles.input, ...(isFieldInvalid("contact") ? styles.inputError : {}) }}
+                    style={styles.input}
                   />
                 </div>
 
                 <div>
                   <div style={styles.fieldHeader}>
-                    <label style={styles.label}>Position <span style={styles.required}>*</span></label>
+                    <label style={styles.label}>Position</label>
                     <span style={styles.counter}>Max 100 • {getRemainingCharacters("position", 100)} remaining</span>
                   </div>
                   <input
                     name="position"
                     value={form.position || ""}
                     onChange={handleChange}
-                    onBlur={handleBlur}
                     maxLength={100}
-                    required
-                    aria-required="true"
-                    aria-invalid={isFieldInvalid("position")}
-                    style={{ ...styles.input, ...(isFieldInvalid("position") ? styles.inputError : {}) }}
+                    style={styles.input}
                   />
                 </div>
 
@@ -1017,7 +983,6 @@ const handleDelete = async () => {
                     type="password"
                     value={form.password || ""}
                     onChange={handleChange}
-                    onBlur={handleBlur}
                     placeholder="Enter new password"
                     maxLength={64}
                     style={styles.input}
@@ -1027,17 +992,13 @@ const handleDelete = async () => {
 
                 <div>
                   <div style={styles.fieldHeader}>
-                    <label style={styles.label}>Branch <span style={styles.required}>*</span></label>
+                    <label style={styles.label}>Branch</label>
                   </div>
                   <select
                     name="branch_id"
                     value={form.branch_id || ""}
                     onChange={handleBranchChange}
-                    onBlur={handleBlur}
-                    style={{ ...styles.input, ...(isFieldInvalid("branch_id") ? styles.inputError : {}) }}
-                    required
-                    aria-required="true"
-                    aria-invalid={isFieldInvalid("branch_id")}
+                    style={styles.input}
                   >
                     <option value="">Select Branch</option>
                     {branches.map((branch) => (
@@ -1050,17 +1011,13 @@ const handleDelete = async () => {
 
                 <div>
                   <div style={styles.fieldHeader}>
-                    <label style={styles.label}>Shift <span style={styles.required}>*</span></label>
+                    <label style={styles.label}>Shift</label>
                   </div>
                   <select
                     name="shift_id"
                     value={form.shift_id || ""}
                     onChange={handleChange}
-                    onBlur={handleBlur}
-                    style={{ ...styles.input, ...(isFieldInvalid("shift_id") ? styles.inputError : {}) }}
-                    required
-                    aria-required="true"
-                    aria-invalid={isFieldInvalid("shift_id")}
+                    style={styles.input}
                   >
                     <option value="">Select Shift</option>
                     {shifts.map((shift) => (
@@ -1210,11 +1167,6 @@ avatarImg: {
     minHeight: "18px",
   },
 
-  required: {
-    color: "#dc2626",
-    fontWeight: "800",
-  },
-
   counter: {
     color: "#98a2b3",
     fontSize: "11px",
@@ -1242,10 +1194,6 @@ avatarImg: {
     display: "block",
   },
 
-  inputError: {
-    border: "1px solid #dc2626",
-    boxShadow: "0 0 0 1px rgba(220,38,38,.08)",
-  },
 
   actions: {
     display: "flex",
