@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { logAudit } from "../utils/auditlogger";
+import { isValidEmail } from "../utils/emailValidation";
 
 export default function Login() {
   const [email, setEmail] =
@@ -20,6 +21,11 @@ export default function Login() {
 
     if (!email || !password) {
       alert("Please enter your email and password.");
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      alert("Please enter a valid email address.");
       return;
     }
 
@@ -245,7 +251,13 @@ export default function Login() {
                 setPassword(e.target.value)
               }
             />
-              <button type="button" onClick={() => setShowPassword((v) => !v)} style={styles.eyeButton} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "◉" : "◌"}</button>
+              <button type="button" onClick={() => setShowPassword((v) => !v)} style={styles.eyeButton} aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"}>
+                {showPassword ? (
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 4.2A10.9 10.9 0 0 1 12 4c5.2 0 8.9 4.3 10 8-.4 1.4-1.2 2.8-2.2 4M6.2 6.2C4.6 7.4 3.5 9.1 2 12c1.1 3.7 4.8 8 10 8 1.5 0 2.8-.3 4-.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" strokeWidth="1.8"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.8"/></svg>
+                )}
+              </button>
             </div>
           </div>
 
@@ -360,7 +372,7 @@ const styles = {
   label: { fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "7px" },
   required: { color: "#dc2626" },
   passwordWrap: { position: "relative" },
-  eyeButton: { position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", border: "none", background: "transparent", color: "#6b7280", cursor: "pointer", fontSize: "18px" },
+  eyeButton: { position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", border: "none", background: "transparent", color: "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "4px" },
   forgotRow: { textAlign: "right", marginTop: "-5px", marginBottom: "10px" },
   forgotButton: { border: "none", background: "transparent", color: "#ea580c", fontWeight: "600", fontSize: "13px", cursor: "pointer", padding: 0 },
 
