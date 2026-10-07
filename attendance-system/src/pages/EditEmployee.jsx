@@ -127,6 +127,8 @@ const fetchEmployees = async () => {
   );
 
   const openModal = async (emp) => {
+    setTouched({});
+    setSubmitAttempted(false);
     setSelected(emp);
     setTouched({});
     setSubmitAttempted(false);
@@ -150,6 +152,8 @@ setImageSrc(resolvedFaceUrl || null);
   };
 
   const closeModal = () => {
+    setTouched({});
+    setSubmitAttempted(false);
     setSelected(null);
     setTouched({});
     setSubmitAttempted(false);
