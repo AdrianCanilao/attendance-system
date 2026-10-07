@@ -41,6 +41,8 @@ export default function RegisterEmployee() {
   });
 
   const [checkingFace, setCheckingFace] = useState(false);
+  const [touched, setTouched] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     fetchBranches();
@@ -105,6 +107,20 @@ export default function RegisterEmployee() {
 
       fetchShifts(value);
     }
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+  };
+
+  const isFieldInvalid = (name) => {
+    const value = form[name];
+    return (touched[name] || submitAttempted) && !String(value || "").trim();
+  };
+
+  const getRemainingCharacters = (name, maxLength) => {
+    return Math.max(0, maxLength - String(form[name] || "").length);
   };
 
   const openCamera = () => {
@@ -241,6 +257,7 @@ export default function RegisterEmployee() {
     // Prevent the browser from navigating/reloading the page
     // when the registration form is submitted.
     e.preventDefault();
+    setSubmitAttempted(true);
 
     const {
       name,
@@ -621,82 +638,123 @@ export default function RegisterEmployee() {
           <form onSubmit={handleRegister}>
             <div className="cibo-register-employee-grid" style={styles.grid}>
               <div>
-                <label style={styles.label}>Full Name</label>
+                <div style={styles.fieldHeader}>
+                  <label style={styles.label}>Full Name <span style={styles.required}>*</span></label>
+                  <span style={styles.counter}>Max 100 • {getRemainingCharacters("name", 100)} remaining</span>
+                </div>
                 <input
                   name="name"
                   placeholder="Enter full name"
                   value={form.name}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   autoComplete="name"
                   maxLength={100}
-                  style={styles.input}
+                  required
+                  aria-required="true"
+                  aria-invalid={isFieldInvalid("name")}
+                  style={{ ...styles.input, ...(isFieldInvalid("name") ? styles.inputError : {}) }}
                 />
               </div>
 
               <div>
-                <label style={styles.label}>Email</label>
+                <div style={styles.fieldHeader}>
+                  <label style={styles.label}>Email <span style={styles.required}>*</span></label>
+                  <span style={styles.counter}>Max 254 • {getRemainingCharacters("email", 254)} remaining</span>
+                </div>
                 <input
                   type="email"
                   name="email"
                   placeholder="Enter email address"
                   value={form.email}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   autoComplete="email"
                   maxLength={254}
-                  style={styles.input}
+                  required
+                  aria-required="true"
+                  aria-invalid={isFieldInvalid("email")}
+                  style={{ ...styles.input, ...(isFieldInvalid("email") ? styles.inputError : {}) }}
                 />
               </div>
 
               <div>
-                <label style={styles.label}>Password</label>
+                <div style={styles.fieldHeader}>
+                  <label style={styles.label}>Password <span style={styles.required}>*</span></label>
+                  <span style={styles.counter}>Max 64 • {getRemainingCharacters("password", 64)} remaining</span>
+                </div>
                 <input
                   type="password"
                   name="password"
                   placeholder="Enter password"
                   value={form.password}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   autoComplete="new-password"
                   minLength={8}
                   maxLength={64}
-                  style={styles.input}
+                  required
+                  aria-required="true"
+                  aria-invalid={isFieldInvalid("password")}
+                  style={{ ...styles.input, ...(isFieldInvalid("password") ? styles.inputError : {}) }}
                 />
               </div>
 
               <div>
-                <label style={styles.label}>Contact Number</label>
+                <div style={styles.fieldHeader}>
+                  <label style={styles.label}>Contact Number <span style={styles.required}>*</span></label>
+                  <span style={styles.counter}>Max 11 • {getRemainingCharacters("contact", 11)} remaining</span>
+                </div>
                 <input
                   type="tel"
                   name="contact"
                   placeholder="Enter contact number"
                   value={form.contact}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   autoComplete="tel"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   maxLength={11}
-                  style={styles.input}
+                  required
+                  aria-required="true"
+                  aria-invalid={isFieldInvalid("contact")}
+                  style={{ ...styles.input, ...(isFieldInvalid("contact") ? styles.inputError : {}) }}
                 />
               </div>
 
               <div>
-                <label style={styles.label}>Position</label>
+                <div style={styles.fieldHeader}>
+                  <label style={styles.label}>Position <span style={styles.required}>*</span></label>
+                  <span style={styles.counter}>Max 100 • {getRemainingCharacters("position", 100)} remaining</span>
+                </div>
                 <input
                   name="position"
                   placeholder="Enter position"
                   value={form.position}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   maxLength={100}
-                  style={styles.input}
+                  required
+                  aria-required="true"
+                  aria-invalid={isFieldInvalid("position")}
+                  style={{ ...styles.input, ...(isFieldInvalid("position") ? styles.inputError : {}) }}
                 />
               </div>
 
               <div>
-                <label style={styles.label}>Branch Assignment</label>
+                <div style={styles.fieldHeader}>
+                  <label style={styles.label}>Branch Assignment <span style={styles.required}>*</span></label>
+                </div>
                 <select
                   name="branch_id"
                   value={form.branch_id}
                   onChange={handleChange}
-                  style={styles.input}
+                  onBlur={handleBlur}
+                  required
+                  aria-required="true"
+                  aria-invalid={isFieldInvalid("branch_id")}
+                  style={{ ...styles.input, ...(isFieldInvalid("branch_id") ? styles.inputError : {}) }}
                 >
                   <option value="">Select Branch</option>
 
@@ -709,14 +767,20 @@ export default function RegisterEmployee() {
               </div>
 
               <div>
-                <label style={styles.label}>Shift Assignment</label>
+                <div style={styles.fieldHeader}>
+                  <label style={styles.label}>Shift Assignment <span style={styles.required}>*</span></label>
+                </div>
 
                 <select
                   name="shift_id"
                   value={form.shift_id}
                   onChange={handleChange}
-                  style={styles.input}
+                  onBlur={handleBlur}
+                  style={{ ...styles.input, ...(isFieldInvalid("shift_id") ? styles.inputError : {}) }}
                   disabled={!form.branch_id}
+                  required
+                  aria-required="true"
+                  aria-invalid={isFieldInvalid("shift_id")}
                 >
                   <option value="">Select Shift</option>
 
@@ -833,6 +897,35 @@ const styles = {
     gap: "20px",
   },
 
+  fieldHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    minHeight: "18px",
+  },
+
+  label: {
+    display: "block",
+    fontSize: "13px",
+    fontWeight: "500",
+    color: "#374151",
+    marginBottom: "6px",
+  },
+
+  required: {
+    color: "#dc2626",
+    fontWeight: "800",
+  },
+
+  counter: {
+    color: "#98a2b3",
+    fontSize: "11px",
+    fontWeight: "500",
+    marginBottom: "6px",
+    whiteSpace: "nowrap",
+  },
+
   input: {
     width: "100%",
     padding: "12px",
@@ -842,6 +935,12 @@ const styles = {
     fontSize: "14px",
     color: "#111827",
     boxSizing: "border-box",
+    outline: "none",
+  },
+
+  inputError: {
+    border: "1px solid #dc2626",
+    boxShadow: "0 0 0 1px rgba(220,38,38,.08)",
   },
 
   primaryBtn: {
