@@ -988,6 +988,8 @@ async def admin_register_employee(
 
     if len(payload.name.strip()) > 100:
         raise HTTPException(status_code=400, detail="Full name must be 100 characters or fewer.")
+    if any(char.isdigit() for char in payload.name):
+        raise HTTPException(status_code=400, detail="Full name must not contain numbers.")
     if len(normalized_email) > 254:
         raise HTTPException(status_code=400, detail="Email must be 254 characters or fewer.")
     if len(payload.contact) > 11 or not payload.contact.isdigit():
