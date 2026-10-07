@@ -43,6 +43,19 @@ export default function RegisterManager() {
   });
 
   const [checkingFace, setCheckingFace] = useState(false);
+  const [touched, setTouched] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  const handleBlur = (e) => {
+    setTouched((prev) => ({ ...prev, [e.target.name]: true }));
+  };
+
+  const isFieldInvalid = (name) =>
+    (touched[name] || submitAttempted) && !String(form[name] || "").trim();
+
+  const getRemainingCharacters = (name, maxLength) =>
+    Math.max(0, maxLength - String(form[name] || "").length);
+
   useEffect(() => {
   fetchBranches();
 }, []);
@@ -77,7 +90,20 @@ const fetchShifts = async (branchId) => {
   const steps = ["Look straight", "Turn LEFT", "Turn RIGHT"];
 
   const handleChange = async (e) => {
-  const { name, value } = e.target;
+  const { name } = e.target;
+  let { value } = e.target;
+
+  if (name === "name") {
+    value = value.replace(/[0-9]/g, "").slice(0, 100);
+  } else if (name === "email") {
+    value = value.slice(0, 254);
+  } else if (name === "password") {
+    value = value.slice(0, 64);
+  } else if (name === "contact") {
+    value = value.replace(/\\D/g, "").slice(0, 11);
+  } else if (name === "position") {
+    value = value.slice(0, 100);
+  }
 
   const updated = {
     ...form,
@@ -89,7 +115,6 @@ const fetchShifts = async (branchId) => {
   if (name === "branch_id") {
     updated.shift_id = "";
     setForm(updated);
-
     fetchShifts(value);
   }
 };
@@ -221,6 +246,7 @@ const captureFace = () => {
   const handleRegister = async (e) => {
     // Prevent the browser from performing a normal form submission.
     e.preventDefault();
+    setSubmitAttempted(true);
     const {
       name,
       email,
@@ -552,125 +578,172 @@ shift_id: "",
             </div>
           </div>
 
-          <form onSubmit={handleRegister}>
+          <form onSubmit={handleRegister} noValidate>
           <div className="cibo-hr-form-grid" style={styles.grid}>
             <div>
-              <label style={styles.label}>Full Name</label>
+              <div style={styles.fieldHeader}>
+                <label style={styles.label}>Full Name <span style={styles.required}>*</span></label>
+                <span style={styles.counter}>Max 100 • {getRemainingCharacters("name", 100)} remaining</span>
+              </div>
               <input
                 name="name"
                 placeholder="Enter full name"
                 value={form.name}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 autoComplete="name"
-                autoComplete="email"
-                autoComplete="new-password"
-                autoComplete="tel"
-                style={styles.input}
+                maxLength={100}
+                pattern="[A-Za-zÀ-ÖØ-öø-ÿ' .-]+"
+                title="Full name must not contain numbers."
+                required
+                aria-required="true"
+                aria-invalid={isFieldInvalid("name")}
+                style={{ ...styles.input, ...(isFieldInvalid("name") ? styles.inputError : {}) }}
               />
             </div>
 
             <div>
-              <label style={styles.label}>Email</label>
+              <div style={styles.fieldHeader}>
+                <label style={styles.label}>Email <span style={styles.required}>*</span></label>
+                <span style={styles.counter}>Max 254 • {getRemainingCharacters("email", 254)} remaining</span>
+              </div>
               <input
                 type="email"
                 name="email"
                 placeholder="Enter email address"
                 value={form.email}
                 onChange={handleChange}
-                autoComplete="username"
-                style={styles.input}
+                onBlur={handleBlur}
+                autoComplete="email"
+                maxLength={254}
+                required
+                aria-required="true"
+                aria-invalid={isFieldInvalid("email")}
+                style={{ ...styles.input, ...(isFieldInvalid("email") ? styles.inputError : {}) }}
               />
             </div>
 
             <div>
-              <label style={styles.label}>Password</label>
+              <div style={styles.fieldHeader}>
+                <label style={styles.label}>Password <span style={styles.required}>*</span></label>
+                <span style={styles.counter}>Max 64 • {getRemainingCharacters("password", 64)} remaining</span>
+              </div>
               <input
                 type="password"
                 name="password"
                 placeholder="Enter password"
                 value={form.password}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 autoComplete="new-password"
-                style={styles.input}
+                minLength={8}
+                maxLength={64}
+                required
+                aria-required="true"
+                aria-invalid={isFieldInvalid("password")}
+                style={{ ...styles.input, ...(isFieldInvalid("password") ? styles.inputError : {}) }}
               />
             </div>
 
             <div>
-              <label style={styles.label}>Contact Number</label>
+              <div style={styles.fieldHeader}>
+                <label style={styles.label}>Contact Number <span style={styles.required}>*</span></label>
+                <span style={styles.counter}>Max 11 • {getRemainingCharacters("contact", 11)} remaining</span>
+              </div>
               <input
+                type="tel"
                 name="contact"
                 placeholder="Enter contact number"
                 value={form.contact}
                 onChange={handleChange}
-                style={styles.input}
+                onBlur={handleBlur}
+                autoComplete="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={11}
+                required
+                aria-required="true"
+                aria-invalid={isFieldInvalid("contact")}
+                style={{ ...styles.input, ...(isFieldInvalid("contact") ? styles.inputError : {}) }}
               />
             </div>
 
             <div>
-  <label style={styles.label}>Position</label>
+              <div style={styles.fieldHeader}>
+                <label style={styles.label}>Position <span style={styles.required}>*</span></label>
+                <span style={styles.counter}>Max 100 • {getRemainingCharacters("position", 100)} remaining</span>
+              </div>
+              <input
+                name="position"
+                placeholder="Enter position"
+                value={form.position}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                maxLength={100}
+                required
+                aria-required="true"
+                aria-invalid={isFieldInvalid("position")}
+                style={{ ...styles.input, ...(isFieldInvalid("position") ? styles.inputError : {}) }}
+              />
+            </div>
 
-  <input
-    name="position"
-    placeholder="Enter position"
-    value={form.position}
-    onChange={handleChange}
-    style={styles.input}
-  />
-</div>
+            <div>
+              <div style={styles.fieldHeader}>
+                <label style={styles.label}>Branch Assignment <span style={styles.required}>*</span></label>
+              </div>
+              <select
+                name="branch_id"
+                value={form.branch_id}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                required
+                aria-required="true"
+                aria-invalid={isFieldInvalid("branch_id")}
+                style={{ ...styles.input, ...(isFieldInvalid("branch_id") ? styles.inputError : {}) }}
+              >
+                <option value="">Select Branch</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.branch_name} ({branch.branch_code})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-<div>
-  <label style={styles.label}>Branch Assignment</label>
-
-  <select
-    name="branch_id"
-    value={form.branch_id}
-    onChange={handleChange}
-    style={styles.input}
-  >
-    <option value="">Select Branch</option>
-
-    {branches.map((branch) => (
-      <option key={branch.id} value={branch.id}>
-        {branch.branch_name} ({branch.branch_code})
-      </option>
-    ))}
-  </select>
-</div>
-<div>
-  <label style={styles.label}>Shift Assignment</label>
-
-  <select
-    name="shift_id"
-    value={form.shift_id}
-    onChange={handleChange}
-    style={styles.input}
-    disabled={!form.branch_id}
-  >
-    <option value="">
-      {form.branch_id
-        ? "Select Shift"
-        : "Select Branch First"}
-    </option>
-
-    {shifts.map((shift) => (
-      <option key={shift.id} value={shift.id}>
-        {`${shift.shift_name} (${new Date(
-          `1970-01-01T${shift.time_in}`
-        ).toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })} - ${new Date(
-          `1970-01-01T${shift.time_out}`
-        ).toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })})`}
-      </option>
-    ))}
-  </select>
-</div>
+            <div>
+              <div style={styles.fieldHeader}>
+                <label style={styles.label}>Shift Assignment <span style={styles.required}>*</span></label>
+              </div>
+              <select
+                name="shift_id"
+                value={form.shift_id}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                style={{ ...styles.input, ...(isFieldInvalid("shift_id") ? styles.inputError : {}) }}
+                disabled={!form.branch_id}
+                required
+                aria-required="true"
+                aria-invalid={isFieldInvalid("shift_id")}
+              >
+                <option value="">
+                  {form.branch_id ? "Select Shift" : "Select Branch First"}
+                </option>
+                {shifts.map((shift) => (
+                  <option key={shift.id} value={shift.id}>
+                    {shift.shift_name} (
+                    {new Date(`1970-01-01T${shift.time_in}`).toLocaleTimeString([], {
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true,
+                    })} - {new Date(`1970-01-01T${shift.time_out}`).toLocaleTimeString([], {
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true,
+                    })})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <button type="submit" disabled={loading} style={styles.primaryBtn}>
@@ -765,6 +838,27 @@ cameraWrapper: {
     gap: "20px",
   },
 
+  fieldHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    minHeight: "18px",
+  },
+
+  required: {
+    color: "#dc2626",
+    fontWeight: "800",
+  },
+
+  counter: {
+    color: "#98a2b3",
+    fontSize: "11px",
+    fontWeight: "500",
+    marginBottom: "6px",
+    whiteSpace: "nowrap",
+  },
+
   input: {
     width: "100%",
     padding: "12px",
@@ -774,6 +868,11 @@ cameraWrapper: {
     fontSize: "14px",
     color: "#111827",
     boxSizing: "border-box",
+  },
+
+  inputError: {
+    border: "1px solid #dc2626",
+    boxShadow: "0 0 0 1px rgba(220,38,38,.08)",
   },
 
   primaryBtn: {
