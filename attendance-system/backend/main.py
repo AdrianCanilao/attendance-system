@@ -254,9 +254,35 @@ async def admin_devices(authorization: str | None = Header(default=None)):
     authenticate_hr_bearer(token)
     rows = (
         supabase.from_("registered_devices")
-        .select("id,device_id,device_name,device_type,user_id,branch_id,status,last_seen,created_at,blocked_at,employee_profiles:user_id(full_name,email),branches:branch_id(branch_name,branch_code)")
+        .select("id,device_id,device_name,device_type,user_id,branch_id,status,last_seen,created_at,blocked_at")
         .order("last_seen", desc=True).execute().data or []
     )
+
+    user_ids = list({row.get("user_id") for row in rows if row.get("user_id")})
+    branch_ids = list({row.get("branch_id") for row in rows if row.get("branch_id")})
+
+    profiles = {}
+    if user_ids:
+        profile_rows = (
+            supabase.from_("employee_profiles")
+            .select("id,full_name,email")
+            .in_("id", user_ids).execute().data or []
+        )
+        profiles = {row["id"]: row for row in profile_rows}
+
+    branches = {}
+    if branch_ids:
+        branch_rows = (
+            supabase.from_("branches")
+            .select("id,branch_name,branch_code")
+            .in_("id", branch_ids).execute().data or []
+        )
+        branches = {row["id"]: row for row in branch_rows}
+
+    for row in rows:
+        row["employee_profiles"] = profiles.get(row.get("user_id"))
+        row["branches"] = branches.get(row.get("branch_id"))
+
     return {"status":"OK", "devices": rows}
 
 
