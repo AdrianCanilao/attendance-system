@@ -15,10 +15,13 @@ export default function ForgotPassword() {
     if(!isValidEmail(value)){ alert("Please enter a valid email address."); return; }
     setLoading(true);
     try{
-      await supabase.auth.resetPasswordForEmail(value,{redirectTo:`${window.location.origin}/reset-password`});
+      const { error } = await supabase.auth.resetPasswordForEmail(value,{redirectTo:`${window.location.origin}/reset-password`});
+      if(error){ alert(error.message || "Unable to send the password reset link."); return; }
+      setSent(true);
+    }catch(error){
+      alert(error?.message || "Unable to send the password reset link.");
     }finally{
       setLoading(false);
-      setSent(true);
     }
   };
 
@@ -53,7 +56,7 @@ const s={
  subtitle:{margin:"0 0 24px",color:"#667085",fontSize:"14px",lineHeight:"1.55"},
  label:{display:"block",marginBottom:"8px",color:"#344054",fontSize:"13px",fontWeight:"650",textAlign:"left"},
  required:{color:"#f97316"},
- input:{width:"100%",height:"50px",boxSizing:"border-box",padding:"0 15px",borderRadius:"11px",border:"1px solid #d9dee7",color:"#172033",fontSize:"14px",outline:"none"},
+ input:{width:"100%",height:"50px",boxSizing:"border-box",padding:"0 15px",borderRadius:"11px",border:"1px solid #d9dee7",background:"#ffffff",color:"#172033",WebkitTextFillColor:"#172033",fontSize:"14px",outline:"none",colorScheme:"light"},
  button:{width:"100%",height:"52px",marginTop:"18px",border:"none",borderRadius:"11px",background:"linear-gradient(135deg,#f97316,#ea580c)",color:"#fff",fontWeight:"750",cursor:"pointer"},
  back:{marginTop:"20px",border:"none",background:"transparent",color:"#ea580c",fontSize:"13px",fontWeight:"650",cursor:"pointer"},
  successIcon:{width:"48px",height:"48px",margin:"0 auto 16px",display:"grid",placeItems:"center",borderRadius:"50%",background:"#fff7ed",color:"#ea580c",fontSize:"24px",fontWeight:"800"}
