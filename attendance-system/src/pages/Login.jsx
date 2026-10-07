@@ -23,7 +23,7 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("cibo_remember_me") === "true");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\\/$/, "");
+  const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
   const getDeviceId = () => {
     let id = localStorage.getItem("cibo_device_id");
