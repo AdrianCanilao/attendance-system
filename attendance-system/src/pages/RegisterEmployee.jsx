@@ -77,8 +77,19 @@ export default function RegisterEmployee() {
 
   const steps = ["Look straight", "Turn LEFT", "Turn RIGHT"];
 
-  const handleChange = async (e) => {
-    const { name, value } = e.target;
+  const handleChange = (e) => {
+    const { name } = e.target;
+    let { value } = e.target;
+
+    if (name === "name" || name === "position") {
+      value = value.slice(0, 100);
+    } else if (name === "email") {
+      value = value.slice(0, 254);
+    } else if (name === "password") {
+      value = value.slice(0, 64);
+    } else if (name === "contact") {
+      value = value.replace(/\D/g, "").slice(0, 11);
+    }
 
     setForm((prev) => ({
       ...prev,
@@ -257,6 +268,26 @@ export default function RegisterEmployee() {
       return;
     }
 
+    if (name.trim().length > 100) {
+      alert("Full name must be 100 characters or fewer.");
+      return;
+    }
+
+    if (email.trim().length > 254) {
+      alert("Email must be 254 characters or fewer.");
+      return;
+    }
+
+    if (!/^\d{1,11}$/.test(contact)) {
+      alert("Contact number must contain digits only and be at most 11 digits.");
+      return;
+    }
+
+    if (position.trim().length > 100) {
+      alert("Position must be 100 characters or fewer.");
+      return;
+    }
+
     if (!isStrongPassword(password)) {
       alert(
         "Password must have:\n\n" +
@@ -273,6 +304,9 @@ export default function RegisterEmployee() {
       alert("Complete all face steps");
       return;
     }
+
+    let accessToken = null;
+    let createdUserId = null;
 
     try {
       setLoading(true);
@@ -291,7 +325,7 @@ export default function RegisterEmployee() {
         );
       }
 
-      const accessToken = currentSessionData?.session?.access_token;
+      accessToken = currentSessionData?.session?.access_token;
 
       if (!accessToken) {
         throw new Error("Your session has expired. Please log in again.");
@@ -338,6 +372,8 @@ export default function RegisterEmployee() {
         throw new Error("Employee account could not be created.");
       }
 
+      createdUserId = userId;
+
       // UPLOAD MULTIPLE IMAGES
       for (let i = 0; i < capturedImages.length; i++) {
         const blob = await fetch(capturedImages[i]).then((r) => r.blob());
@@ -355,8 +391,7 @@ export default function RegisterEmployee() {
         const data = await res.json();
 
         if (data.status !== "Uploaded") {
-          alert("Face upload failed");
-          return;
+          throw new Error(data.message || "Face upload failed. Please recapture the employee's face and try again.");
         }
 
         if (i === 0) {
@@ -411,6 +446,22 @@ export default function RegisterEmployee() {
 
     } catch (err) {
       console.error("Employee registration failed:", err);
+
+      if (createdUserId && accessToken) {
+        try {
+          await fetch(API_URL + "/admin/rollback-employee-registration", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + accessToken,
+            },
+            body: JSON.stringify({ user_id: createdUserId }),
+          });
+        } catch (rollbackError) {
+          console.error("Employee registration rollback failed:", rollbackError);
+        }
+      }
+
       alert(
         "Registration failed:\n\n" +
         (err?.message || "Unknown error. Check the browser console for details.")
@@ -569,6 +620,7 @@ export default function RegisterEmployee() {
                   value={form.name}
                   onChange={handleChange}
                   autoComplete="name"
+                  maxLength={100}
                   style={styles.input}
                 />
               </div>
@@ -582,6 +634,7 @@ export default function RegisterEmployee() {
                   value={form.email}
                   onChange={handleChange}
                   autoComplete="email"
+                  maxLength={254}
                   style={styles.input}
                 />
               </div>
@@ -595,6 +648,8 @@ export default function RegisterEmployee() {
                   value={form.password}
                   onChange={handleChange}
                   autoComplete="new-password"
+                  minLength={8}
+                  maxLength={64}
                   style={styles.input}
                 />
               </div>
@@ -602,11 +657,15 @@ export default function RegisterEmployee() {
               <div>
                 <label style={styles.label}>Contact Number</label>
                 <input
+                  type="tel"
                   name="contact"
                   placeholder="Enter contact number"
                   value={form.contact}
                   onChange={handleChange}
                   autoComplete="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={11}
                   style={styles.input}
                 />
               </div>
@@ -618,6 +677,7 @@ export default function RegisterEmployee() {
                   placeholder="Enter position"
                   value={form.position}
                   onChange={handleChange}
+                  maxLength={100}
                   style={styles.input}
                 />
               </div>
