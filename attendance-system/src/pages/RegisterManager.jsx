@@ -100,7 +100,7 @@ const fetchShifts = async (branchId) => {
   } else if (name === "password") {
     value = value.slice(0, 64);
   } else if (name === "contact") {
-    value = value.replace(/\\D/g, "").slice(0, 11);
+    value = value.replace(/\D/g, "").slice(0, 11);
   } else if (name === "position") {
     value = value.slice(0, 100);
   }
