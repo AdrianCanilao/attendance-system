@@ -504,20 +504,6 @@ const snapshotHistoricalAttendance = async (employeeId, clockIn, clockOut, grace
 };
 
 const handleUpdate = async () => {
-  setSubmitAttempted(true);
-
-  const requiredFields = ["name", "email", "contact", "position", "branch_id", "shift_id"];
-  const missingFields = requiredFields.filter((field) => !String(form[field] || "").trim());
-
-  if (missingFields.length) {
-    setTouched((prev) => ({
-      ...prev,
-      ...Object.fromEntries(missingFields.map((field) => [field, true])),
-    }));
-    alert("Please fill all required fields.");
-    return;
-  }
-
   if (form.name && /[0-9]/.test(form.name)) {
     alert("Full name must not contain numbers.");
     return;
