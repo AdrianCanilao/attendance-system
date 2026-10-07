@@ -15,8 +15,26 @@ export default function ResetPassword(){
  const navigate=useNavigate();
  useEffect(()=>{
    let mounted=true;
-   const check=async()=>{const {data}=await supabase.auth.getSession();if(mounted)setReady(Boolean(data?.session));};
-   const {data:listener}=supabase.auth.onAuthStateChange((event,session)=>{if(event==="PASSWORD_RECOVERY"||session)setReady(true);});
+
+   const cleanupRecoveryUrl=()=>{
+     if(window.location.hash.includes("access_token=") || window.location.hash.includes("type=recovery")){
+       window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+     }
+   };
+
+   const check=async()=>{
+     const {data}=await supabase.auth.getSession();
+     if(mounted)setReady(Boolean(data?.session));
+     cleanupRecoveryUrl();
+   };
+
+   const {data:listener}=supabase.auth.onAuthStateChange((event,session)=>{
+     if(event==="PASSWORD_RECOVERY" || session){
+       setReady(true);
+       cleanupRecoveryUrl();
+     }
+   });
+
    check();
    return()=>{mounted=false;listener?.subscription?.unsubscribe();};
  },[]);
