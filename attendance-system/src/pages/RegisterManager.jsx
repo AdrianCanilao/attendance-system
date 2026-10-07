@@ -414,6 +414,8 @@ shift_id: "",
 
       setCapturedImages([]);
       setImageSrc(null);
+      setTouched({});
+      setSubmitAttempted(false);
 
     } catch (err) {
       console.error("Maintenance Specialist registration failed:", err);
