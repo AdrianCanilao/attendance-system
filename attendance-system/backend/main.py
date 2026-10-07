@@ -1019,7 +1019,7 @@ async def admin_register_employee(
 
     try:
         auth_result = supabase.auth.admin.create_user({
-            "email": payload.email,
+            "email": normalized_email,
             "password": payload.password,
             "email_confirm": True,
         })
@@ -1050,7 +1050,7 @@ async def admin_register_employee(
             .insert({
                 "id": user_id,
                 "full_name": payload.name,
-                "email": payload.email,
+                "email": normalized_email,
                 "contact_number": payload.contact,
                 "position": payload.position,
                 "role_id": EMPLOYEE_ROLE_ID,
