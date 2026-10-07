@@ -11,26 +11,45 @@ const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
 const authStorageKey = `sb-${projectRef}-auth-token`;
 const rememberKey = "cibo_remember_me";
 
+const getRememberMe = () =>
+  localStorage.getItem(rememberKey) === "true";
+
 const authStorage = {
   getItem: (key) => {
-    if (key !== authStorageKey) return localStorage.getItem(key);
-    return localStorage.getItem(rememberKey) === "true"
+    if (key !== authStorageKey) {
+      return localStorage.getItem(key);
+    }
+
+    // Always expose the active session to Supabase.
+    // Remember Me controls WHERE the session is persisted:
+    // localStorage = remembered, sessionStorage = current browser session only.
+    return getRememberMe()
       ? localStorage.getItem(key)
-      : null;
+      : sessionStorage.getItem(key);
   },
+
   setItem: (key, value) => {
     if (key !== authStorageKey) {
       localStorage.setItem(key, value);
       return;
     }
 
-    if (localStorage.getItem(rememberKey) === "true") {
+    if (getRememberMe()) {
       localStorage.setItem(key, value);
+      sessionStorage.removeItem(key);
     } else {
+      sessionStorage.setItem(key, value);
       localStorage.removeItem(key);
     }
   },
+
   removeItem: (key) => {
+    if (key === authStorageKey) {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+      return;
+    }
+
     localStorage.removeItem(key);
   },
 };
