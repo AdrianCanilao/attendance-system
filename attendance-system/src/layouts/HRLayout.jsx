@@ -22,6 +22,7 @@ export default function HRLayout({ children }) {
 
     await supabase.auth.signOut();
     localStorage.removeItem("role");
+    sessionStorage.removeItem("role");
     navigate("/");
   };
 
