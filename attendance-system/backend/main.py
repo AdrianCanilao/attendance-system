@@ -135,6 +135,10 @@ class RegisterEmployeeRequest(BaseModel):
     shift_id: str
 
 
+class RollbackEmployeeRegistrationRequest(BaseModel):
+    user_id: str
+
+
 class KioskActivationRequest(BaseModel):
     activation_token: str
 
@@ -512,6 +516,23 @@ async def admin_register_manager(
             detail="Only HR can register Branch Supervisors.",
         )
 
+    normalized_email = payload.email.strip().lower()
+
+    existing_profile_result = (
+        supabase
+        .from_("employee_profiles")
+        .select("id")
+        .eq("email", normalized_email)
+        .limit(1)
+        .execute()
+    )
+
+    if existing_profile_result.data:
+        raise HTTPException(
+            status_code=409,
+            detail="An employee with this email is already registered.",
+        )
+
     validate_strong_password(payload.password)
 
     shift_result = (
@@ -536,7 +557,7 @@ async def admin_register_manager(
 
     try:
         auth_result = supabase.auth.admin.create_user({
-            "email": payload.email,
+            "email": normalized_email,
             "password": payload.password,
             "email_confirm": True,
         })
@@ -567,7 +588,7 @@ async def admin_register_manager(
             .insert({
                 "id": user_id,
                 "full_name": payload.name,
-                "email": payload.email,
+                "email": normalized_email,
                 "contact_number": payload.contact,
                 "position": payload.position,
                 "role_id": MANAGER_ROLE_ID,
@@ -1036,11 +1057,138 @@ async def admin_register_employee(
         "employee": {
             "id": user_id,
             "full_name": payload.name,
-            "email": payload.email,
+            "email": normalized_email,
             "branch_id": payload.branch_id,
             "shift_id": payload.shift_id,
         },
     }
+
+
+@app.post("/admin/rollback-employee-registration")
+async def admin_rollback_employee_registration(
+    payload: RollbackEmployeeRegistrationRequest,
+    authorization: str | None = Header(default=None),
+):
+    """
+    Compensating rollback for a failed employee registration.
+
+    Employee creation and face-image uploads are separate asynchronous
+    operations, so a later face failure must remove the already-created
+    account/profile instead of leaving an employee that cannot be retried.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required.")
+
+    token = authorization[7:].strip()
+
+    try:
+        caller_response = supabase.auth.get_user(token)
+        caller = caller_response.user
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    if not caller:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    caller_result = (
+        supabase
+        .from_("employee_profiles")
+        .select("id, role_id, branch_id")
+        .eq("id", caller.id)
+        .single()
+        .execute()
+    )
+    caller_profile = caller_result.data
+
+    if not caller_profile:
+        raise HTTPException(status_code=403, detail="Your employee profile was not found.")
+
+    caller_role_result = (
+        supabase
+        .from_("roles")
+        .select("name")
+        .eq("id", caller_profile["role_id"])
+        .single()
+        .execute()
+    )
+    caller_role = (caller_role_result.data or {}).get("name", "").strip().lower()
+
+    if caller_role != "maintenance":
+        raise HTTPException(
+            status_code=403,
+            detail="Only a Branch Supervisor can roll back employee registration.",
+        )
+
+    target_result = (
+        supabase
+        .from_("employee_profiles")
+        .select("id, role_id, branch_id")
+        .eq("id", payload.user_id)
+        .single()
+        .execute()
+    )
+    target = target_result.data
+
+    if not target:
+        # The rollback is already complete.
+        return {"status": "OK", "message": "Employee registration was already rolled back."}
+
+    target_role_result = (
+        supabase
+        .from_("roles")
+        .select("name")
+        .eq("id", target["role_id"])
+        .single()
+        .execute()
+    )
+    target_role = (target_role_result.data or {}).get("name", "").strip().lower()
+
+    if target_role != "employee" or str(target.get("branch_id")) != str(caller_profile.get("branch_id")):
+        raise HTTPException(
+            status_code=403,
+            detail="You are not authorized to roll back this employee.",
+        )
+
+    # Remove registration face images first. The current storage layout is
+    # based on the employee's normalized full name.
+    name_result = (
+        supabase
+        .from_("employee_profiles")
+        .select("full_name")
+        .eq("id", payload.user_id)
+        .single()
+        .execute()
+    )
+    full_name = (name_result.data or {}).get("full_name") or ""
+
+    try:
+        safe_name = normalize_name(full_name)
+        folder = f"employees/{safe_name}"
+        storage_items = supabase.storage.from_("faces").list(folder) or []
+        file_paths = [
+            f"{folder}/{item.get('name')}"
+            for item in storage_items
+            if item.get("name")
+        ]
+        if file_paths:
+            supabase.storage.from_("faces").remove(file_paths)
+    except Exception as storage_error:
+        print(f"Rollback face cleanup warning: {storage_error}", flush=True)
+
+    try:
+        supabase.from_("employee_profiles").delete().eq("id", payload.user_id).execute()
+    except Exception as profile_error:
+        print(f"Rollback profile cleanup warning: {profile_error}", flush=True)
+
+    try:
+        supabase.auth.admin.delete_user(payload.user_id)
+    except Exception as auth_error:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to fully roll back employee account: " + str(auth_error),
+        )
+
+    return {"status": "OK", "message": "Employee registration rolled back successfully."}
 
 
 @app.post("/admin/update-password")
