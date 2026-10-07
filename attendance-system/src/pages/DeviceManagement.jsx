@@ -85,19 +85,10 @@ export default function DeviceManagement() {
         <div style={styles.header}>
           <div>
             <h1 style={styles.title}>Device Management</h1>
-            <p style={styles.subtitle}>
-              Control which devices can use the CIBO system. New normal web devices are allowed automatically; HR can block or whitelist them.
-            </p>
           </div>
           <button onClick={loadDevices} style={styles.refresh}>Refresh</button>
         </div>
 
-        <div style={styles.info}>
-          <strong>How this works:</strong> You do not need to approve every device.
-          A normal device is automatically registered as Allowed. Use Blocked for
-          a device that must not access CIBO, and Whitelisted for a device that you
-          explicitly trust, such as a company kiosk.
-        </div>
 
         {error && <div style={styles.error}>{error}</div>}
 
@@ -133,7 +124,7 @@ export default function DeviceManagement() {
                   <td style={styles.td}>{device.branches?.branch_name || "—"}</td>
                   <td style={styles.td}>{device.device_type || "web"}</td>
                   <td style={styles.td}>
-                    <span style={status === "BLOCKED" ? styles.badgeBlocked : status === "WHITELISTED" ? styles.badgeWhite : styles.badgeAllowed}>{status}</span>
+                    <span style={status === "BLOCKED" ? styles.badgeBlocked : status === "WHITELISTED" ? styles.badgeWhite : styles.badgeAllowed}>{status === "BLOCKED" ? "Denied" : status}</span>
                   </td>
                   <td style={styles.td}>{device.last_seen ? new Date(device.last_seen).toLocaleString() : "—"}</td>
                   <td style={styles.td}>
@@ -162,9 +153,7 @@ const styles = {
   page: { padding: "8px 4px 30px" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "20px", marginBottom: "18px" },
   title: { margin: 0, color: "#111827", fontSize: "25px", fontWeight: 700 },
-  subtitle: { margin: "7px 0 0", color: "#667085", fontSize: "13px", maxWidth: "760px", lineHeight: 1.5 },
   refresh: { border: "none", background: "#f97316", color: "#fff", borderRadius: "8px", padding: "10px 15px", cursor: "pointer", fontWeight: 600 },
-  info: { background: "#fff7ed", border: "1px solid #fed7aa", color: "#9a3412", padding: "13px 15px", borderRadius: "10px", fontSize: "13px", lineHeight: 1.5, marginBottom: "18px" },
   error: { background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", padding: "12px 14px", borderRadius: "9px", marginBottom: "15px", fontSize: "13px" },
   toolbar: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "15px", marginBottom: "12px" },
   search: { width: "340px", maxWidth: "100%", padding: "11px 13px", border: "1px solid #d1d5db", borderRadius: "8px", outline: "none", background: "#fff" },
