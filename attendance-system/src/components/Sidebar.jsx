@@ -11,6 +11,7 @@ import {
   FaUsers,
   FaUser,
   FaHistory,
+  FaLaptop,
 } from "react-icons/fa";
 
 export default function Sidebar({ role }) {
@@ -247,6 +248,17 @@ export default function Sidebar({ role }) {
 {role === "hr" && (
   <>
  
+
+    <button
+      onClick={() => navigate("/hr/devices")}
+      style={{
+        ...styles.link,
+        ...(isActive("/hr/devices") && styles.activeLink),
+      }}
+    >
+      <FaLaptop /> Device Management
+    </button>
+
     <button
       onClick={() => navigate("/hr/audit-trail")}
       style={{
