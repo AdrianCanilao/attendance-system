@@ -3,7 +3,7 @@ import HRLayout from "../layouts/HRLayout";
 import { supabase } from "../supabaseClient";
 import { logCurrentUserAudit } from "../utils/auditlogger";
 
-const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const API_URL = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://cibo-attendance-api.onrender.com" : "http://127.0.0.1:8000")).replace(/\/$/, "");
 
 export default function DeviceManagement() {
   const [devices, setDevices] = useState([]);
