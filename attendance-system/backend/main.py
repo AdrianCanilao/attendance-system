@@ -148,6 +148,152 @@ class KioskDeviceRequest(BaseModel):
     device_token: str
 
 
+class DeviceAccessRequest(BaseModel):
+    device_id: str
+    device_name: str | None = None
+    device_type: str = "web"
+
+
+def authenticate_any_user(token: str):
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    try:
+        response = supabase.auth.get_user(token)
+        user = response.user
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+    return user
+
+
+def get_role_and_branch(user_id: str):
+    profile = (
+        supabase.from_("employee_profiles")
+        .select("id,role_id,branch_id")
+        .eq("id", user_id)
+        .limit(1).execute().data or []
+    )
+    if not profile:
+        return "", None
+    role_rows = (
+        supabase.from_("roles").select("name")
+        .eq("id", profile[0]["role_id"])
+        .limit(1).execute().data or []
+    )
+    return ((role_rows[0].get("name") if role_rows else "") or "").strip().lower(), profile[0].get("branch_id")
+
+
+def get_device_for_user(device_id: str, user_id: str):
+    rows = (
+        supabase.from_("registered_devices")
+        .select("id,device_id,device_name,device_type,user_id,branch_id,status,last_seen,created_at,blocked_at")
+        .eq("device_id", device_id)
+        .limit(1).execute().data or []
+    )
+    return rows[0] if rows else None
+
+
+@app.post("/auth/device-check")
+async def device_check(
+    payload: DeviceAccessRequest,
+    authorization: str | None = Header(default=None),
+):
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    user = authenticate_any_user(token)
+    device_id = (payload.device_id or "").strip()
+    if len(device_id) < 20 or len(device_id) > 100:
+        raise HTTPException(status_code=400, detail="Invalid device identifier.")
+
+    role, branch_id = get_role_and_branch(user.id)
+    device = get_device_for_user(device_id, user.id)
+
+    if device and device.get("status") == "BLOCKED":
+        raise HTTPException(status_code=403, detail="This device has been blocked. Contact HR.")
+
+    now = datetime.now(ZoneInfo("UTC")).isoformat()
+
+    if not device:
+        result = (
+            supabase.from_("registered_devices")
+            .insert({
+                "device_id": device_id,
+                "device_name": (payload.device_name or "Web Browser")[:120],
+                "device_type": (payload.device_type or "web")[:30],
+                "user_id": user.id,
+                "branch_id": branch_id,
+                "status": "ALLOWED",
+                "last_seen": now,
+            }).execute()
+        )
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Unable to register this device.")
+        device = result.data[0]
+    else:
+        # A browser device may be reused by another employee. It remains allowed,
+        # but its current user/branch ownership is updated for HR visibility.
+        update = {
+            "user_id": user.id,
+            "branch_id": branch_id,
+            "device_name": (payload.device_name or device.get("device_name") or "Web Browser")[:120],
+            "last_seen": now,
+        }
+        supabase.from_("registered_devices").update(update).eq("id", device["id"]).execute()
+
+    return {
+        "status": "ALLOWED",
+        "device_id": device_id,
+        "device_status": device.get("status", "ALLOWED"),
+        "role": role,
+    }
+
+
+@app.get("/admin/devices")
+async def admin_devices(authorization: str | None = Header(default=None)):
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    authenticate_hr_bearer(token)
+    rows = (
+        supabase.from_("registered_devices")
+        .select("id,device_id,device_name,device_type,user_id,branch_id,status,last_seen,created_at,blocked_at,employee_profiles:user_id(full_name,email),branches:branch_id(branch_name,branch_code)")
+        .order("last_seen", desc=True).execute().data or []
+    )
+    return {"status":"OK", "devices": rows}
+
+
+@app.patch("/admin/devices/{device_id}")
+async def admin_update_device(
+    device_id: str,
+    payload: dict,
+    authorization: str | None = Header(default=None),
+):
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    caller = authenticate_hr_bearer(token)
+    requested_status = str(payload.get("status", "")).upper().strip()
+    if requested_status not in {"ALLOWED", "WHITELISTED", "BLOCKED"}:
+        raise HTTPException(status_code=400, detail="Invalid device status.")
+
+    existing = (
+        supabase.from_("registered_devices").select("id,device_id")
+        .eq("device_id", device_id).limit(1).execute().data or []
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Device not found.")
+
+    update = {"status": requested_status}
+    if requested_status == "BLOCKED":
+        update["blocked_at"] = datetime.now(ZoneInfo("UTC")).isoformat()
+        update["blocked_by"] = caller.id
+    else:
+        update["blocked_at"] = None
+        update["blocked_by"] = None
+
+    result = supabase.from_("registered_devices").update(update).eq("device_id", device_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Unable to update device status.")
+
+    return {"status":"OK", "device": result.data[0]}
+
+
 KIOSK_DEVICE_HEADER = "X-Kiosk-Token"
 KIOSK_DEVICE_TOKEN_TTL_DAYS = 365
 KIOSK_ACTIVATION_TTL_MINUTES = 30
