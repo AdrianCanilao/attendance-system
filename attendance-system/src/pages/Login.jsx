@@ -23,6 +23,21 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("cibo_remember_me") === "true");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\\/$/, "");
+
+  const getDeviceId = () => {
+    let id = localStorage.getItem("cibo_device_id");
+    if (!id) {
+      id = window.crypto?.randomUUID?.() || ("cibo-" + Date.now() + "-" + Math.random().toString(36).slice(2));
+      localStorage.setItem("cibo_device_id", id);
+    }
+    return id;
+  };
+
+  const getDeviceName = () => {
+    const platform = navigator.userAgentData?.platform || navigator.platform || "Unknown device";
+    return `${platform} Browser`;
+  };
 
   const handleRememberChange = (checked) => {
     setRememberMe(checked);
@@ -76,6 +91,30 @@ export default function Login() {
           description: `Failed login attempt for ${normalizedEmail}`,
         });
         alert("Invalid email or password.");
+        return;
+      }
+
+      const deviceResponse = await fetch(API_URL + "/auth/device-check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + data.session.access_token,
+        },
+        body: JSON.stringify({
+          device_id: getDeviceId(),
+          device_name: getDeviceName(),
+          device_type: "web",
+        }),
+      });
+
+      let deviceData = {};
+      try { deviceData = await deviceResponse.json(); } catch { deviceData = {}; }
+
+      if (!deviceResponse.ok) {
+        await supabase.auth.signOut();
+        localStorage.removeItem("role");
+        sessionStorage.removeItem("role");
+        alert(deviceData.detail || "This device is not authorized to use CIBO.");
         return;
       }
 
