@@ -10,8 +10,8 @@ export default function Login() {
   const [password, setPassword] =
     useState("");
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const navigate = useNavigate();
 
@@ -19,9 +19,20 @@ export default function Login() {
     e.preventDefault();
 
     if (!email || !password) {
-      alert(
-        "Please enter email and password"
-      );
+      alert("Please enter your email and password.");
+      return;
+    }
+
+    if (email.trim().length > 254) {
+      alert("Email cannot exceed 254 characters.");
+      return;
+    }
+    if (password.length < 8) {
+      alert("Password must be at least 8 characters.");
+      return;
+    }
+    if (password.length > 64) {
+      alert("Password cannot exceed 64 characters.");
       return;
     }
 
@@ -49,10 +60,7 @@ export default function Login() {
           description: `Failed login attempt for ${email}${error?.message ? `: ${error.message}` : ""}`,
         });
 
-        alert(
-          error?.message ||
-            "Invalid login credentials"
-        );
+        alert("Invalid email or password.");
         return;
       }
 
@@ -193,11 +201,16 @@ export default function Login() {
 
         <form onSubmit={handleLogin}>
           <div style={styles.group}>
-            <label>Email</label>
+            <label style={styles.label}>Email <span style={styles.required}>*</span></label>
 
             <input
               type="email"
               autoComplete="username"
+              required
+              maxLength={254}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               placeholder="Enter email"
               style={{
                 ...styles.input,
@@ -213,10 +226,14 @@ export default function Login() {
           </div>
 
           <div style={styles.group}>
-            <label>Password</label>
+            <label style={styles.label}>Password <span style={styles.required}>*</span></label>
 
-            <input
-              type="password"
+            <div style={styles.passwordWrap}>
+              <input
+              type={showPassword ? "text" : "password"}
+              required
+              minLength={8}
+              maxLength={64}
               autoComplete="current-password"
               placeholder="Enter password"
               style={{
@@ -225,11 +242,15 @@ export default function Login() {
               }}
               value={password}
               onChange={(e) =>
-                setPassword(
-                  e.target.value
-                )
+                setPassword(e.target.value)
               }
             />
+              <button type="button" onClick={() => setShowPassword((v) => !v)} style={styles.eyeButton} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "◉" : "◌"}</button>
+            </div>
+          </div>
+
+          <div style={styles.forgotRow}>
+            <button type="button" onClick={() => navigate("/forgot-password")} style={styles.forgotButton}>Forgot password?</button>
           </div>
 
           <button
@@ -335,6 +356,13 @@ const styles = {
 
     fontSize: "14px",
   },
+
+  label: { fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "7px" },
+  required: { color: "#dc2626" },
+  passwordWrap: { position: "relative" },
+  eyeButton: { position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", border: "none", background: "transparent", color: "#6b7280", cursor: "pointer", fontSize: "18px" },
+  forgotRow: { textAlign: "right", marginTop: "-5px", marginBottom: "10px" },
+  forgotButton: { border: "none", background: "transparent", color: "#ea580c", fontWeight: "600", fontSize: "13px", cursor: "pointer", padding: 0 },
 
   group: {
     display: "flex",
