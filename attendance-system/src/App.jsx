@@ -25,6 +25,7 @@ import EditManager from "./pages/EditManager";
 import ManagerAttendanceTracker from "./pages/ManagerAttendanceTracker";
 import ShiftSettings from "./pages/ShiftSettings";
 import BranchSettings from "./pages/BranchSettings";
+import DeviceManagement from "./pages/DeviceManagement";
 
 import Kiosk from "./pages/Kiosk";
 
@@ -177,6 +178,16 @@ export default function App() {
           element={
             <ProtectedRoute role="hr">
               <BranchSettings />
+            </ProtectedRoute>
+          }
+        />
+
+
+        <Route
+          path="/hr/devices"
+          element={
+            <ProtectedRoute role="hr">
+              <DeviceManagement />
             </ProtectedRoute>
           }
         />
