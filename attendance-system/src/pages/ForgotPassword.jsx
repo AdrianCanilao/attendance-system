@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { isValidEmail } from "../utils/emailValidation";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -11,6 +12,7 @@ export default function ForgotPassword() {
   const submit = async (e) => {
     e.preventDefault();
     if (!email.trim()) return alert("Please enter your email address.");
+    if (!isValidEmail(email)) return alert("Please enter a valid email address.");
     if (email.trim().length > 254) return alert("Email cannot exceed 254 characters.");
     setLoading(true);
     try {
