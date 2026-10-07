@@ -7,17 +7,38 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY.");
 }
 
-// Remove any auth session that was previously persisted by the old client configuration.
-// The application now keeps the Supabase session in memory only.
-try {
-  localStorage.removeItem("sb-gncvkqqmreufoarakjmj-auth-token");
-} catch {
-  // Ignore storage access errors; Supabase can still operate without persisted storage.
-}
+const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+const authStorageKey = `sb-${projectRef}-auth-token`;
+const rememberKey = "cibo_remember_me";
+
+const authStorage = {
+  getItem: (key) => {
+    if (key !== authStorageKey) return localStorage.getItem(key);
+    return localStorage.getItem(rememberKey) === "true"
+      ? localStorage.getItem(key)
+      : null;
+  },
+  setItem: (key, value) => {
+    if (key !== authStorageKey) {
+      localStorage.setItem(key, value);
+      return;
+    }
+
+    if (localStorage.getItem(rememberKey) === "true") {
+      localStorage.setItem(key, value);
+    } else {
+      localStorage.removeItem(key);
+    }
+  },
+  removeItem: (key) => {
+    localStorage.removeItem(key);
+  },
+};
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    persistSession: false,
+    persistSession: true,
+    storage: authStorage,
     autoRefreshToken: true,
     detectSessionInUrl: true,
   },
