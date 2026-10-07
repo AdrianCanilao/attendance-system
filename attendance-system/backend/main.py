@@ -137,6 +137,7 @@ class RegisterEmployeeRequest(BaseModel):
 
 class RollbackEmployeeRegistrationRequest(BaseModel):
     user_id: str
+    file_paths: List[str] = []
 
 
 class KioskActivationRequest(BaseModel):
@@ -1175,26 +1176,13 @@ async def admin_rollback_employee_registration(
             detail="You are not authorized to roll back this employee.",
         )
 
-    # Remove registration face images first. The current storage layout is
-    # based on the employee's normalized full name.
-    name_result = (
-        supabase
-        .from_("employee_profiles")
-        .select("full_name")
-        .eq("id", payload.user_id)
-        .single()
-        .execute()
-    )
-    full_name = (name_result.data or {}).get("full_name") or ""
-
+    # Remove only the face files created during this registration attempt.
+    # This avoids deleting another employee's files when names are identical.
     try:
-        safe_name = normalize_name(full_name)
-        folder = f"employees/{safe_name}"
-        storage_items = supabase.storage.from_("faces").list(folder) or []
         file_paths = [
-            f"{folder}/{item.get('name')}"
-            for item in storage_items
-            if item.get("name")
+            str(path).strip()
+            for path in (payload.file_paths or [])
+            if str(path).strip()
         ]
         if file_paths:
             supabase.storage.from_("faces").remove(file_paths)
