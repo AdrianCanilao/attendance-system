@@ -23,6 +23,7 @@ export default function ManagerLayout({ children }) {
 
     await supabase.auth.signOut();
     localStorage.removeItem("role");
+    sessionStorage.removeItem("role");
     navigate("/");
   };
 
