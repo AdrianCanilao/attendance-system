@@ -20,8 +20,19 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem("cibo_remember_me") === "true");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleRememberChange = (checked) => {
+    setRememberMe(checked);
+    if (checked) {
+      localStorage.setItem("cibo_remember_me", "true");
+    } else {
+      localStorage.removeItem("cibo_remember_me");
+      localStorage.removeItem("sb-gncvkqqmreufoarakjmj-auth-token");
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -34,6 +45,14 @@ export default function Login() {
     if (!isValidEmail(normalizedEmail)) {
       alert("Please enter a valid email address.");
       return;
+    }
+
+    // Set the persistence choice before Supabase creates the session.
+    if (rememberMe) {
+      localStorage.setItem("cibo_remember_me", "true");
+    } else {
+      localStorage.removeItem("cibo_remember_me");
+      localStorage.removeItem("sb-gncvkqqmreufoarakjmj-auth-token");
     }
 
     setLoading(true);
@@ -187,6 +206,17 @@ export default function Login() {
             >
               Forgot password?
             </button>
+
+            <label style={styles.rememberLabel}>
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => handleRememberChange(e.target.checked)}
+                disabled={loading}
+                style={styles.rememberCheckbox}
+              />
+              <span>Remember me</span>
+            </label>
           </div>
 
           <button type="submit" style={styles.button} disabled={loading}>
@@ -217,8 +247,10 @@ const styles = {
   input: { width: "100%", height: "50px", boxSizing: "border-box", padding: "0 15px", borderRadius: "11px", border: "1px solid #d9dee7", background: "#fff", color: "#172033", fontSize: "14px", outline: "none" },
   passwordWrapper: { position: "relative", width: "100%" },
   eyeButton: { position: "absolute", top: "50%", right: "7px", transform: "translateY(-50%)", width: "38px", height: "38px", display: "grid", placeItems: "center", border: "none", borderRadius: "8px", background: "transparent", color: "#667085", cursor: "pointer", padding: 0 },
-  forgotRow: { display: "flex", justifyContent: "flex-end", marginBottom: "20px" },
+  forgotRow: { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "18px", marginBottom: "20px" },
   forgotButton: { border: "none", background: "transparent", color: "#ea580c", fontSize: "13px", fontWeight: "650", cursor: "pointer", padding: "3px 0" },
+  rememberLabel: { display: "inline-flex", alignItems: "center", gap: "6px", color: "#667085", fontSize: "13px", fontWeight: "600", cursor: "pointer", whiteSpace: "nowrap" },
+  rememberCheckbox: { width: "14px", height: "14px", margin: 0, accentColor: "#f97316", cursor: "pointer" },
   button: { width: "100%", height: "52px", display: "flex", alignItems: "center", justifyContent: "center", gap: "9px", border: "none", borderRadius: "11px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", fontSize: "14px", fontWeight: "750", cursor: "pointer", boxShadow: "0 8px 18px rgba(234,88,12,.24)" },
   buttonArrow: { fontSize: "18px", lineHeight: 1, marginTop: "-1px" },
   footer: { margin: "20px 0 0", textAlign: "center", color: "#98a2b3", fontSize: "11px" },
