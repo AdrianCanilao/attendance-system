@@ -198,6 +198,23 @@ export default function Login() {
           </div>
 
           <div style={styles.forgotRow}>
+            <label style={styles.rememberLabel}>
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => handleRememberChange(e.target.checked)}
+                disabled={loading}
+                style={{
+                  ...styles.rememberCheckbox,
+                  backgroundColor: rememberMe ? "#f97316" : "#ffffff",
+                  backgroundImage: rememberMe
+                    ? "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.2 8.3 6.5 11.5 12.8 4.8' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")"
+                    : "none",
+                }}
+              />
+              <span>Remember me</span>
+            </label>
+
             <button
               type="button"
               onClick={() => navigate("/forgot-password")}
@@ -206,17 +223,6 @@ export default function Login() {
             >
               Forgot password?
             </button>
-
-            <label style={styles.rememberLabel}>
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => handleRememberChange(e.target.checked)}
-                disabled={loading}
-                style={styles.rememberCheckbox}
-              />
-              <span>Remember me</span>
-            </label>
           </div>
 
           <button type="submit" style={styles.button} disabled={loading}>
@@ -247,10 +253,10 @@ const styles = {
   input: { width: "100%", height: "50px", boxSizing: "border-box", padding: "0 15px", borderRadius: "11px", border: "1px solid #d9dee7", background: "#fff", color: "#172033", fontSize: "14px", outline: "none" },
   passwordWrapper: { position: "relative", width: "100%" },
   eyeButton: { position: "absolute", top: "50%", right: "7px", transform: "translateY(-50%)", width: "38px", height: "38px", display: "grid", placeItems: "center", border: "none", borderRadius: "8px", background: "transparent", color: "#667085", cursor: "pointer", padding: 0 },
-  forgotRow: { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "18px", marginBottom: "20px" },
+  forgotRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "18px", marginBottom: "20px", width: "100%" },
   forgotButton: { border: "none", background: "transparent", color: "#ea580c", fontSize: "13px", fontWeight: "650", cursor: "pointer", padding: "3px 0" },
   rememberLabel: { display: "inline-flex", alignItems: "center", gap: "6px", color: "#667085", fontSize: "13px", fontWeight: "600", cursor: "pointer", whiteSpace: "nowrap" },
-  rememberCheckbox: { width: "14px", height: "14px", margin: 0, accentColor: "#f97316", cursor: "pointer" },
+  rememberCheckbox: { width: "14px", height: "14px", margin: 0, padding: 0, appearance: "none", WebkitAppearance: "none", border: "1px solid #cbd5e1", borderRadius: "3px", backgroundColor: "#fff", backgroundRepeat: "no-repeat", backgroundPosition: "center", backgroundSize: "12px 12px", cursor: "pointer", flexShrink: 0 },
   button: { width: "100%", height: "52px", display: "flex", alignItems: "center", justifyContent: "center", gap: "9px", border: "none", borderRadius: "11px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", fontSize: "14px", fontWeight: "750", cursor: "pointer", boxShadow: "0 8px 18px rgba(234,88,12,.24)" },
   buttonArrow: { fontSize: "18px", lineHeight: 1, marginTop: "-1px" },
   footer: { margin: "20px 0 0", textAlign: "center", color: "#98a2b3", fontSize: "11px" },
