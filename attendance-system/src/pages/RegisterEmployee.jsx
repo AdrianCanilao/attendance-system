@@ -83,7 +83,9 @@ export default function RegisterEmployee() {
     const { name } = e.target;
     let { value } = e.target;
 
-    if (name === "name" || name === "position") {
+    if (name === "name") {
+      value = value.replace(/[0-9]/g, "").slice(0, 100);
+    } else if (name === "position") {
       value = value.slice(0, 100);
     } else if (name === "email") {
       value = value.slice(0, 254);
@@ -650,6 +652,8 @@ export default function RegisterEmployee() {
                   onBlur={handleBlur}
                   autoComplete="name"
                   maxLength={100}
+                  pattern="[A-Za-zÀ-ÖØ-öø-ÿ' .-]+"
+                  title="Full name must not contain numbers."
                   required
                   aria-required="true"
                   aria-invalid={isFieldInvalid("name")}
