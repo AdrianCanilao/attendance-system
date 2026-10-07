@@ -2,76 +2,67 @@ import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { logAudit } from "../utils/auditlogger";
+import { isValidEmail } from "../utils/emailValidation";
+
+function EyeIcon({ hidden = false }) {
+  return hidden ? (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 3l18 18" /><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" /><path d="M9.9 5.1A10.9 10.9 0 0 1 12 4.9c5 0 8.7 3.7 10 7.1a11.8 11.8 0 0 1-3.1 4.5" /><path d="M6.2 6.2C4.4 7.5 3.2 9.4 2 12c1.3 3.4 5 7.1 10 7.1 1 0 2-.1 2.9-.4" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="2.7" />
+    </svg>
+  );
+}
 
 export default function Login() {
-  const [email, setEmail] =
-    useState("");
-
-  const [password, setPassword] =
-    useState("");
-
-  const [loading, setLoading] =
-    useState(false);
-
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    const normalizedEmail = email.trim();
 
-    if (!email || !password) {
-      alert(
-        "Please enter email and password"
-      );
+    if (!normalizedEmail || !password) {
+      alert("Please enter your email and password.");
+      return;
+    }
+    if (!isValidEmail(normalizedEmail)) {
+      alert("Please enter a valid email address.");
       return;
     }
 
     setLoading(true);
-
     try {
-      const { data, error } =
-        await supabase.auth.signInWithPassword(
-          {
-            email,
-            password,
-          }
-        );
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
 
-      if (
-        error ||
-        !data ||
-        !data.user
-      ) {
+      if (error || !data?.user) {
         await logAudit({
           user_id: null,
-          user_name: email,
+          user_name: normalizedEmail,
           role: "unknown",
           action: "LOGIN_FAILED",
-          description: `Failed login attempt for ${email}${error?.message ? `: ${error.message}` : ""}`,
+          description: `Failed login attempt for ${normalizedEmail}`,
         });
-
-        alert(
-          error?.message ||
-            "Invalid login credentials"
-        );
+        alert("Invalid email or password.");
         return;
       }
 
       const user = data.user;
-
-      // 👤 GET PROFILE
-      const {
-        data: profile,
-        error: profileError,
-      } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from("employee_profiles")
         .select("id, role_id")
         .eq("id", user.id)
         .single();
 
-      if (
-        profileError ||
-        !profile
-      ) {
+      if (profileError || !profile) {
         await logAudit({
           user_id: user.id,
           user_name: user.email,
@@ -79,27 +70,17 @@ export default function Login() {
           action: "LOGIN_PROFILE_FAILED",
           description: `Login succeeded but employee profile was not found for ${user.email}`,
         });
-
-        alert(
-          "Profile not found. Contact admin."
-        );
+        alert("Profile not found. Contact admin.");
         return;
       }
 
-      // 🧑‍💼 GET ROLE
-      const {
-        data: roleData,
-        error: roleError,
-      } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from("roles")
         .select("name")
         .eq("id", profile.role_id)
         .single();
 
-      if (
-        roleError ||
-        !roleData
-      ) {
+      if (roleError || !roleData) {
         await logAudit({
           user_id: user.id,
           user_name: user.email,
@@ -107,65 +88,30 @@ export default function Login() {
           action: "LOGIN_ROLE_FAILED",
           description: `Login succeeded but role could not be resolved for ${user.email}`,
         });
-
         alert("Role not found.");
         return;
       }
 
-      const role =
-        roleData.name
-          .trim()
-          .toLowerCase();
+      const role = roleData.name.trim().toLowerCase();
 
       await logAudit({
         user_id: user.id,
         user_name: user.email,
-        role: role,
+        role,
         action: "LOGIN",
-        description:
-          `${user.email} logged into the system`,
+        description: `${user.email} logged into the system`,
       });
 
-      // ✅ SAVE ROLE
-      localStorage.setItem(
-        "role",
-        role
-      );
+      localStorage.setItem("role", role);
 
-
-      // ✅ WAIT BEFORE NAVIGATION
       setTimeout(() => {
-        if (role === "maintenance") {
-          navigate(
-            "/manager/profile"
-          );
-        }
-
-        else if (role === "hr") {
-          navigate(
-            "/hr/profile"
-          );
-        }
-
-        else if (
-          role === "employee"
-        ) {
-          navigate(
-            "/employee/profile"
-          );
-        }
-
-        else {
-          alert(
-            "Unknown role detected"
-          );
-        }
+        if (role === "maintenance") navigate("/manager/profile");
+        else if (role === "hr") navigate("/hr/profile");
+        else if (role === "employee") navigate("/employee/profile");
+        else alert("Unknown role detected.");
       }, 150);
-
-    } catch (err) {
-      alert(
-        "Something went wrong"
-      );
+    } catch {
+      alert("Unable to sign in right now. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -173,216 +119,107 @@ export default function Login() {
 
   return (
     <div className="cibo-login" style={styles.container}>
-      <div style={styles.overlay}></div>
+      <div style={styles.overlay} />
+      <main className="cibo-login-card" style={styles.card}>
+        <div style={styles.brandArea}>
+          <img src="/logo.png" alt="CIBO" style={styles.logo} />
+          <div style={styles.brandAccent}>CIBO ATTENDANCE</div>
+        </div>
 
-      <div className="cibo-login-card" style={styles.card}>
-        <img
-          src="/logo.png"
-          alt="logo"
-          style={styles.logo}
-        />
+        <div style={styles.headingArea}>
+          <h1 style={styles.title}>Welcome back</h1>
+          <p style={styles.subtitle}>Sign in to access your attendance portal</p>
+        </div>
 
-        <h1 style={styles.title}>
-          Attendance <br />
-          System
-        </h1>
-
-        <p style={styles.subtitle}>
-          Company Login Portal
-        </p>
-
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} noValidate>
           <div style={styles.group}>
-            <label>Email</label>
-
+            <label htmlFor="login-email" style={styles.label}>
+              Email <span style={styles.required}>*</span>
+            </label>
             <input
+              id="login-email"
               type="email"
               autoComplete="username"
-              placeholder="Enter email"
-              style={{
-                ...styles.input,
-                color: "#000",
-              }}
+              inputMode="email"
+              maxLength={254}
+              placeholder="Enter your email"
               value={email}
-              onChange={(e) =>
-                setEmail(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setEmail(e.target.value)}
+              style={styles.input}
+              disabled={loading}
             />
           </div>
 
-          <div style={styles.group}>
-            <label>Password</label>
-
-            <input
-              type="password"
-              autoComplete="current-password"
-              placeholder="Enter password"
-              style={{
-                ...styles.input,
-                color: "#000",
-              }}
-              value={password}
-              onChange={(e) =>
-                setPassword(
-                  e.target.value
-                )
-              }
-            />
+          <div style={{ ...styles.group, marginBottom: "10px" }}>
+            <label htmlFor="login-password" style={styles.label}>
+              Password <span style={styles.required}>*</span>
+            </label>
+            <div style={styles.passwordWrapper}>
+              <input
+                id="login-password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                minLength={8}
+                maxLength={64}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ ...styles.input, paddingRight: "50px" }}
+                disabled={loading}
+              />
+              <button
+                type="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword((value) => !value)}
+                style={styles.eyeButton}
+              >
+                <EyeIcon hidden={showPassword} />
+              </button>
+            </div>
           </div>
 
-          <button
-            type="submit"
-            style={styles.button}
-            disabled={loading}
-          >
-            {loading
-              ? "Logging in..."
-              : "Login"}
+          <div style={styles.forgotRow}>
+            <button
+              type="button"
+              onClick={() => navigate("/forgot-password")}
+              style={styles.forgotButton}
+              disabled={loading}
+            >
+              Forgot password?
+            </button>
+          </div>
+
+          <button type="submit" style={styles.button} disabled={loading}>
+            <span>{loading ? "Signing in..." : "Sign in"}</span>
+            {!loading && <span style={styles.buttonArrow} aria-hidden="true">→</span>}
           </button>
         </form>
-      </div>
+
+        <p style={styles.footer}>CIBO Attendance Management System</p>
+      </main>
     </div>
   );
 }
 
 const styles = {
-  container: {
-    height: "100vh",
-    width: "100vw",
-    overflow: "hidden",
-
-    backgroundImage:
-      "url('/bg.jpg')",
-
-    backgroundSize: "cover",
-
-    backgroundPosition:
-      "center",
-
-    backgroundRepeat:
-      "no-repeat",
-
-    display: "flex",
-
-    justifyContent:
-      "center",
-
-    alignItems:
-      "center",
-
-    position: "relative",
-  },
-
-  overlay: {
-    position: "absolute",
-
-    inset: 0,
-
-    background:
-      "rgba(0,0,0,0.6)",
-  },
-
-  card: {
-    position: "relative",
-
-    zIndex: 1,
-
-    width: "360px",
-
-    background: "#ffffff",
-
-    padding: "35px",
-
-    borderRadius: "10px",
-
-    boxShadow:
-      "0 10px 30px rgba(0,0,0,0.3)",
-
-    borderTop:
-      "5px solid #f97316",
-
-    textAlign: "center",
-  },
-
-  logo: {
-    width: "70px",
-
-    height: "70px",
-
-    objectFit: "contain",
-
-    marginBottom: "10px",
-  },
-
-  title: {
-    marginBottom: "10px",
-
-    color: "#f97316",
-
-    fontWeight: "bold",
-
-    fontSize: "26px",
-
-    lineHeight: "1.2",
-  },
-
-  subtitle: {
-    marginBottom: "20px",
-
-    color: "#777",
-
-    fontSize: "14px",
-  },
-
-  group: {
-    display: "flex",
-
-    flexDirection:
-      "column",
-
-    marginBottom: "15px",
-
-    textAlign: "left",
-  },
-
-  input: {
-    padding: "10px",
-
-    borderRadius: "5px",
-
-    border:
-      "1px solid #ddd",
-
-    marginTop: "5px",
-
-    background: "#ffffff",
-
-    color: "#000",
-
-    fontSize: "14px",
-  },
-
-  button: {
-    width: "100%",
-
-    padding: "12px",
-
-    background: "#f97316",
-
-    color: "#fff",
-
-    border: "none",
-
-    borderRadius: "5px",
-
-    fontWeight: "bold",
-
-    cursor: "pointer",
-
-    marginTop: "10px",
-
-    transition: "0.3s",
-  },
+  container: { minHeight: "100dvh", width: "100%", overflow: "auto", backgroundImage: "url('/bg.jpg')", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat", display: "flex", justifyContent: "center", alignItems: "center", position: "relative", padding: "28px 20px", boxSizing: "border-box" },
+  overlay: { position: "fixed", inset: 0, background: "linear-gradient(135deg, rgba(15,23,42,.72), rgba(15,23,42,.52) 45%, rgba(249,115,22,.18))" },
+  card: { position: "relative", zIndex: 1, width: "min(430px, 100%)", boxSizing: "border-box", background: "rgba(255,255,255,.97)", padding: "38px 42px 30px", borderRadius: "24px", boxShadow: "0 28px 70px rgba(0,0,0,.28), 0 8px 24px rgba(0,0,0,.12)", border: "1px solid rgba(255,255,255,.7)" },
+  brandArea: { display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "22px" },
+  logo: { width: "72px", height: "72px", objectFit: "contain", borderRadius: "14px", marginBottom: "10px" },
+  brandAccent: { color: "#f97316", fontSize: "11px", fontWeight: "800", letterSpacing: "2px" },
+  headingArea: { textAlign: "center", marginBottom: "28px" },
+  title: { margin: "0 0 8px", color: "#172033", fontSize: "30px", lineHeight: "1.15", letterSpacing: "-0.7px", fontWeight: "750" },
+  subtitle: { margin: 0, color: "#667085", fontSize: "14px", lineHeight: "1.5" },
+  group: { display: "flex", flexDirection: "column", marginBottom: "19px", textAlign: "left" },
+  label: { marginBottom: "8px", color: "#344054", fontSize: "13px", fontWeight: "650" },
+  required: { color: "#f97316", fontWeight: "800" },
+  input: { width: "100%", height: "50px", boxSizing: "border-box", padding: "0 15px", borderRadius: "11px", border: "1px solid #d9dee7", background: "#fff", color: "#172033", fontSize: "14px", outline: "none" },
+  passwordWrapper: { position: "relative", width: "100%" },
+  eyeButton: { position: "absolute", top: "50%", right: "7px", transform: "translateY(-50%)", width: "38px", height: "38px", display: "grid", placeItems: "center", border: "none", borderRadius: "8px", background: "transparent", color: "#667085", cursor: "pointer", padding: 0 },
+  forgotRow: { display: "flex", justifyContent: "flex-end", marginBottom: "20px" },
+  forgotButton: { border: "none", background: "transparent", color: "#ea580c", fontSize: "13px", fontWeight: "650", cursor: "pointer", padding: "3px 0" },
+  button: { width: "100%", height: "52px", display: "flex", alignItems: "center", justifyContent: "center", gap: "9px", border: "none", borderRadius: "11px", background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", fontSize: "14px", fontWeight: "750", cursor: "pointer", boxShadow: "0 8px 18px rgba(234,88,12,.24)" },
+  buttonArrow: { fontSize: "18px", lineHeight: 1, marginTop: "-1px" },
+  footer: { margin: "20px 0 0", textAlign: "center", color: "#98a2b3", fontSize: "11px" },
 };
