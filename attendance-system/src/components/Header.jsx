@@ -1,6 +1,7 @@
 export default function Header() {
   const logout = () => {
     localStorage.removeItem("role");
+    sessionStorage.removeItem("role");
     window.location.href = "/";
   };
 
