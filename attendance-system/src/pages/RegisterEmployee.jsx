@@ -307,6 +307,7 @@ export default function RegisterEmployee() {
 
     let accessToken = null;
     let createdUserId = null;
+    const uploadedFaceFiles = [];
 
     try {
       setLoading(true);
@@ -394,6 +395,10 @@ export default function RegisterEmployee() {
           throw new Error(data.message || "Face upload failed. Please recapture the employee's face and try again.");
         }
 
+        if (data.file) {
+          uploadedFaceFiles.push(data.file);
+        }
+
         if (i === 0) {
           await supabase
             .from("employee_profiles")
@@ -455,7 +460,10 @@ export default function RegisterEmployee() {
               "Content-Type": "application/json",
               Authorization: "Bearer " + accessToken,
             },
-            body: JSON.stringify({ user_id: createdUserId }),
+            body: JSON.stringify({
+              user_id: createdUserId,
+              file_paths: uploadedFaceFiles,
+            }),
           });
         } catch (rollbackError) {
           console.error("Employee registration rollback failed:", rollbackError);
