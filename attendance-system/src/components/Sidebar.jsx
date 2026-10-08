@@ -331,6 +331,17 @@ export default function Sidebar({ role }) {
 >
   Shift Settings
 </button>
+
+                <button
+  onClick={() => navigate("/hr/data-migration")}
+  style={{
+    ...styles.sublink,
+    ...(isActive("/hr/data-migration") &&
+      styles.activeSubLink),
+  }}
+>
+  Data Migration
+</button>
       </div>
     </div>
   </>
@@ -389,6 +400,9 @@ export default function Sidebar({ role }) {
               </button>
               <button onClick={() => { setOpenEmployee(false); navigate("/hr/shift-settings"); }}>
                 Shift Settings
+              </button>
+              <button onClick={() => { setOpenEmployee(false); navigate("/hr/data-migration"); }}>
+                Data Migration
               </button>
             </div>
           )}
