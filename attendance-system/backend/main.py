@@ -1,4 +1,6 @@
 import os
+import csv
+import io
 import hashlib
 import secrets
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -319,6 +321,417 @@ async def admin_update_device(
 
     return {"status":"OK", "device": result.data[0]}
 
+
+
+@app.post("/admin/migrate-csv")
+async def admin_migrate_csv(
+    file: UploadFile = File(...),
+    dataset: str = Form(...),
+    dry_run: str = Form("true"),
+    authorization: str | None = Header(default=None),
+):
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    caller = authenticate_hr_bearer(token)
+
+    dataset = (dataset or "").strip().lower()
+    if dataset not in {"attendance", "leave", "employees"}:
+        raise HTTPException(status_code=400, detail="Unsupported CSV data type.")
+
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported.")
+
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="CSV file is too large. Maximum size is 10 MB.")
+
+    try:
+        text_content = contents.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="CSV must be UTF-8 encoded.")
+
+    try:
+        reader = csv.DictReader(io.StringIO(text_content))
+        raw_headers = reader.fieldnames or []
+        headers = [str(h or "").strip().lower() for h in raw_headers]
+        if not headers:
+            raise HTTPException(status_code=400, detail="CSV has no header row.")
+
+        rows = []
+        for row_number, raw_row in enumerate(reader, start=2):
+            normalized = {}
+            for key, value in raw_row.items():
+                normalized[str(key or "").strip().lower()] = str(value or "").strip()
+            if any(normalized.values()):
+                normalized["_row"] = row_number
+                rows.append(normalized)
+    except csv.Error as error:
+        raise HTTPException(status_code=400, detail=f"Invalid CSV format: {error}")
+
+    required_columns = {
+        "attendance": {"email", "date", "time_in", "time_out", "status"},
+        "leave": {"email", "leave_type", "start_date", "end_date", "status"},
+        "employees": {"email", "full_name", "contact", "position", "branch_code"},
+    }[dataset]
+
+    missing = sorted(required_columns - set(headers))
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing required column(s): " + ", ".join(missing)
+        )
+
+    def parse_date(value, field_name):
+        value = (value or "").strip()
+        if not value:
+            raise ValueError(f"{field_name} is required")
+        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%d/%m/%Y"):
+            try:
+                return datetime.strptime(value, fmt).date()
+            except ValueError:
+                pass
+        raise ValueError(f"{field_name} must use YYYY-MM-DD or a supported date format")
+
+    def parse_time(value, field_name):
+        value = (value or "").strip()
+        if not value:
+            return None
+        for fmt in ("%H:%M:%S", "%H:%M", "%I:%M %p", "%I:%M:%S %p"):
+            try:
+                return datetime.strptime(value, fmt).time()
+            except ValueError:
+                pass
+        raise ValueError(f"{field_name} has an invalid time format")
+
+    def parse_int(value, field_name):
+        value = (value or "").strip()
+        if not value:
+            return 0
+        try:
+            number = int(float(value))
+            if number < 0:
+                raise ValueError
+            return number
+        except ValueError:
+            raise ValueError(f"{field_name} must be a non-negative number")
+
+    errors = []
+    valid_rows = []
+
+    # Cache lookups so a large CSV does not repeatedly query the same records.
+    profile_cache = {}
+    branch_cache = {}
+    shift_cache = {}
+
+    async def noop():
+        return None
+
+    for row in rows:
+        row_number = row["_row"]
+        try:
+            email = row.get("email", "").strip().lower()
+            if not email:
+                raise ValueError("email is required")
+
+            profile_rows = profile_cache.get(email)
+            if profile_rows is None:
+                profile_rows = (
+                    supabase.from_("employee_profiles")
+                    .select("id,full_name,email,branch_id,shift_id,contact,position")
+                    .eq("email", email)
+                    .limit(1)
+                    .execute().data or []
+                )
+                profile_cache[email] = profile_rows
+
+            if not profile_rows:
+                raise ValueError(
+                    f"No employee account/profile found for {email}. "
+                    "Register or link the employee before importing history."
+                )
+
+            profile = profile_rows[0]
+
+            if dataset == "attendance":
+                log_date = parse_date(row.get("date"), "date")
+                time_in = parse_time(row.get("time_in"), "time_in")
+                time_out = parse_time(row.get("time_out"), "time_out")
+
+                if not time_in and not time_out:
+                    raise ValueError("At least time_in or time_out is required")
+
+                late_minutes = parse_int(row.get("late_minutes"), "late_minutes")
+                overtime_minutes = parse_int(row.get("overtime_minutes"), "overtime_minutes")
+
+                status = row.get("status", "").strip() or "Present"
+                if status not in {"Present", "Late", "Absent", "On Leave"}:
+                    raise ValueError("status must be Present, Late, Absent, or On Leave")
+
+                valid_rows.append({
+                    "_row": row_number,
+                    "kind": "attendance",
+                    "employee_id": profile["id"],
+                    "log_date": log_date.isoformat(),
+                    "time_in": time_in.isoformat() if time_in else None,
+                    "time_out": time_out.isoformat() if time_out else None,
+                    "late_minutes": late_minutes,
+                    "overtime_minutes": overtime_minutes,
+                    "status": status,
+                    "scheduled_time_in": row.get("scheduled_time_in") or None,
+                    "scheduled_time_out": row.get("scheduled_time_out") or None,
+                    "time_in_location": row.get("time_in_location") or None,
+                    "time_out_location": row.get("time_out_location") or None,
+                })
+
+            elif dataset == "leave":
+                start_date = parse_date(row.get("start_date"), "start_date")
+                end_date = parse_date(row.get("end_date"), "end_date")
+
+                if end_date < start_date:
+                    raise ValueError("end_date cannot be earlier than start_date")
+
+                leave_type = row.get("leave_type", "").strip()
+                if not leave_type:
+                    raise ValueError("leave_type is required")
+
+                status = row.get("status", "").strip() or "Approved"
+                if status not in {"Pending", "Approved", "Rejected", "Cancelled"}:
+                    raise ValueError("status must be Pending, Approved, Rejected, or Cancelled")
+
+                valid_rows.append({
+                    "_row": row_number,
+                    "kind": "leave",
+                    "employee_id": profile["id"],
+                    "leave_type": leave_type,
+                    "start_date": start_date.isoformat(),
+                    "end_date": end_date.isoformat(),
+                    "reason": row.get("reason") or "Migrated from previous CIBO system",
+                    "status": status,
+                })
+
+            else:
+                branch_code = row.get("branch_code", "").strip()
+                branch_rows = branch_cache.get(branch_code)
+                if branch_rows is None:
+                    branch_rows = (
+                        supabase.from_("branches")
+                        .select("id,branch_name,branch_code")
+                        .eq("branch_code", branch_code)
+                        .limit(1)
+                        .execute().data or []
+                    )
+                    branch_cache[branch_code] = branch_rows
+
+                if not branch_rows:
+                    raise ValueError(f"Branch code '{branch_code}' was not found")
+
+                shift_id = profile.get("shift_id")
+                shift_name = row.get("shift_name", "").strip()
+
+                if shift_name:
+                    shift_key = f"{branch_rows[0]['id']}::{shift_name.lower()}"
+                    shift_rows = shift_cache.get(shift_key)
+                    if shift_rows is None:
+                        shift_rows = (
+                            supabase.from_("branch_shifts")
+                            .select("id,shift_name,branch_id")
+                            .eq("branch_id", branch_rows[0]["id"])
+                            .ilike("shift_name", shift_name)
+                            .limit(1)
+                            .execute().data or []
+                        )
+                        shift_cache[shift_key] = shift_rows
+
+                    if not shift_rows:
+                        raise ValueError(
+                            f"Shift '{shift_name}' was not found for branch '{branch_code}'"
+                        )
+                    shift_id = shift_rows[0]["id"]
+
+                valid_rows.append({
+                    "_row": row_number,
+                    "kind": "employees",
+                    "employee_id": profile["id"],
+                    "full_name": row.get("full_name", "").strip(),
+                    "contact": row.get("contact", "").strip(),
+                    "position": row.get("position", "").strip(),
+                    "branch_id": branch_rows[0]["id"],
+                    "shift_id": shift_id,
+                })
+
+        except ValueError as error:
+            errors.append({
+                "row": row_number,
+                "message": str(error),
+            })
+        except Exception as error:
+            errors.append({
+                "row": row_number,
+                "message": "Unable to validate this record: " + str(error),
+            })
+
+    # Prevent duplicate attendance/leave rows inside the same CSV.
+    seen = set()
+    deduped_valid_rows = []
+    duplicate_count = 0
+
+    for item in valid_rows:
+        if item["kind"] == "attendance":
+            key = (
+                "attendance",
+                str(item["employee_id"]),
+                item["log_date"],
+            )
+        elif item["kind"] == "leave":
+            key = (
+                "leave",
+                str(item["employee_id"]),
+                item["leave_type"],
+                item["start_date"],
+                item["end_date"],
+            )
+        else:
+            key = ("employees", str(item["employee_id"]))
+
+        if key in seen:
+            duplicate_count += 1
+            errors.append({
+                "row": item["_row"],
+                "message": "Duplicate record in CSV.",
+            })
+            continue
+
+        seen.add(key)
+        deduped_valid_rows.append(item)
+
+    valid_rows = deduped_valid_rows
+
+    if str(dry_run).lower() == "true":
+        return {
+            "status": "VALID",
+            "message": "CSV validation completed. No database changes were made.",
+            "total": len(rows),
+            "valid": len(valid_rows),
+            "imported": 0,
+            "skipped": len(rows) - len(valid_rows),
+            "errors": errors,
+        }
+
+    imported = 0
+    skipped = len(rows) - len(valid_rows)
+
+    for item in valid_rows:
+        try:
+            if item["kind"] == "attendance":
+                existing = (
+                    supabase.from_("attendance_logs")
+                    .select("id")
+                    .eq("employee_id", item["employee_id"])
+                    .eq("log_date", item["log_date"])
+                    .limit(1)
+                    .execute().data or []
+                )
+
+                if existing:
+                    skipped += 1
+                    errors.append({
+                        "row": item["_row"],
+                        "message": "Attendance record already exists for this employee and date.",
+                    })
+                    continue
+
+                payload = {
+                    "employee_id": item["employee_id"],
+                    "log_date": item["log_date"],
+                    "time_in": item["time_in"],
+                    "time_out": item["time_out"],
+                    "scheduled_time_in": item["scheduled_time_in"],
+                    "scheduled_time_out": item["scheduled_time_out"],
+                    "late_minutes": item["late_minutes"],
+                    "overtime_minutes": item["overtime_minutes"],
+                    "status": item["status"],
+                    "time_in_location": item["time_in_location"],
+                    "time_out_location": item["time_out_location"],
+                }
+                response = supabase.from_("attendance_logs").insert(payload).execute()
+                if not response.data:
+                    raise ValueError("Database did not return an inserted attendance record.")
+
+            elif item["kind"] == "leave":
+                existing = (
+                    supabase.from_("leave_requests")
+                    .select("id")
+                    .eq("employee_id", item["employee_id"])
+                    .eq("leave_type", item["leave_type"])
+                    .eq("start_date", item["start_date"])
+                    .eq("end_date", item["end_date"])
+                    .limit(1)
+                    .execute().data or []
+                )
+
+                if existing:
+                    skipped += 1
+                    errors.append({
+                        "row": item["_row"],
+                        "message": "Leave record already exists.",
+                    })
+                    continue
+
+                response = supabase.from_("leave_requests").insert({
+                    "employee_id": item["employee_id"],
+                    "leave_type": item["leave_type"],
+                    "start_date": item["start_date"],
+                    "end_date": item["end_date"],
+                    "reason": item["reason"],
+                    "status": item["status"],
+                }).execute()
+
+                if not response.data:
+                    raise ValueError("Database did not return an inserted leave record.")
+
+            else:
+                response = supabase.from_("employee_profiles").update({
+                    "full_name": item["full_name"],
+                    "contact": item["contact"],
+                    "position": item["position"],
+                    "branch_id": item["branch_id"],
+                    "shift_id": item["shift_id"],
+                }).eq("id", item["employee_id"]).execute()
+
+                if not response.data:
+                    raise ValueError("Employee profile could not be updated.")
+
+            imported += 1
+
+        except Exception as error:
+            skipped += 1
+            errors.append({
+                "row": item["_row"],
+                "message": "Import failed: " + str(error),
+            })
+
+    try:
+        supabase.from_("audit_logs").insert({
+            "user_id": caller.id,
+            "user_name": caller.email,
+            "role": "hr",
+            "action": "DATA_MIGRATION_IMPORTED" if imported else "DATA_MIGRATION_VALIDATED",
+            "description": (
+                f"CSV {dataset} migration: {imported} imported, "
+                f"{skipped} skipped, {len(errors)} validation/import issue(s)."
+            ),
+        }).execute()
+    except Exception as audit_error:
+        print("CSV MIGRATION AUDIT LOG FAILED:", str(audit_error), flush=True)
+
+    return {
+        "status": "IMPORTED",
+        "message": "CSV migration completed.",
+        "total": len(rows),
+        "valid": len(valid_rows),
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors,
+    }
 
 KIOSK_DEVICE_HEADER = "X-Kiosk-Token"
 KIOSK_DEVICE_TOKEN_TTL_DAYS = 365
