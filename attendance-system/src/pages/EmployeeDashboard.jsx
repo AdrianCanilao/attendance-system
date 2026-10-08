@@ -22,6 +22,7 @@ export default function EmployeeDashboard({
 const webcamRef = useRef(null);
 
 const [showCamera, setShowCamera] = useState(false);
+const [verificationAlert, setVerificationAlert] = useState(null);
 const [scanAction, setScanAction] = useState(null);
 const [faceStatus, setFaceStatus] = useState({
   valid: false,
@@ -470,6 +471,8 @@ const handleScan = async (
 ) => {
   if (loading) return;
 
+  setVerificationAlert(null);
+
   if (!identityVerified) {
     alert("Please verify your identity first.");
     return;
@@ -692,9 +695,11 @@ let scheduledClockOut = profile.clock_out
           description: `Web ${actionType.toUpperCase()} rejected: ${result.status || "Face not recognized"}`,
         });
 
-        alert(
-          result.message || "Face not recognized"
-        );
+        setVerificationAlert({
+          title: "Please check",
+          message:
+            result.message || "Face not recognized",
+        });
 
         return;
       }
@@ -1124,6 +1129,29 @@ let scheduledClockOut = profile.clock_out
           </div>
         </div>
       )}
+
+      {verificationAlert && (
+        <div style={styles.verificationAlertOverlay}>
+          <div style={styles.verificationAlertModal}>
+            <div style={styles.verificationAlertIcon}>×</div>
+
+            <h2 style={styles.verificationAlertTitle}>
+              {verificationAlert.title}
+            </h2>
+
+            <p style={styles.verificationAlertMessage}>
+              {verificationAlert.message}
+            </p>
+
+            <button
+              style={styles.verificationAlertButton}
+              onClick={() => setVerificationAlert(null)}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -1216,6 +1244,66 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     zIndex: 9999,
+  },
+
+  verificationAlertOverlay: {
+    position: "fixed",
+    inset: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10001,
+    pointerEvents: "auto",
+  },
+
+  verificationAlertModal: {
+    background: "#fff",
+    width: "min(700px, 88vw)",
+    maxWidth: "700px",
+    padding: "48px 40px 40px",
+    borderRadius: "8px",
+    textAlign: "center",
+    boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+    border: "1px solid #e5e7eb",
+  },
+
+  verificationAlertIcon: {
+    width: "96px",
+    height: "96px",
+    margin: "0 auto 28px",
+    border: "5px solid #ef6b6b",
+    borderRadius: "50%",
+    color: "#ef6b6b",
+    fontSize: "72px",
+    fontWeight: "300",
+    lineHeight: "82px",
+    fontFamily: "Arial, sans-serif",
+  },
+
+  verificationAlertTitle: {
+    margin: "0 0 22px",
+    fontSize: "38px",
+    fontWeight: "600",
+    color: "#222",
+  },
+
+  verificationAlertMessage: {
+    margin: "0 auto 34px",
+    fontSize: "21px",
+    lineHeight: "1.5",
+    color: "#374151",
+  },
+
+  verificationAlertButton: {
+    minWidth: "82px",
+    padding: "12px 24px",
+    background: "#f97316",
+    color: "#fff",
+    border: "none",
+    borderRadius: "6px",
+    fontSize: "18px",
+    fontWeight: "600",
+    cursor: "pointer",
   },
 
   cameraModal: {
