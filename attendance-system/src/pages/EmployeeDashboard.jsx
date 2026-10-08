@@ -39,6 +39,8 @@ const [identityVerified, setIdentityVerified] = useState(false);
 const [recognizingFace, setRecognizingFace] = useState(false);
 const [recognitionStatus, setRecognitionStatus] = useState("scanning");
 const recognizingFaceRef = useRef(false);
+const noFaceCountRef = useRef(0);
+const unknownFaceCountRef = useRef(0);
 const [deviceLocation, setDeviceLocation] = useState(null);
   const [locationChecking, setLocationChecking] = useState(false);
   const location = window.location.pathname;
@@ -227,11 +229,26 @@ const validateLiveFace = async () => {
     setFaceStatus(validationData);
 
     if (!validationData.valid) {
+      noFaceCountRef.current += 1;
+      unknownFaceCountRef.current = 0;
+
       setDetectedFace(null);
       setIdentityVerified(false);
-      setRecognitionStatus("no-face");
+
+      // Keep the status stable instead of switching every 700ms.
+      // Show "No face detected" only after several consecutive misses.
+      if (noFaceCountRef.current >= 3) {
+        setRecognitionStatus("no-face");
+      } else {
+        setRecognitionStatus((current) =>
+          current === "no-face" ? current : "scanning"
+        );
+      }
+
       return;
     }
+
+    noFaceCountRef.current = 0;
 
     const recognitionResponse = await fetch(
       INSIGHTFACE_URL + "/recognize-live-face",
@@ -253,6 +270,8 @@ const validateLiveFace = async () => {
     if (
       recognitionData.status !== "Match"
     ) {
+      unknownFaceCountRef.current += 1;
+
       setDetectedFace({
         name: null,
         distance: recognitionData.distance,
@@ -260,15 +279,23 @@ const validateLiveFace = async () => {
       });
 
       setIdentityVerified(false);
-      setRecognitionStatus("unknown");
 
-      setFaceStatus({
-        ...validationData,
-        message: "Unknown face.",
-      });
+      // Do not flash "Face not registered" from a single uncertain frame.
+      if (unknownFaceCountRef.current >= 2) {
+        setRecognitionStatus("unknown");
+
+        setFaceStatus({
+          ...validationData,
+          message: "Face not recognized.",
+        });
+      } else {
+        setRecognitionStatus("scanning");
+      }
 
       return;
     }
+
+    unknownFaceCountRef.current = 0;
 
     const detectedEmployeeId =
       recognitionData.employee_id || recognitionData.employee?.id;
@@ -328,6 +355,9 @@ useEffect(() => {
   if (!showCamera || identityVerified) {
     return;
   }
+
+  noFaceCountRef.current = 0;
+  unknownFaceCountRef.current = 0;
 
   const interval = setInterval(() => {
     validateLiveFace();
@@ -1017,22 +1047,50 @@ let scheduledClockOut = profile.clock_out
                 ...styles.faceStatus,
                 color: identityVerified
                   ? "#16a34a"
-                  : detectedFace?.name
+                  : recognitionStatus === "unknown" ||
+                    recognitionStatus === "mismatch"
+                  ? "#dc2626"
+                  : recognitionStatus === "no-face"
+                  ? "#d97706"
+                  : recognitionStatus === "error"
                   ? "#dc2626"
                   : "#6b7280",
               }}
             >
+              <span style={styles.faceStatusIndicator}>
+                {identityVerified
+                  ? "●"
+                  : recognitionStatus === "no-face"
+                  ? "●"
+                  : recognitionStatus === "unknown" ||
+                    recognitionStatus === "mismatch" ||
+                    recognitionStatus === "error"
+                  ? "●"
+                  : "●"}
+              </span>
               {recognitionStatus === "recognized"
-                ? "Face recognized."
+                ? "Face recognized"
                 : recognitionStatus === "unknown"
-                ? "Face not registered."
+                ? "Face not recognized"
                 : recognitionStatus === "mismatch"
-                ? "Face recognized, but it does not match the logged-in employee."
+                ? "Face does not match this account"
                 : recognitionStatus === "no-face"
-                ? "No face detected. Please look at the camera."
+                ? "No face detected"
                 : recognitionStatus === "error"
-                ? "Face recognition unavailable."
-                : "Scanning for your face..."}
+                ? "Face recognition unavailable"
+                : "Looking for your face…"}
+            </div>
+
+            <div style={styles.faceStatusHint}>
+              {recognitionStatus === "no-face"
+                ? "Move your face into the camera view."
+                : recognitionStatus === "unknown"
+                ? "Keep your face visible and look at the camera."
+                : recognitionStatus === "error"
+                ? "Please wait a moment and try again."
+                : identityVerified
+                ? "Identity verified. You can scan your attendance."
+                : "Keep your face centered and look at the camera."}
             </div>
 
             <div
@@ -1352,9 +1410,29 @@ const styles = {
   faceStatus: {
     marginTop: "15px",
     fontWeight: "600",
-    height: "24px",
-    lineHeight: "24px",
+    minHeight: "28px",
+    lineHeight: "28px",
     overflow: "hidden",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    transition: "opacity 0.2s ease",
+  },
+
+  faceStatusIndicator: {
+    fontSize: "10px",
+    lineHeight: "1",
+    color: "currentColor",
+  },
+
+  faceStatusHint: {
+    minHeight: "22px",
+    marginTop: "2px",
+    fontSize: "13px",
+    lineHeight: "22px",
+    color: "#9ca3af",
+    textAlign: "center",
   },
 
   blinkText: {
