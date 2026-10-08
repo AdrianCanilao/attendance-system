@@ -1042,32 +1042,25 @@ let scheduledClockOut = profile.clock_out
               </div>
             </div>
 
+            <div style={styles.faceStatusHeader}>
+              <span style={styles.faceStatusIndicator}>●</span>
+              Scanning face...
+            </div>
+
             <div
               style={{
-                ...styles.faceStatus,
+                ...styles.faceStatusResult,
                 color: identityVerified
                   ? "#16a34a"
                   : recognitionStatus === "unknown" ||
-                    recognitionStatus === "mismatch"
+                    recognitionStatus === "mismatch" ||
+                    recognitionStatus === "error"
                   ? "#dc2626"
                   : recognitionStatus === "no-face"
                   ? "#d97706"
-                  : recognitionStatus === "error"
-                  ? "#dc2626"
                   : "#6b7280",
               }}
             >
-              <span style={styles.faceStatusIndicator}>
-                {identityVerified
-                  ? "●"
-                  : recognitionStatus === "no-face"
-                  ? "●"
-                  : recognitionStatus === "unknown" ||
-                    recognitionStatus === "mismatch" ||
-                    recognitionStatus === "error"
-                  ? "●"
-                  : "●"}
-              </span>
               {recognitionStatus === "recognized"
                 ? "Face recognized"
                 : recognitionStatus === "unknown"
@@ -1078,7 +1071,7 @@ let scheduledClockOut = profile.clock_out
                 ? "No face detected"
                 : recognitionStatus === "error"
                 ? "Face recognition unavailable"
-                : "Looking for your face…"}
+                : "Waiting for face..."}
             </div>
 
             <div style={styles.faceStatusHint}>
@@ -1407,23 +1400,32 @@ const styles = {
     boxSizing: "border-box",
   },
 
-  faceStatus: {
+  faceStatusHeader: {
     marginTop: "15px",
-    fontWeight: "600",
     minHeight: "28px",
+    fontWeight: "600",
+    fontSize: "20px",
     lineHeight: "28px",
-    overflow: "hidden",
+    color: "#6b7280",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: "8px",
-    transition: "opacity 0.2s ease",
   },
 
   faceStatusIndicator: {
     fontSize: "10px",
     lineHeight: "1",
-    color: "currentColor",
+    color: "#6b7280",
+  },
+
+  faceStatusResult: {
+    minHeight: "28px",
+    marginTop: "2px",
+    fontWeight: "600",
+    fontSize: "18px",
+    lineHeight: "28px",
+    textAlign: "center",
   },
 
   faceStatusHint: {
