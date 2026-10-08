@@ -26,6 +26,7 @@ import ManagerAttendanceTracker from "./pages/ManagerAttendanceTracker";
 import ShiftSettings from "./pages/ShiftSettings";
 import BranchSettings from "./pages/BranchSettings";
 import DeviceManagement from "./pages/DeviceManagement";
+import DataMigration from "./pages/DataMigration";
 
 import Kiosk from "./pages/Kiosk";
 
@@ -197,6 +198,15 @@ export default function App() {
           element={
             <ProtectedRoute role="hr">
               <ShiftSettings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/hr/data-migration"
+          element={
+            <ProtectedRoute role="hr">
+              <DataMigration />
             </ProtectedRoute>
           }
         />
