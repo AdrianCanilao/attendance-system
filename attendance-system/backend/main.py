@@ -51,6 +51,11 @@ ALLOWED_ORIGINS = list(dict.fromkeys(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    # Keep known production/local origins explicit, while also allowing
+    # the current CIBO custom domain and its Vercel deployment aliases.
+    # This prevents browser preflight requests from being rejected when
+    # the frontend is opened through a valid CIBO deployment URL.
+    allow_origin_regex=r"^https://([a-z0-9-]+\.)?ciboattendance\.com$|^https://([a-z0-9-]+\.)*vercel\.app$|^http://localhost(:\\d+)?$|^http://127\.0\.0\.1(:\\d+)?$",
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
