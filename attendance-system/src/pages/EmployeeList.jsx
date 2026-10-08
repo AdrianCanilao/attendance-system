@@ -3,8 +3,6 @@ import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
 import { getStorageAccessUrl } from "../utils/storageAccess";
 import { FaSearch } from "react-icons/fa";
-import * as XLSX from "xlsx-js-style";
-import { saveAs } from "file-saver";
 
 export default function EmployeeList() {
   const [employees, setEmployees] = useState([]);
@@ -505,7 +503,7 @@ export default function EmployeeList() {
 
           <button
             type="button"
-            onClick={exportExcel}
+            onClick={exportCSV}
             disabled={isExporting}
             style={{
               ...styles.exportButton,
