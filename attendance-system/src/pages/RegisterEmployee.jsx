@@ -6,6 +6,7 @@ import { logAudit } from "../utils/auditlogger";
 import { isValidEmail } from "../utils/emailValidation";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const INSIGHTFACE_URL = (import.meta.env.VITE_INSIGHTFACE_URL || "http://127.0.0.1:8002").replace(/\/$/, "");
 
 const isStrongPassword = (password) =>
   password.length >= 8 &&
