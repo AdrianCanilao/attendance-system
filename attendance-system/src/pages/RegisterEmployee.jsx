@@ -501,7 +501,7 @@ export default function RegisterEmployee() {
 
   return (
     <ManagerLayout>
-      <div className="cibo-register-employee-page" style={styles.wrapper}>
+      <div className="cibo-page-root cibo-register-employee-page" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>Register Employee</h1>
 
         <div className="cibo-register-employee-card" style={styles.card}>
