@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
-import ManagerLayout from "../layouts/ManagerLayout";
+import HRLayout from "../layouts/HRLayout";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -213,7 +213,7 @@ export default function DataMigration() {
   };
 
   return (
-    <ManagerLayout>
+    <HRLayout>
       <div className="cibo-page-root" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.title}>Data Migration</h1>
         <p style={styles.subtitle}>
@@ -378,7 +378,7 @@ export default function DataMigration() {
           )}
         </div>
       </div>
-    </ManagerLayout>
+    </HRLayout>
   );
 }
 
