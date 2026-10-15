@@ -142,7 +142,7 @@ const styles = {
     fontSize: "28px",
     fontWeight: "700",
     color: "#111827",
-    marginBottom: "12px",
+    margin: "0 0 12px",
   },
 
   subtitle: {
