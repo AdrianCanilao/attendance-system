@@ -1934,3 +1934,13 @@ code {
     flex-direction: column !important;
   }
 }
+
+
+/* Shared styling for main page titles across HR, Maintenance Specialist, and employee pages. */
+.cibo-page-title {
+  font-size: 25px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  margin: 0 0 12px !important;
+  padding: 0 !important;
+}
