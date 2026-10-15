@@ -136,13 +136,27 @@ const [deviceLocation, setDeviceLocation] = useState(null);
   day: "2-digit",
 }).format(new Date());
 
-    const { data: attendance } =
-      await supabase
-        .from("attendance_logs")
-        .select("*")
-        .eq("employee_id", employeeId)
-        .eq("log_date", today)
-        .maybeSingle();
+    const yesterday = new Date(`${today}T12:00:00+08:00`);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const yesterdayKey = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Manila",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(yesterday);
+
+    const { data: recentAttendance } = await supabase
+      .from("attendance_logs")
+      .select("*")
+      .eq("employee_id", employeeId)
+      .gte("log_date", yesterdayKey)
+      .lte("log_date", today)
+      .order("log_date", { ascending: false });
+
+    const attendance =
+      (recentAttendance || []).find((record) => record.log_date === today) ||
+      (recentAttendance || []).find((record) => record.log_date === yesterdayKey && record.time_in && !record.time_out) ||
+      null;
 
     const { data: leave } =
       await supabase
@@ -574,17 +588,69 @@ let scheduledClockOut = profile.clock_out
   ? new Date(`${today}T${profile.clock_out}`)
   : null;
 
-      const { data: existing } =
-        await supabase
-          .from("attendance_logs")
-          .select("*")
-          .eq("employee_id", employeeId)
-          .eq("log_date", today)
-          .maybeSingle();
+      const yesterdayDate = new Date(`${today}T12:00:00+08:00`);
+      yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+      const yesterday = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Manila",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(yesterdayDate);
+
+      const { data: todayRecord } = await supabase
+        .from("attendance_logs")
+        .select("*")
+        .eq("employee_id", employeeId)
+        .eq("log_date", today)
+        .maybeSingle();
+
+      const { data: openRecords } = await supabase
+        .from("attendance_logs")
+        .select("*")
+        .eq("employee_id", employeeId)
+        .is("time_out", null)
+        .not("time_in", "is", null)
+        .order("log_date", { ascending: false })
+        .order("time_in", { ascending: false })
+        .limit(1);
+
+      const openRecord = openRecords?.[0] || null;
+      let existing = todayRecord;
+
+      if (actionType === "time_in" && openRecord) {
+        await logAudit({
+          user_id: user.id,
+          user_name: profile.full_name,
+          role: managerMode ? "maintenance" : "employee",
+          action: "ATTENDANCE_REJECTED_WEB",
+          description: `Web TIME_IN rejected: open attendance from ${openRecord.log_date} must be closed first`,
+        });
+        alert(
+          openRecord.log_date < yesterday
+            ? "An older attendance record is still open. Please contact HR to resolve it before starting another shift."
+            : "You already have an open attendance record. Please time out from that shift first."
+        );
+        return;
+      }
+
+      if (actionType === "time_out") {
+        existing = openRecord;
+        if (existing && existing.log_date < yesterday) {
+          await logAudit({
+            user_id: user.id,
+            user_name: profile.full_name,
+            role: managerMode ? "maintenance" : "employee",
+            action: "ATTENDANCE_REJECTED_WEB",
+            description: `Web TIME_OUT blocked: stale open attendance from ${existing.log_date}`,
+          });
+          alert("Your previous attendance record is still open from an earlier date. Please contact HR to correct it.");
+          return;
+        }
+      }
 
       if (
         actionType === "time_in" &&
-        existing?.time_in
+        todayRecord?.time_in
       ) {
         await logAudit({
           user_id: user.id,
@@ -601,11 +667,11 @@ let scheduledClockOut = profile.clock_out
       // This prevents a transfer/shift change from changing historical overtime.
       if (actionType === "time_out" && existing?.scheduled_time_out) {
         scheduledClockOut = new Date(
-          `${today}T${existing.scheduled_time_out}`
+          `${existing.log_date}T${existing.scheduled_time_out}+08:00`
         );
 
         const scheduledInForOvernight = existing?.scheduled_time_in
-          ? new Date(`${today}T${existing.scheduled_time_in}`)
+          ? new Date(`${existing.log_date}T${existing.scheduled_time_in}+08:00`)
           : scheduledClockIn;
 
         if (
@@ -850,8 +916,7 @@ let scheduledClockOut = profile.clock_out
               time_out_face_url: faceUrl,
               time_out_location: deviceLocation?.label || null,
             })
-            .eq("employee_id", employeeId)
-            .eq("log_date", today)
+            .eq("id", existing.id)
             .is("time_out", null);
 
         if (attendanceUpdateError) {
@@ -877,8 +942,7 @@ let scheduledClockOut = profile.clock_out
           await supabase
             .from("attendance_logs")
             .select("id,time_out,overtime_minutes,time_out_face_url,time_out_location")
-            .eq("employee_id", employeeId)
-            .eq("log_date", today)
+            .eq("id", existing.id)
             .maybeSingle();
 
         if (verifyError) {
