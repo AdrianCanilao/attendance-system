@@ -135,14 +135,14 @@ const [search, setSearch] = useState("");
 
 const styles = {
   container: {
-    padding: "10px",
+    padding: "0 10px 10px",
   },
 
   title: {
     fontSize: "28px",
     fontWeight: "700",
     color: "#111827",
-    marginBottom: "8px",
+    marginBottom: "12px",
   },
 
   subtitle: {
@@ -205,7 +205,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "10px",
-    marginBottom: "15px",
+    marginBottom: "20px",
   },
 
   filterSelect: {
@@ -233,7 +233,7 @@ const styles = {
   padding: "10px 14px",
   borderRadius: "10px",
   border: "1px solid #d1d5db",
-  marginBottom: "15px",
+  marginBottom: "0",
   fontSize: "14px",
   backgroundColor: "#ffffff",
   color: "#000000",
