@@ -196,7 +196,7 @@ export default function ShiftSettings() {
   return (
     <HRLayout>
       <div
-        className="cibo-hr-page cibo-hr-shift-page"
+        className="cibo-page-root cibo-hr-page cibo-hr-shift-page"
         style={{
           padding: "30px",
           background: "#f8f9fa",
