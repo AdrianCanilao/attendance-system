@@ -687,7 +687,30 @@ export default function EmployeeList() {
               Number(log.overtime_minutes || 0) > 0;
 
             timeInValue = formatTime(log.time_in);
-            timeOutValue = formatTime(log.time_out) || "-";
+            const timeOutDate = log.time_out
+              ? new Intl.DateTimeFormat("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  timeZone: "Asia/Manila",
+                }).format(new Date(log.time_out))
+              : "";
+            const shiftStartDate = new Intl.DateTimeFormat("en-CA", {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              timeZone: "Asia/Manila",
+            }).format(new Date(log.time_in));
+            const actualTimeOutDate = log.time_out
+              ? new Intl.DateTimeFormat("en-CA", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  timeZone: "Asia/Manila",
+                }).format(new Date(log.time_out))
+              : "";
+            timeOutValue = log.time_out
+              ? `${formatTime(log.time_out)}${actualTimeOutDate !== shiftStartDate ? ` (${timeOutDate})` : ""}`
+              : "-";
 
             timeInStyle = isLate
               ? styles.orange
