@@ -213,7 +213,7 @@ export default function ShiftSettings() {
           }}
         >
           <div>
-  <h1 style={styles.pageTitle}>
+  <h1 className="cibo-page-title" style={styles.pageTitle>
     Shift Settings
   </h1>
 </div>
