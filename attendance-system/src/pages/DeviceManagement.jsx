@@ -9,6 +9,7 @@ const API_URL = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https:
 export default function DeviceManagement() {
   const [devices, setDevices] = useState([]);
   const [search, setSearch] = useState("");
+  const [branchFilter, setBranchFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("");
@@ -80,6 +81,11 @@ export default function DeviceManagement() {
     [devices]
   );
 
+  const branchOptions = useMemo(
+    () => [...new Set(devices.map((device) => device.branches?.branch_name).filter(Boolean))].sort(),
+    [devices]
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return devices.filter((device) => {
@@ -95,11 +101,12 @@ export default function DeviceManagement() {
         return String(d.getFullYear()) + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
       })() : "";
       return searchable.includes(q) &&
+        (branchFilter === "ALL" || (device.branches?.branch_name || "") === branchFilter) &&
         (typeFilter === "ALL" || normalizedType === typeFilter) &&
         (statusFilter === "ALL" || normalizedStatus === statusFilter) &&
         (!dateFilter || localDate === dateFilter);
     });
-  }, [devices, search, typeFilter, statusFilter, dateFilter]);
+  }, [devices, search, branchFilter, typeFilter, statusFilter, dateFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -107,7 +114,7 @@ export default function DeviceManagement() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, typeFilter, statusFilter, dateFilter]);
+  }, [search, branchFilter, typeFilter, statusFilter, dateFilter]);
 
   return (
     <HRLayout>
@@ -130,9 +137,23 @@ export default function DeviceManagement() {
 
         <div style={styles.tableWrap}>
           <table style={styles.table}>
+            <colgroup>
+              <col style={{ width: "19%" }} />
+              <col style={{ width: "17%" }} />
+              <col style={{ width: "14%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "20%" }} />
+            </colgroup>
             <thead><tr>
               <th style={styles.th}>Device</th><th style={styles.th}>User</th>
-              <th style={styles.th}>Branch</th>
+              <th style={styles.th}>
+                <select aria-label="Filter by branch" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} style={styles.headerSelect}>
+                  <option value="ALL">Branch</option>
+                  {branchOptions.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+                </select>
+              </th>
               <th style={styles.th}>
                 <select aria-label="Filter by device type" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={styles.headerSelect}>
                   <option value="ALL">Type</option>
@@ -236,9 +257,9 @@ const styles = {
   search: { width: "340px", maxWidth: "100%", padding: "11px 13px", border: "1px solid #d1d5db", borderRadius: "8px", outline: "none", background: "#fff" },
   count: { color: "#667085", fontSize: "13px" },
   tableWrap: { overflowX: "auto", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px" },
-  table: { width: "100%", borderCollapse: "collapse", minWidth: "950px" },
+  table: { width: "100%", tableLayout: "fixed", borderCollapse: "collapse", minWidth: "1100px" },
   th: { textAlign: "left", padding: "13px 14px", background: "#f9fafb", borderBottom: "1px solid #e5e7eb", color: "#475467", fontSize: "12px", fontWeight: 700 },
-  headerSelect: { width: "100%", minWidth: "75px", border: "none", outline: "none", background: "transparent", color: "#475467", fontSize: "12px", fontWeight: 700, cursor: "pointer", padding: 0 },
+  headerSelect: { display: "block", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", border: "none", outline: "none", background: "transparent", color: "#475467", fontSize: "12px", fontWeight: 700, cursor: "pointer", padding: 0, textOverflow: "ellipsis" },
   dateHeader: { display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "7px", whiteSpace: "nowrap" },
   pagination: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", padding: "14px 4px" },
   pageInfo: { color: "#667085", fontSize: "13px" },
