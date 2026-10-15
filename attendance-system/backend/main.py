@@ -1683,6 +1683,57 @@ async def admin_register_employee(
     }
 
 
+
+class DeleteEmployeeRequest(BaseModel):
+    target_user_id: str
+
+
+@app.post("/admin/delete-employee")
+async def admin_delete_employee(payload: DeleteEmployeeRequest, authorization: str | None = Header(default=None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    caller = authenticate_any_user(authorization[7:].strip())
+    caller_rows = (supabase.from_("employee_profiles").select("id,role_id,branch_id").eq("id", caller.id).limit(1).execute().data or [])
+    if not caller_rows:
+        raise HTTPException(status_code=403, detail="Your employee profile was not found.")
+    caller_profile = caller_rows[0]
+    caller_role_rows = (supabase.from_("roles").select("name").eq("id", caller_profile["role_id"]).limit(1).execute().data or [])
+    if not caller_role_rows or str(caller_role_rows[0].get("name", "")).strip().lower() != "maintenance":
+        raise HTTPException(status_code=403, detail="Only a Branch Supervisor can delete branch employees.")
+
+    target_rows = (supabase.from_("employee_profiles").select("id,full_name,email,role_id,branch_id").eq("id", payload.target_user_id).limit(1).execute().data or [])
+    if not target_rows:
+        raise HTTPException(status_code=404, detail="Employee profile was not found.")
+    target = target_rows[0]
+    target_role_rows = (supabase.from_("roles").select("name").eq("id", target["role_id"]).limit(1).execute().data or [])
+    if not target_role_rows or str(target_role_rows[0].get("name", "")).strip().lower() != "employee":
+        raise HTTPException(status_code=403, detail="Only employee accounts can be deleted from this page.")
+    if str(target.get("branch_id") or "") != str(caller_profile.get("branch_id") or ""):
+        raise HTTPException(status_code=403, detail="You can only delete employees assigned to your branch.")
+
+    try:
+        supabase.auth.admin.delete_user(payload.target_user_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Employee account could not be deleted. The database may contain related records that prevent deletion. " + str(exc))
+
+    remaining = (supabase.from_("employee_profiles").select("id").eq("id", payload.target_user_id).limit(1).execute().data or [])
+    if remaining:
+        raise HTTPException(status_code=500, detail="The authentication account was deleted, but the employee profile remains. Contact the system administrator.")
+
+    try:
+        supabase.from_("audit_logs").insert({
+            "user_id": caller.id,
+            "user_name": caller.email,
+            "role": "maintenance",
+            "action": "DELETE_EMPLOYEE",
+            "description": "Deleted employee: " + str(target.get("full_name") or target.get("email") or payload.target_user_id),
+        }).execute()
+    except Exception as exc:
+        print("EMPLOYEE DELETE AUDIT LOG WARNING:", str(exc), flush=True)
+
+    return {"status": "OK", "message": "Employee account and profile deleted successfully."}
+
+
 @app.post("/admin/rollback-employee-registration")
 async def admin_rollback_employee_registration(
     payload: RollbackEmployeeRegistrationRequest,
