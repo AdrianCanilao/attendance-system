@@ -3783,10 +3783,37 @@ async def record_kiosk_attendance(employee, action, face_url=None, location=None
 
         if action == "TIME IN":
 
-            # Check if employee already has ANY attendance record today
+            # A shift belongs to its start date, not the calendar date after midnight.
+            # Never create another Time In while ANY earlier attendance remains open.
+            open_result = (
+                supabase.table("attendance_logs")
+                .select("*")
+                .eq("employee_id", employee_id)
+                .is_("time_out", None)
+                .order("log_date", desc=True)
+                .order("time_in", desc=True)
+                .limit(1)
+                .execute()
+            )
+            open_records = open_result.data or []
+            if open_records:
+                open_record = open_records[0]
+                open_date = datetime.strptime(str(open_record["log_date"]), "%Y-%m-%d").date()
+                if open_date < yesterday:
+                    return {
+                        "status": "Unresolved Attendance",
+                        "message": "An older attendance record is still open. Please contact HR to resolve it before starting another shift.",
+                        "attendance": open_record,
+                    }
+                return {
+                    "status": "Already In",
+                    "message": "You already have an open attendance record. Please record Time Out for that shift first.",
+                    "attendance": open_record,
+                }
+
+            # A completed record on the current shift-start date still prevents a second Time In.
             existing_result = (
-                supabase
-                .table("attendance_logs")
+                supabase.table("attendance_logs")
                 .select("*")
                 .eq("employee_id", employee_id)
                 .eq("log_date", str(today))
@@ -3794,27 +3821,15 @@ async def record_kiosk_attendance(employee, action, face_url=None, location=None
                 .limit(1)
                 .execute()
             )
-
             existing_records = existing_result.data or []
-
             if existing_records:
-                existing_record = existing_records[0]
-
-                # Already completed Time In + Time Out
-                if existing_record.get("time_out"):
-                    return {
-                        "status": "Already Recorded",
-                        "message": "Attendance has already been completed for today.",
-                        "attendance": existing_record
-                    }
-
-                # Time In exists but Time Out has not been recorded
                 return {
-                    "status": "Already In",
-                    "message": "Employee has already timed in today.",
-                    "attendance": existing_record
+                    "status": "Already Recorded",
+                    "message": "Attendance has already been recorded for this shift-start date.",
+                    "attendance": existing_records[0],
                 }
-                    # =================================================
+
+            # =================================================
             # CALCULATE LATE MINUTES
             # =================================================
 
