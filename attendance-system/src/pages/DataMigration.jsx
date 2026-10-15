@@ -215,7 +215,7 @@ export default function DataMigration() {
   return (
     <ManagerLayout>
       <div style={styles.wrapper}>
-        <h1 style={styles.title}>Data Migration</h1>
+        <h1 className="cibo-page-title" style={styles.title>Data Migration</h1>
         <p style={styles.subtitle}>
           Import existing CIBO records using CSV while validating the data before it reaches the database.
         </p>
