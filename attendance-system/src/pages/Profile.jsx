@@ -465,8 +465,8 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
     verticalAlign: "middle",
   }}
 >
-  {log.time_in
-    ? new Date(log.time_in).toLocaleDateString(
+  {log.log_date
+    ? new Date(`${log.log_date}T12:00:00+08:00`).toLocaleDateString(
         "en-US",
         {
           month: "short",
@@ -475,7 +475,11 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
           timeZone: "Asia/Manila",
         }
       )
-    : "-"}
+    : log.time_in
+      ? new Date(log.time_in).toLocaleDateString("en-US", {
+          month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila",
+        })
+      : "-"}
 </td>
           {/* TIME IN */}
           <td
@@ -621,6 +625,13 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                         })
                       : "-"}
                   </span>
+                  {log.time_out && log.log_date && new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(log.time_out)) !== log.log_date && (
+                    <span style={{ fontSize: "12px", color: "#6b7280", lineHeight: "1.3" }}>
+                      {new Date(log.time_out).toLocaleDateString("en-US", {
+                        month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila",
+                      })}
+                    </span>
+                  )}
                 </div>
                 <span style={{ fontSize: "12px", color: "#6b7280", lineHeight: "1.3", maxWidth: "180px", overflowWrap: "anywhere" }}>
                   {log.time_out_location || "-"}
