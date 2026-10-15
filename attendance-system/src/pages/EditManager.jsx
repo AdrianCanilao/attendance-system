@@ -678,7 +678,7 @@ const uploadFaces = async () => {
 
   return (
     <HRLayout>
-      <div className="cibo-hr-page cibo-hr-edit-page" style={styles.wrapper}>
+      <div className="cibo-page-root cibo-hr-page cibo-hr-edit-page" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>Edit Manager</h1>
 
         <div style={styles.searchWrapper}>
