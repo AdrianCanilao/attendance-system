@@ -431,7 +431,7 @@ shift_id: "",
   return (
     <HRLayout>
       <div className="cibo-hr-page cibo-hr-register-page" style={styles.wrapper}>
-        <h1 style={styles.pageTitle}>Register Maintenance Specialist</h1>
+        <h1 className="cibo-page-title" style={styles.pageTitle>Register Maintenance Specialist</h1>
 
         <div style={styles.card}>
           <div className={`topSection ${showCamera ? "camera-open" : ""}`} style={styles.topSection}>
