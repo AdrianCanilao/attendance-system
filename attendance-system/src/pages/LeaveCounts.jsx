@@ -86,7 +86,7 @@ export default function LeaveCounts() {
   return (
     <ManagerLayout>
       <div className="cibo-leave-counts-page" style={styles.container}>
-        <h1 className="cibo-page-title" style={styles.pageTitle>Edit Leave Counts</h1>
+        <h1 className="cibo-page-title" style={styles.pageTitle}>Edit Leave Counts</h1>
 
         <div style={styles.wrapper}>
           {/* LEFT SIDE */}
