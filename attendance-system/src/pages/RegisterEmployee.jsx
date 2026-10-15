@@ -502,7 +502,7 @@ export default function RegisterEmployee() {
   return (
     <ManagerLayout>
       <div className="cibo-register-employee-page" style={styles.wrapper}>
-        <h1 className="cibo-page-title" style={styles.pageTitle>Register Employee</h1>
+        <h1 className="cibo-page-title" style={styles.pageTitle}>Register Employee</h1>
 
         <div className="cibo-register-employee-card" style={styles.card}>
           <div className={`cibo-register-employee-topSection ${showCamera ? "camera-open" : ""}`} style={styles.topSection}>
