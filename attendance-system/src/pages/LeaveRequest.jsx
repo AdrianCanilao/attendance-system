@@ -193,7 +193,7 @@ export default function LeaveRequest() {
   return (
     <EmployeeLayout>
       <div className="cibo-leave-request-page" style={styles.page}>
-        <h1 style={styles.pageTitle}>Leave Request</h1>
+        <h1 className="cibo-page-title" style={styles.pageTitle>Leave Request</h1>
 
         <div className="cibo-leave-request-grid" style={styles.grid}>
           {leaveCards.map((leave) => (
