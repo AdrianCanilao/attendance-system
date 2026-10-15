@@ -758,7 +758,7 @@ const handleDelete = async () => {
 
   return (
     <ManagerLayout>
-      <div className="cibo-edit-employee-page" style={styles.wrapper}>
+      <div className="cibo-page-root cibo-edit-employee-page" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>Edit Employee</h1>
 
         <div style={styles.searchWrapper}>
