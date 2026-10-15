@@ -181,6 +181,7 @@ export default function HRDashboard() {
         return {
           name: emp.full_name,
           position: emp.position || "-",
+          log_date: attendanceToday?.log_date || today,
 
           time_in_raw:
             attendanceToday?.time_in || null,
@@ -198,6 +199,12 @@ export default function HRDashboard() {
                 timeZone: "Asia/Manila",
               })
             : "-",
+          time_in_date: attendanceToday?.time_in
+            ? new Intl.DateTimeFormat("en-US", {
+                month: "short", day: "numeric", year: "numeric",
+                timeZone: "Asia/Manila",
+              }).format(new Date(attendanceToday.time_in))
+            : null,
 
           time_out: attendanceToday?.time_out
             ? new Date(
@@ -209,6 +216,12 @@ export default function HRDashboard() {
                 timeZone: "Asia/Manila",
               })
             : "-",
+          time_out_date: attendanceToday?.time_out
+            ? new Intl.DateTimeFormat("en-US", {
+                month: "short", day: "numeric", year: "numeric",
+                timeZone: "Asia/Manila",
+              }).format(new Date(attendanceToday.time_out))
+            : null,
 
           late: calculateLate(
             attendanceToday?.time_in,
@@ -417,6 +430,7 @@ export default function HRDashboard() {
                         )}
 
                         <span>{log.time_in}</span>
+                        {log.time_in_date && log.time_in_date !== new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(`${log.log_date}T12:00:00+08:00`)) && <span style={{ fontSize: "12px", color: "#6b7280" }}>{log.time_in_date}</span>}
                       </div>
                     </td>
 
@@ -443,6 +457,7 @@ export default function HRDashboard() {
                         )}
 
                         <span>{log.time_out}</span>
+                        {log.time_out_date && log.time_out_date !== new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(`${log.log_date}T12:00:00+08:00`)) && <span style={{ fontSize: "12px", color: "#6b7280" }}>{log.time_out_date}</span>}
                       </div>
                     </td>
 
