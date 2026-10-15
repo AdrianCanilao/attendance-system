@@ -81,7 +81,7 @@ export default function DeviceManagement() {
 
   return (
     <HRLayout>
-      <div style={styles.page}>
+      <div className="cibo-page-root" style={styles.page}>
         <div style={styles.header}>
           <div>
             <h1 className="cibo-page-title" style={styles.title}>Device Management</h1>
