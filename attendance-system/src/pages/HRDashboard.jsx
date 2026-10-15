@@ -279,7 +279,7 @@ export default function HRDashboard() {
     <HRLayout>
       <div className="cibo-hr-page cibo-hr-dashboard-page">
       <div style={styles.header}>
-        <h2 className="cibo-page-title" style={styles.pageTitle>
+        <h2 className="cibo-page-title" style={styles.pageTitle}>
           Attendance Log
         </h2>
       </div>
