@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import HRLayout from "../layouts/HRLayout";
+import DatePicker from "react-datepicker";
 import { supabase } from "../supabaseClient";
 
 const PAGE_SIZE = 10;
@@ -115,17 +116,24 @@ export default function HRAuditTrail() {
             <div style={styles.headerCell}>Description</div>
             <div style={styles.headerCell}>
               <div style={styles.dateHeader}>
-                <span>{dateFilter ? new Date(dateFilter + "T12:00:00").toLocaleDateString("en-GB") : new Date().toLocaleDateString("en-GB")}</span>
-                <label style={styles.calendarButton} title="Choose audit date" aria-label="Choose audit date">
-                  <span style={styles.calendarIcon}>▦</span>
-                  <input
-                    type="date"
-                    aria-label="Filter by date"
-                    value={dateFilter}
-                    onChange={(e) => setDateFilter(e.target.value)}
-                    style={styles.hiddenDateInput}
-                  />
-                </label>
+                <span>Date</span>
+                <DatePicker
+                  selected={dateFilter ? new Date(dateFilter + "T12:00:00") : new Date()}
+                  onChange={(date) => {
+                    if (!date) {
+                      setDateFilter("");
+                      return;
+                    }
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, "0");
+                    const day = String(date.getDate()).padStart(2, "0");
+                    setDateFilter(`${year}-${month}-${day}`);
+                  }}
+                  dateFormat="dd/MM/yyyy"
+                  className="calendar-input"
+                  popperPlacement="bottom-end"
+                  ariaLabelledBy="audit-date-filter-label"
+                />
               </div>
             </div>
           </div>
@@ -213,26 +221,6 @@ const styles = {
     fontSize: "14px",
     fontWeight: "600",
     whiteSpace: "nowrap",
-  },
-  calendarButton: {
-    position: "relative",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "28px",
-    height: "28px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    color: "#374151",
-  },
-  calendarIcon: { fontSize: "18px", lineHeight: 1 },
-  hiddenDateInput: {
-    position: "absolute",
-    inset: 0,
-    width: "100%",
-    height: "100%",
-    opacity: 0,
-    cursor: "pointer",
   },
   headerSelect: {
     width: "100%",
