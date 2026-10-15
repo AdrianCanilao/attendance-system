@@ -84,7 +84,7 @@ export default function DeviceManagement() {
       <div style={styles.page}>
         <div style={styles.header}>
           <div>
-            <h1 className="cibo-page-title" style={styles.title>Device Management</h1>
+            <h1 className="cibo-page-title" style={styles.title}>Device Management</h1>
           </div>
           <button onClick={loadDevices} style={styles.refresh}>Refresh</button>
         </div>
