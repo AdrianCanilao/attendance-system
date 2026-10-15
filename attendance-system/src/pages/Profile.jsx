@@ -612,7 +612,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
               )}
 
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
                   <span>
                     {log.time_out
                       ? new Date(
