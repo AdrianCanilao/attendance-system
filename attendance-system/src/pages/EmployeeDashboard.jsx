@@ -63,6 +63,60 @@ const [deviceLocation, setDeviceLocation] = useState(null);
     loadData();
   }, []);
 
+  const isOvernightShift = (record) => {
+    const scheduledIn = record?.scheduled_time_in;
+    const scheduledOut = record?.scheduled_time_out;
+
+    if (!scheduledIn || !scheduledOut) return false;
+
+    return scheduledOut.slice(0, 5) <= scheduledIn.slice(0, 5);
+  };
+
+  const getScheduledShiftEnd = (record) => {
+    if (!record?.log_date || !record?.scheduled_time_out) return null;
+
+    const shiftEnd = new Date(
+      `${record.log_date}T${record.scheduled_time_out}+08:00`
+    );
+
+    if (Number.isNaN(shiftEnd.getTime())) return null;
+
+    if (isOvernightShift(record)) {
+      shiftEnd.setTime(shiftEnd.getTime() + 24 * 60 * 60 * 1000);
+    }
+
+    return shiftEnd;
+  };
+
+  const isPreviousOvernightShiftStillActive = (record, now = new Date()) => {
+    if (
+      !record?.time_in ||
+      record.time_out ||
+      !isOvernightShift(record)
+    ) {
+      return false;
+    }
+
+    const shiftEnd = getScheduledShiftEnd(record);
+    if (!shiftEnd) return false;
+
+    const graceEnd = new Date(
+      shiftEnd.getTime() + GRACE_MINUTES * 60 * 1000
+    );
+
+    return now <= graceEnd;
+  };
+
+  const isStaleOpenRecord = (record, today, now = new Date()) => {
+    if (!record?.time_in || record.time_out || record.log_date >= today) {
+      return false;
+    }
+
+    // A previous-day overnight shift remains active only until its
+    // scheduled end plus the configured grace period.
+    return !isPreviousOvernightShiftStillActive(record, now);
+  };
+
   const formatDateTime = (dateString) => {
     if (!dateString || dateString === "-")
       return "-";
@@ -70,6 +124,7 @@ const [deviceLocation, setDeviceLocation] = useState(null);
     const date = new Date(dateString);
 
     return date.toLocaleString("en-PH", {
+      timeZone: "Asia/Manila",
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -153,10 +208,22 @@ const [deviceLocation, setDeviceLocation] = useState(null);
       .lte("log_date", today)
       .order("log_date", { ascending: false });
 
-    const attendance =
-      (recentAttendance || []).find((record) => record.log_date === today) ||
-      (recentAttendance || []).find((record) => record.log_date === yesterdayKey && record.time_in && !record.time_out) ||
-      null;
+    const now = new Date();
+    const todayRecord =
+      (recentAttendance || []).find((record) => record.log_date === today) || null;
+    const previousOvernightRecord =
+      (recentAttendance || []).find(
+        (record) =>
+          record.log_date === yesterdayKey &&
+          record.time_in &&
+          !record.time_out &&
+          isPreviousOvernightShiftStillActive(record, now)
+      ) || null;
+
+    // Only carry yesterday's attendance into today's dashboard while a
+    // genuine overnight shift is still within its scheduled end + grace.
+    // A stale open row must not make the employee appear Present all day.
+    const attendance = todayRecord || previousOvernightRecord;
 
     const { data: leave } =
       await supabase
@@ -615,19 +682,22 @@ let scheduledClockOut = profile.clock_out
         .limit(1);
 
       const openRecord = openRecords?.[0] || null;
+      const openRecordIsStale = isStaleOpenRecord(openRecord, today, now);
       let existing = todayRecord;
 
-      if (actionType === "time_in" && openRecord) {
+      // Do not let an unfinished row from a previous shift block a new
+      // workday after its scheduled end. Keep the old row for HR correction.
+      if (actionType === "time_in" && openRecord && !openRecordIsStale) {
         await logAudit({
           user_id: user.id,
           user_name: profile.full_name,
           role: managerMode ? "maintenance" : "employee",
           action: "ATTENDANCE_REJECTED_WEB",
-          description: `Web TIME_IN rejected: open attendance from ${openRecord.log_date} must be closed first`,
+          description: `Web TIME_IN rejected: active attendance from ${openRecord.log_date} must be closed first`,
         });
         alert(
-          openRecord.log_date < yesterday
-            ? "An older attendance record is still open. Please contact HR to resolve it before starting another shift."
+          openRecord.log_date < today
+            ? "Your overnight shift is still within its scheduled time. Please time out from that shift first."
             : "You already have an open attendance record. Please time out from that shift first."
         );
         return;
@@ -635,7 +705,7 @@ let scheduledClockOut = profile.clock_out
 
       if (actionType === "time_out") {
         existing = openRecord;
-        if (existing && existing.log_date < yesterday) {
+        if (existing && openRecordIsStale) {
           await logAudit({
             user_id: user.id,
             user_name: profile.full_name,
@@ -643,7 +713,7 @@ let scheduledClockOut = profile.clock_out
             action: "ATTENDANCE_REJECTED_WEB",
             description: `Web TIME_OUT blocked: stale open attendance from ${existing.log_date}`,
           });
-          alert("Your previous attendance record is still open from an earlier date. Please contact HR to correct it.");
+          alert("Your previous attendance record is past its scheduled shift end. Please contact HR to correct it.");
           return;
         }
       }
