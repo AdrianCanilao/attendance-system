@@ -193,7 +193,7 @@ const styles = {
   },
   headerRow: {
     display: "grid",
-    gridTemplateColumns: "minmax(150px, 1.2fr) minmax(100px, 0.45fr) minmax(120px, 0.6fr) minmax(220px, 2.2fr) minmax(180px, 0.9fr)",
+    gridTemplateColumns: "18% 11% 14% 35% 22%",
     background: "#f9fafb",
     borderBottom: "1px solid #e5e7eb",
     padding: "0 16px",
@@ -205,7 +205,7 @@ const styles = {
   },
   row: {
     display: "grid",
-    gridTemplateColumns: "minmax(150px, 1.2fr) minmax(100px, 0.45fr) minmax(120px, 0.6fr) minmax(220px, 2.2fr) minmax(180px, 0.9fr)",
+    gridTemplateColumns: "18% 11% 14% 35% 22%",
     padding: "16px",
     borderBottom: "1px solid #f3f4f6",
     alignItems: "center",
