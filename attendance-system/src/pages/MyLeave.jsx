@@ -57,7 +57,7 @@ export default function MyLeave() {
   return (
     <EmployeeLayout>
       <div style={styles.container}>
-        <h1 style={styles.pageTitle}>Leave Records</h1>
+        <h1 className="cibo-page-title" style={styles.pageTitle>Leave Records</h1>
 
         <div style={styles.card}>
           {loading ? (
