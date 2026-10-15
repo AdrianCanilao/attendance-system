@@ -10,7 +10,7 @@ export default function HRAuditTrail() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [actionFilter, setActionFilter] = useState("ALL");
-  const [dateSort, setDateSort] = useState("NEWEST");
+  const [dateFilter, setDateFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -28,10 +28,18 @@ export default function HRAuditTrail() {
     setLoading(false);
   };
 
-  const roleOptions = useMemo(
-    () => [...new Set(logs.map((log) => log.role).filter(Boolean))].sort(),
-    [logs]
-  );
+  const roleOptions = [
+    { value: "hr", label: "HR" },
+    { value: "employee", label: "Employee" },
+    { value: "maintenance", label: "Maintenance" },
+    { value: "kiosk", label: "Kiosk" },
+    { value: "web", label: "Web" },
+  ];
+
+  const normalizeRole = (role) => {
+    const normalized = (role || "").trim().toLowerCase();
+    return normalized === "manager" ? "maintenance" : normalized;
+  };
   const actionOptions = useMemo(
     () => [...new Set(logs.map((log) => log.action).filter(Boolean))].sort(),
     [logs]
@@ -47,16 +55,13 @@ export default function HRAuditTrail() {
           .toLowerCase();
         return (
           searchable.includes(query) &&
-          (roleFilter === "ALL" || log.role === roleFilter) &&
-          (actionFilter === "ALL" || log.action === actionFilter)
+          (roleFilter === "ALL" || normalizeRole(log.role) === roleFilter) &&
+          (actionFilter === "ALL" || log.action === actionFilter) &&
+          (!dateFilter || new Date(log.created_at).toLocaleDateString("en-CA") === dateFilter)
         );
       })
-      .sort((a, b) => {
-        const aTime = new Date(a.created_at).getTime();
-        const bTime = new Date(b.created_at).getTime();
-        return dateSort === "OLDEST" ? aTime - bTime : bTime - aTime;
-      });
-  }, [logs, search, roleFilter, actionFilter, dateSort]);
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [logs, search, roleFilter, actionFilter, dateFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
@@ -67,7 +72,7 @@ export default function HRAuditTrail() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, roleFilter, actionFilter, dateSort]);
+  }, [search, roleFilter, actionFilter, dateFilter]);
 
   const headerSelectStyle = {
     ...styles.headerSelect,
@@ -98,7 +103,7 @@ export default function HRAuditTrail() {
             <div style={styles.headerCell}>
               <select aria-label="Filter by role" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={headerSelectStyle}>
                 <option value="ALL">Role</option>
-                {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
+                {roleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
               </select>
             </div>
             <div style={styles.headerCell}>
@@ -109,10 +114,14 @@ export default function HRAuditTrail() {
             </div>
             <div style={styles.headerCell}>Description</div>
             <div style={styles.headerCell}>
-              <select aria-label="Sort by date" value={dateSort} onChange={(e) => setDateSort(e.target.value)} style={headerSelectStyle}>
-                <option value="NEWEST">Date: Newest</option>
-                <option value="OLDEST">Date: Oldest</option>
-              </select>
+              <input
+                type="date"
+                aria-label="Filter by date"
+                title="Filter audit logs by date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                style={styles.headerDateInput}
+              />
             </div>
           </div>
 
@@ -125,7 +134,7 @@ export default function HRAuditTrail() {
               <div key={log.id} style={styles.row}>
                 <div style={styles.cell}>{log.user_name || "Unknown"}</div>
                 <div style={styles.cell}>
-                  <span style={styles.roleBadge}>{log.role || "Unknown"}</span>
+                  <span style={styles.roleBadge}>{normalizeRole(log.role) === "maintenance" ? "Maintenance" : (roleOptions.find((role) => role.value === normalizeRole(log.role))?.label || "Unknown")}</span>
                 </div>
                 <div style={styles.cell}>{log.action || "-"}</div>
                 <div style={styles.cell}>{log.description || "-"}</div>
@@ -190,6 +199,20 @@ const styles = {
     gap: "12px",
   },
   headerCell: { fontSize: "14px", minWidth: 0 },
+  headerDateInput: {
+    width: "100%",
+    minWidth: 0,
+    padding: "7px 0",
+    border: "none",
+    borderRadius: "0",
+    backgroundColor: "transparent",
+    color: "#111827",
+    fontSize: "14px",
+    fontWeight: "600",
+    cursor: "pointer",
+    outline: "none",
+    fontFamily: "inherit",
+  },
   headerSelect: {
     width: "100%",
     minWidth: 0,
