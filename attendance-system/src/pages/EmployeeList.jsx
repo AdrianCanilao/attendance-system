@@ -835,7 +835,7 @@ export default function EmployeeList() {
 
   return (
     <ManagerLayout>
-      <div className="cibo-employee-list-page" style={styles.wrapper}>
+      <div className="cibo-page-root cibo-employee-list-page" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>
           Employee List
         </h1>
