@@ -264,7 +264,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
   return (
     <Layout>
       <div className="cibo-profile-page" style={styles.container}>
-        <h1 className="cibo-page-title" style={styles.pageTitle>Profile</h1>
+        <h1 className="cibo-page-title" style={styles.pageTitle}>Profile</h1>
 
         <div className="cibo-profile-grid" style={styles.grid}>
           {/* PROFILE CARD */}
