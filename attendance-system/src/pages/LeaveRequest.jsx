@@ -192,7 +192,7 @@ export default function LeaveRequest() {
 
   return (
     <EmployeeLayout>
-      <div className="cibo-leave-request-page" style={styles.page}>
+      <div className="cibo-page-root cibo-leave-request-page" style={styles.page}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>Leave Request</h1>
 
         <div className="cibo-leave-request-grid" style={styles.grid}>
