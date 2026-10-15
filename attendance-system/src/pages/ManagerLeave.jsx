@@ -131,7 +131,7 @@ export default function ManagerLeave() {
   return (
     <ManagerLayout>
       <div style={styles.container}>
-        <h2 style={styles.pagetitle}>Leave Requests</h2>
+        <h2 className="cibo-page-title" style={styles.pagetitle>Leave Requests</h2>
 
         <div style={styles.card}>
           {loading ? (
