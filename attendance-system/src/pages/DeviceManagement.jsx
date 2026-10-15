@@ -2,12 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import HRLayout from "../layouts/HRLayout";
 import { supabase } from "../supabaseClient";
 import { logCurrentUserAudit } from "../utils/auditlogger";
+import DatePicker from "react-datepicker";
 
 const API_URL = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://cibo-attendance-api.onrender.com" : "http://127.0.0.1:8000")).replace(/\/$/, "");
 
 export default function DeviceManagement() {
   const [devices, setDevices] = useState([]);
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [dateFilter, setDateFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
@@ -69,15 +75,39 @@ export default function DeviceManagement() {
     }
   };
 
+  const typeOptions = useMemo(
+    () => [...new Set(devices.map((device) => (device.device_type || "web").toLowerCase()))].sort(),
+    [devices]
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return devices;
-    return devices.filter((d) =>
-      [d.device_name, d.device_id, d.device_type, d.employee_profiles?.full_name,
-       d.employee_profiles?.email, d.branches?.branch_name]
-        .filter(Boolean).join(" ").toLowerCase().includes(q)
-    );
-  }, [devices, search]);
+    return devices.filter((device) => {
+      const searchable = [
+        device.device_name, device.device_id, device.device_type,
+        device.employee_profiles?.full_name, device.employee_profiles?.email,
+        device.branches?.branch_name, device.status,
+      ].filter(Boolean).join(" ").toLowerCase();
+      const normalizedType = (device.device_type || "web").toLowerCase();
+      const normalizedStatus = device.status || "ALLOWED";
+      const localDate = device.last_seen ? (() => {
+        const d = new Date(device.last_seen);
+        return String(d.getFullYear()) + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      })() : "";
+      return searchable.includes(q) &&
+        (typeFilter === "ALL" || normalizedType === typeFilter) &&
+        (statusFilter === "ALL" || normalizedStatus === statusFilter) &&
+        (!dateFilter || localDate === dateFilter);
+    });
+  }, [devices, search, typeFilter, statusFilter, dateFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedDevices = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, typeFilter, statusFilter, dateFilter]);
 
   return (
     <HRLayout>
@@ -102,8 +132,40 @@ export default function DeviceManagement() {
           <table style={styles.table}>
             <thead><tr>
               <th style={styles.th}>Device</th><th style={styles.th}>User</th>
-              <th style={styles.th}>Branch</th><th style={styles.th}>Type</th>
-              <th style={styles.th}>Status</th><th style={styles.th}>Last Seen</th>
+              <th style={styles.th}>Branch</th>
+              <th style={styles.th}>
+                <select aria-label="Filter by device type" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={styles.headerSelect}>
+                  <option value="ALL">Type</option>
+                  {typeOptions.map((type) => <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>)}
+                </select>
+              </th>
+              <th style={styles.th}>
+                <select aria-label="Filter by status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={styles.headerSelect}>
+                  <option value="ALL">Status</option>
+                  <option value="ALLOWED">Allowed</option>
+                  <option value="WHITELISTED">Whitelisted</option>
+                  <option value="BLOCKED">Denied</option>
+                </select>
+              </th>
+              <th style={styles.th}>
+                <div style={styles.dateHeader}>
+                  <span>Date</span>
+                  <DatePicker
+                    selected={dateFilter ? new Date(dateFilter + "T12:00:00") : new Date()}
+                    onChange={(date) => {
+                      if (!date) { setDateFilter(""); return; }
+                      const year = date.getFullYear();
+                      const month = String(date.getMonth() + 1).padStart(2, "0");
+                      const day = String(date.getDate()).padStart(2, "0");
+                      setDateFilter(String(year) + "-" + month + "-" + day);
+                    }}
+                    dateFormat="dd/MM/yyyy"
+                    className="calendar-input"
+                    popperPlacement="bottom-end"
+                    ariaLabelledBy="device-date-filter-label"
+                  />
+                </div>
+              </th>
               <th style={styles.th}>Action</th>
             </tr></thead>
             <tbody>
@@ -111,7 +173,7 @@ export default function DeviceManagement() {
                 <tr><td colSpan="7" style={styles.empty}>Loading devices...</td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan="7" style={styles.empty}>No registered devices yet.</td></tr>
-              ) : filtered.map((device) => {
+              ) : paginatedDevices.map((device) => {
                 const status = device.status || "ALLOWED";
                 return <tr key={device.id}>
                   <td style={styles.td}>
@@ -126,7 +188,7 @@ export default function DeviceManagement() {
                   <td style={styles.td}>
                     <span style={status === "BLOCKED" ? styles.badgeBlocked : status === "WHITELISTED" ? styles.badgeWhite : styles.badgeAllowed}>{status === "BLOCKED" ? "Denied" : status}</span>
                   </td>
-                  <td style={styles.td}>{device.last_seen ? new Date(device.last_seen).toLocaleString() : "—"}</td>
+                  <td style={styles.td}>{device.last_seen ? new Date(device.last_seen).toLocaleDateString("en-GB") : "—"}</td>
                   <td style={styles.td}>
                     <div style={styles.actions}>
                       {status === "BLOCKED" ? (
@@ -144,6 +206,21 @@ export default function DeviceManagement() {
             </tbody>
           </table>
         </div>
+
+        {!loading && filtered.length > 0 && (
+          <div style={styles.pagination}>
+            <span style={styles.pageInfo}>
+              Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} devices
+            </span>
+            <div style={styles.pageControls}>
+              <button type="button" onClick={() => setCurrentPage(1)} disabled={safePage === 1} style={{ ...styles.pageButton, ...(safePage === 1 ? styles.disabledButton : {}) }} aria-label="First page">«</button>
+              <button type="button" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={safePage === 1} style={{ ...styles.pageButton, ...(safePage === 1 ? styles.disabledButton : {}) }}>Previous</button>
+              <span style={styles.pageNumber}>Page {safePage} of {totalPages}</span>
+              <button type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={safePage === totalPages} style={{ ...styles.pageButton, ...(safePage === totalPages ? styles.disabledButton : {}) }}>Next</button>
+              <button type="button" onClick={() => setCurrentPage(totalPages)} disabled={safePage === totalPages} style={{ ...styles.pageButton, ...(safePage === totalPages ? styles.disabledButton : {}) }} aria-label="Last page">»</button>
+            </div>
+          </div>
+        )}
       </div>
     </HRLayout>
   );
@@ -161,6 +238,14 @@ const styles = {
   tableWrap: { overflowX: "auto", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px" },
   table: { width: "100%", borderCollapse: "collapse", minWidth: "950px" },
   th: { textAlign: "left", padding: "13px 14px", background: "#f9fafb", borderBottom: "1px solid #e5e7eb", color: "#475467", fontSize: "12px", fontWeight: 700 },
+  headerSelect: { width: "100%", minWidth: "75px", border: "none", outline: "none", background: "transparent", color: "#475467", fontSize: "12px", fontWeight: 700, cursor: "pointer", padding: 0 },
+  dateHeader: { display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "7px", whiteSpace: "nowrap" },
+  pagination: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", padding: "14px 4px" },
+  pageInfo: { color: "#667085", fontSize: "13px" },
+  pageControls: { display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" },
+  pageButton: { border: "1px solid #d1d5db", borderRadius: "8px", background: "#fff", color: "#344054", padding: "7px 10px", fontSize: "13px", cursor: "pointer" },
+  disabledButton: { opacity: 0.45, cursor: "not-allowed" },
+  pageNumber: { color: "#344054", fontSize: "13px", padding: "0 5px" },
   td: { padding: "13px 14px", borderBottom: "1px solid #f0f2f5", color: "#344054", fontSize: "13px", verticalAlign: "middle" },
   deviceName: { fontWeight: 650, color: "#111827" },
   deviceId: { marginTop: "3px", color: "#98a2b3", fontSize: "10px", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis" },
