@@ -1070,7 +1070,7 @@ let scheduledClockOut = profile.clock_out
 
   const content = (
     <>
-      <div style={styles.pageHeader}>
+      <div className="cibo-page-root" style={styles.pageHeader}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>
           Take Attendance
         </h1>
