@@ -114,14 +114,19 @@ export default function HRAuditTrail() {
             </div>
             <div style={styles.headerCell}>Description</div>
             <div style={styles.headerCell}>
-              <input
-                type="date"
-                aria-label="Filter by date"
-                title="Filter audit logs by date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                style={styles.headerDateInput}
-              />
+              <div style={styles.dateHeader}>
+                <span>{dateFilter ? new Date(dateFilter + "T12:00:00").toLocaleDateString("en-GB") : new Date().toLocaleDateString("en-GB")}</span>
+                <label style={styles.calendarButton} title="Choose audit date" aria-label="Choose audit date">
+                  <span style={styles.calendarIcon}>▦</span>
+                  <input
+                    type="date"
+                    aria-label="Filter by date"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    style={styles.hiddenDateInput}
+                  />
+                </label>
+              </div>
             </div>
           </div>
 
@@ -199,19 +204,35 @@ const styles = {
     gap: "12px",
   },
   headerCell: { fontSize: "14px", minWidth: 0 },
-  headerDateInput: {
-    width: "100%",
-    minWidth: 0,
-    padding: "7px 0",
-    border: "none",
-    borderRadius: "0",
-    backgroundColor: "transparent",
+  dateHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: "8px",
     color: "#111827",
     fontSize: "14px",
     fontWeight: "600",
+    whiteSpace: "nowrap",
+  },
+  calendarButton: {
+    position: "relative",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "28px",
+    height: "28px",
+    borderRadius: "6px",
     cursor: "pointer",
-    outline: "none",
-    fontFamily: "inherit",
+    color: "#374151",
+  },
+  calendarIcon: { fontSize: "18px", lineHeight: 1 },
+  hiddenDateInput: {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    opacity: 0,
+    cursor: "pointer",
   },
   headerSelect: {
     width: "100%",
