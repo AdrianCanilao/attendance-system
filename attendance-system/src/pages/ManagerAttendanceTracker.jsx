@@ -120,8 +120,27 @@ const [selectedDate, setSelectedDate] = useState(
       const updatedTimeIn = correctionTimeIn
         ? toManilaISO(logDate, correctionTimeIn)
         : null;
+      const isOvernightCorrection =
+        correctionTimeIn &&
+        correctionTimeOut &&
+        correctionTimeOut <= correctionTimeIn;
+
+      const nextLogDate = (() => {
+        const date = new Date(`${logDate}T12:00:00+08:00`);
+        date.setUTCDate(date.getUTCDate() + 1);
+        return new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Manila",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(date);
+      })();
+
       const updatedTimeOut = correctionTimeOut
-        ? toManilaISO(logDate, correctionTimeOut)
+        ? toManilaISO(
+            isOvernightCorrection ? nextLogDate : logDate,
+            correctionTimeOut
+          )
         : null;
 
       const lateMinutes = calculateLateMinutes(
@@ -361,6 +380,12 @@ if (correctionError) {
               }
             )
           : "-",
+        time_in_date: attendanceToday?.time_in
+          ? new Intl.DateTimeFormat("en-US", {
+              month: "short", day: "numeric", year: "numeric",
+              timeZone: "Asia/Manila",
+            }).format(new Date(attendanceToday.time_in))
+          : null,
 
         time_out: attendanceToday?.time_out
           ? new Date(attendanceToday.time_out).toLocaleTimeString(
@@ -373,6 +398,12 @@ if (correctionError) {
               }
             )
           : "-",
+        time_out_date: attendanceToday?.time_out
+          ? new Intl.DateTimeFormat("en-US", {
+              month: "short", day: "numeric", year: "numeric",
+              timeZone: "Asia/Manila",
+            }).format(new Date(attendanceToday.time_out))
+          : null,
 
         // Historical attendance must use the values saved on the log.
         // Never recalculate old records from the employee's current shift.
@@ -660,6 +691,7 @@ correction:
 
                       <div style={styles.timeDetails}>
                         <span>{log.time_in}</span>
+                        {log.time_in_date && log.time_in_date !== new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(`${log.log_date}T12:00:00+08:00`)) && <span style={styles.locationText}>{log.time_in_date}</span>}
                         <span style={styles.locationText}>
                           {log.time_in_location || "-"}
                         </span>
@@ -686,6 +718,7 @@ correction:
 
                       <div style={styles.timeDetails}>
                         <span>{log.time_out}</span>
+                        {log.time_out_date && log.time_out_date !== new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(`${log.log_date}T12:00:00+08:00`)) && <span style={styles.locationText}>{log.time_out_date}</span>}
                         <span style={styles.locationText}>
                           {log.time_out_location || "-"}
                         </span>
