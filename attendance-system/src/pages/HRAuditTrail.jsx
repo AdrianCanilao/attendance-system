@@ -215,7 +215,7 @@ const styles = {
   dateHeader: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "flex-end",
+    justifyContent: "flex-start",
     gap: "8px",
     color: "#111827",
     fontSize: "14px",
