@@ -255,7 +255,7 @@ export default function BranchSettings() {
 
   return (
     <HRLayout>
-      <div className="cibo-hr-page cibo-hr-branch-page" style={styles.wrapper}>
+      <div className="cibo-page-root cibo-hr-page cibo-hr-branch-page" style={styles.wrapper}>
         <div className="cibo-branch-page-header" style={styles.header}>
           <div>
             <h1 className="cibo-page-title" style={styles.pageTitle}>Branch Settings</h1>
