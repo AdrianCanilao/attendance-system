@@ -562,7 +562,7 @@ correction:
         }
       `}</style>
     <ManagerLayout>
-      <div style={styles.header}>
+      <div className="cibo-page-root" style={styles.header}>
         <h2 className="cibo-page-title" style={styles.pageTitle}>Attendance Tracker</h2>
       </div>
 
