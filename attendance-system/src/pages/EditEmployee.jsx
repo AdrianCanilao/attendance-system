@@ -22,6 +22,9 @@ export default function EditEmployee() {
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({});
   const [loading, setLoading] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteFeedback, setDeleteFeedback] = useState(null);
   const getRemainingCharacters = (name, maxLength) =>
     Math.max(0, maxLength - String(form[name] || "").length);
   const [branches, setBranches] = useState([]);
@@ -705,24 +708,52 @@ const handleUpdate = async () => {
 
 
 const handleDelete = async () => {
-  if (!confirm("Delete this employee?")) return;
+  if (!selected || deleteBusy) return;
 
-  await supabase
-    .from("employee_profiles")
-    .delete()
-    .eq("id", selected.id);
+  try {
+    setDeleteBusy(true);
+    setDeleteFeedback(null);
 
-  const { data: currentUser } =
-    await supabase.auth.getUser();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) throw new Error("Your session has expired. Please log in again.");
 
-  await logCurrentUserAudit({
-    action: "DELETE_EMPLOYEE",
-    description: `Deleted employee: ${selected.full_name}`,
-  });
+    const response = await fetch(API_URL + "/admin/delete-employee", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + accessToken,
+      },
+      body: JSON.stringify({ target_user_id: selected.id }),
+    });
 
-  alert("Deleted");
-  closeModal();
-  fetchEmployees();
+    let data = {};
+    try { data = await response.json(); } catch {}
+    if (!response.ok) {
+      throw new Error(data.detail || data.message || "The employee could not be deleted.");
+    }
+    if (data.status !== "OK") {
+      throw new Error(data.message || "The server did not confirm the deletion.");
+    }
+
+    setDeleteConfirmOpen(false);
+    setDeleteFeedback({
+      type: "success",
+      title: "Employee deleted",
+      message: `${selected.full_name} was successfully removed from the system.`,
+    });
+    closeModal();
+    await fetchEmployees();
+  } catch (error) {
+    setDeleteConfirmOpen(false);
+    setDeleteFeedback({
+      type: "error",
+      title: "Deletion failed",
+      message: error?.message || "The employee could not be deleted. Please try again.",
+    });
+  } finally {
+    setDeleteBusy(false);
+  }
 };
 
   return (
@@ -765,6 +796,37 @@ const handleDelete = async () => {
             </div>
           ))}
         </div>
+
+        {deleteConfirmOpen && selected && (
+          <div style={styles.alertOverlay} role="presentation">
+            <div style={styles.alertCard} role="dialog" aria-modal="true" aria-labelledby="delete-alert-title">
+              <div style={styles.alertIcon}>!</div>
+              <h2 id="delete-alert-title" style={styles.alertTitle}>Delete this employee?</h2>
+              <p style={styles.alertText}>This will remove <strong>{selected.full_name}</strong> from the system. This action cannot be undone.</p>
+              <div style={styles.alertActions}>
+                <button type="button" onClick={() => setDeleteConfirmOpen(false)} disabled={deleteBusy} style={styles.alertCancel}>Cancel</button>
+                <button type="button" onClick={handleDelete} disabled={deleteBusy} style={styles.alertDelete}>{deleteBusy ? "Deleting..." : "Yes, delete"}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {deleteFeedback && (
+          <div style={styles.alertOverlay} role="presentation">
+            <div style={styles.alertCard} role="dialog" aria-modal="true" aria-labelledby="delete-result-title">
+              <div style={{
+                ...styles.alertIcon,
+                color: deleteFeedback.type === "success" ? "#16a34a" : "#ef4444",
+                borderColor: deleteFeedback.type === "success" ? "#86efac" : "#fca5a5",
+              }}>{deleteFeedback.type === "success" ? "✓" : "×"}</div>
+              <h2 id="delete-result-title" style={styles.alertTitle}>{deleteFeedback.title}</h2>
+              <p style={styles.alertText}>{deleteFeedback.message}</p>
+              <div style={styles.alertActions}>
+                <button type="button" onClick={() => setDeleteFeedback(null)} style={styles.alertConfirm}>OK</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {selected && (
           <div className="cibo-edit-employee-overlay" style={styles.modalOverlay}>
@@ -1030,7 +1092,7 @@ const handleDelete = async () => {
                   {loading ? "Saving..." : "Save"}
                 </button>
 
-                <button onClick={handleDelete} style={styles.delete}>
+                <button onClick={() => setDeleteConfirmOpen(true)} style={styles.delete}>
                   Delete
                 </button>
 
@@ -1047,6 +1109,42 @@ const handleDelete = async () => {
 }
 
 const styles = {
+  alertOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 99999,
+    background: "rgba(17, 24, 39, 0.58)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "20px",
+  },
+  alertCard: {
+    width: "100%",
+    maxWidth: "420px",
+    background: "#fff",
+    borderRadius: "12px",
+    padding: "28px 26px 24px",
+    textAlign: "center",
+    boxShadow: "0 20px 60px rgba(0,0,0,.25)",
+  },
+  alertIcon: {
+    width: "66px",
+    height: "66px",
+    margin: "0 auto 18px",
+    borderRadius: "50%",
+    border: "4px solid #fca5a5",
+    color: "#ef4444",
+    fontSize: "44px",
+    lineHeight: "58px",
+    fontWeight: "400",
+  },
+  alertTitle: { margin: "0 0 12px", color: "#374151", fontSize: "24px", fontWeight: "600" },
+  alertText: { margin: "0 auto 24px", color: "#6b7280", fontSize: "15px", lineHeight: 1.6 },
+  alertActions: { display: "flex", justifyContent: "center", gap: "10px" },
+  alertCancel: { padding: "10px 18px", border: "0", borderRadius: "6px", background: "#6b7280", color: "#fff", cursor: "pointer" },
+  alertDelete: { padding: "10px 18px", border: "0", borderRadius: "6px", background: "#ef4444", color: "#fff", cursor: "pointer" },
+  alertConfirm: { padding: "10px 24px", border: "0", borderRadius: "6px", background: "#f97316", color: "#fff", cursor: "pointer" },
   wrapper: { padding: 20 },
 
   list: {
