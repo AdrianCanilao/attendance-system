@@ -107,9 +107,9 @@ export default function DataMigration() {
 
     try {
       const isExcel = /\.xlsx?$/i.test(nextFile.name);
+      const activeDataset = isExcel ? "cibo_dtr_summary" : dataset;
       if (isExcel && dataset !== "cibo_dtr_summary") {
-        setValidation({ ok: false, message: "Excel DTR import is currently supported for CIBO DTR Summary only. Other datasets should use CSV." });
-        return;
+        setDataset("cibo_dtr_summary");
       }
 
       let data;
@@ -222,7 +222,8 @@ export default function DataMigration() {
       }
 
       if (!data.headers.length) throw new Error("The selected file is empty.");
-      const missing = selected.required.filter((column) => !data.headers.includes(column));
+      const activeOptions = DATASET_OPTIONS.find((item) => item.value === activeDataset) || selected;
+      const missing = activeOptions.required.filter((column) => !data.headers.includes(column));
       setFile(uploadFile);
       setParsed(data);
       setValidation({
