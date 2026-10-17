@@ -1680,6 +1680,20 @@ async def admin_register_employee(
         )
 
     normalized_email = payload.email.strip().lower()
+    employee_no = (payload.employee_no or "").strip() or None
+    if not employee_no:
+        raise HTTPException(status_code=400, detail="Employee code is required.")
+    if len(employee_no) > 50:
+        raise HTTPException(status_code=400, detail="Employee code must be 50 characters or fewer.")
+    duplicate_employee_no = (
+        supabase.from_("employee_profiles")
+        .select("id")
+        .eq("employee_no", employee_no)
+        .limit(1)
+        .execute().data or []
+    )
+    if duplicate_employee_no:
+        raise HTTPException(status_code=409, detail="This employee code is already assigned.")
 
     existing_profile_result = (
         supabase
@@ -1761,6 +1775,7 @@ async def admin_register_employee(
             .from_("employee_profiles")
             .insert({
                 "id": user_id,
+                "employee_no": employee_no,
                 "full_name": payload.name,
                 "email": normalized_email,
                 "contact_number": payload.contact,
