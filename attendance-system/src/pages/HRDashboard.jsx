@@ -25,20 +25,26 @@ export default function HRDashboard() {
 
   const calculateHoursWorked = (
     timeInISO,
-    timeOutISO
+    timeOutISO,
+    storedHours
   ) => {
+    if (storedHours !== null && storedHours !== undefined && storedHours !== "") {
+      const totalMinutes = Math.round(Number(storedHours) * 60);
+      if (!Number.isFinite(totalMinutes) || totalMinutes < 0) return "-";
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${hours}h ${minutes}m`;
+    }
+
     if (!timeInISO || !timeOutISO) return "-";
 
     const start = new Date(timeInISO);
     const end = new Date(timeOutISO);
-
     const diff = (end - start) / 1000 / 60;
-
     if (diff <= 0) return "-";
 
     const hours = Math.floor(diff / 60);
     const minutes = Math.floor(diff % 60);
-
     return `${hours}h ${minutes}m`;
   };
 
@@ -160,8 +166,19 @@ export default function HRDashboard() {
 
         let status = "Absent";
 
-        if (attendanceToday?.time_in) {
-          status = "Present";
+        if (attendanceToday) {
+          if (attendanceToday.status === "Rest Day") {
+            status = "Rest Day";
+          } else if (attendanceToday.status === "On Leave") {
+            status = "On Leave";
+          } else if (
+            attendanceToday.time_in ||
+            Number(attendanceToday.total_hours_worked || 0) > 0
+          ) {
+            status = attendanceToday.status || "Present";
+          } else {
+            status = attendanceToday.status || "Absent";
+          }
         } else if (leaveToday) {
           status = "On Leave";
         }
@@ -188,6 +205,9 @@ export default function HRDashboard() {
 
           time_out_raw:
             attendanceToday?.time_out || null,
+
+          total_hours_worked_raw:
+            attendanceToday?.total_hours_worked ?? null,
 
           time_in: attendanceToday?.time_in
             ? new Date(
@@ -476,7 +496,8 @@ export default function HRDashboard() {
                     <td style={styles.td}>
                       {calculateHoursWorked(
                         log.time_in_raw,
-                        log.time_out_raw
+                        log.time_out_raw,
+                        log.total_hours_worked_raw
                       )}
                     </td>
 
