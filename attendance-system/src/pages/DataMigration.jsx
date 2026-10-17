@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
+import * as XLSX from "xlsx-js-style";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -102,40 +103,134 @@ export default function DataMigration() {
     setParsed(null);
     setValidation(null);
     setResult(null);
-
     if (!nextFile) return;
 
-    if (!nextFile.name.toLowerCase().endsWith(".csv")) {
+    try {
+      const isExcel = /\\.xlsx?$/i.test(nextFile.name);
+      if (isExcel && dataset !== "cibo_dtr_summary") {
+        setValidation({ ok: false, message: "Excel DTR import is currently supported for CIBO DTR Summary only. Other datasets should use CSV." });
+        return;
+      }
+
+      let data;
+      let uploadFile = nextFile;
+      if (isExcel) {
+        const buffer = await nextFile.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+        const sheetName = workbook.SheetNames.find((name) => /dtr template/i.test(name)) || workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        if (!sheet) throw new Error("No worksheet was found in the Excel workbook.");
+        const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: true });
+        const cellText = (value) => String(value ?? "").trim().toLowerCase();
+        const headerIndex = matrix.findIndex((row) =>
+          row.some((value) => cellText(value) === "employee code") &&
+          row.some((value) => cellText(value).includes("name of employee"))
+        );
+        if (headerIndex < 0) throw new Error("Could not find the DTR header row. Use the CIBO DTR template or the system's exported DTR workbook.");
+
+        const headerRow = matrix[headerIndex];
+        const nameCol = headerRow.findIndex((value) => cellText(value).includes("name of employee"));
+        const employeeCol = headerRow.findIndex((value) => cellText(value) === "employee code");
+        const storeCol = headerRow.findIndex((value) => cellText(value) === "store");
+        const regularTotalCol = headerRow.findIndex((value) => cellText(value).includes("total hours"));
+        if (nameCol < 0 || employeeCol < 0 || regularTotalCol < 0) throw new Error("The DTR is missing Employee Code, Name of Employee, or Total Hours columns.");
+
+        const regularDateCols = [];
+        for (let col = nameCol + 1; col < regularTotalCol; col++) {
+          const value = headerRow[col];
+          const day = typeof value === "number" ? value : /^\\d{1,2}$/.test(String(value).trim()) ? Number(value) : NaN;
+          if (Number.isInteger(day) && day >= 1 && day <= 31) regularDateCols.push({ col, day });
+        }
+        if (!regularDateCols.length) throw new Error("No daily date columns were found in the DTR header.");
+
+        const titleText = matrix.flat().map((value) => String(value ?? "")).find((value) => /cut.?off period/i.test(value)) || "";
+        const cutoffMatch = titleText.match(/([A-Za-z]+)\\s+(\\d{1,2})\\s*[–-]\\s*([A-Za-z]+)?\\s*(\\d{1,2}),?\\s*(\\d{4})/i)
+          || titleText.match(/([A-Za-z]+)\\s+(\\d{1,2}),?\\s*(\\d{4})/i);
+        let cutoffStart;
+        let cutoffEnd;
+        if (cutoffMatch && cutoffMatch.length >= 6) {
+          const monthNames = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+          const month = monthNames.indexOf(cutoffMatch[1].toLowerCase()) + 1;
+          const startDay = Number(cutoffMatch[2]);
+          const endDay = Number(cutoffMatch[4]);
+          const year = Number(cutoffMatch[5]);
+          cutoffStart = new Date(year, month - 1, startDay, 12);
+          cutoffEnd = new Date(year, month - 1, endDay, 12);
+        } else {
+          throw new Error("Could not read the payroll cutoff from the worksheet heading. Make sure it says 'For the cut-off period of October 1–October 15, 2026'.");
+        }
+        const dateForDay = (day) => new Date(cutoffStart.getFullYear(), cutoffStart.getMonth(), day, 12);
+        const dateHeaders = regularDateCols.map(({ day }) => {
+          const date = dateForDay(day);
+          if (date < cutoffStart || date > cutoffEnd) throw new Error("A daily header falls outside the cutoff period.");
+          return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+        });
+
+        const tardyHoursCol = headerRow.findIndex((value) => cellText(value).includes("tardy hrs"));
+        const tardyMinutesCol = headerRow.findIndex((value) => cellText(value).includes("tardy min"));
+        const otStartCol = tardyMinutesCol >= 0 ? tardyMinutesCol + 1 : regularTotalCol + 4;
+        const otTotalCol = headerRow.findIndex((value) => cellText(value).includes("ot total hours"));
+        const overtimeCols = regularDateCols.map((item, index) => ({ col: otStartCol + index, date: dateHeaders[index] }));
+        const normalizedRecords = [];
+        const previewSourceRows = [];
+        for (let rowIndex = headerIndex + 1; rowIndex < matrix.length; rowIndex++) {
+          const row = matrix[rowIndex] || [];
+          const employeeNo = String(row[employeeCol] ?? "").trim();
+          const employeeName = String(row[nameCol] ?? "").trim();
+          if (!employeeNo && !employeeName) continue;
+          if (!employeeNo || !employeeName) {
+            previewSourceRows.push({ _row: rowIndex + 1, _error: "Employee Code and Name of Employee are both required." });
+            continue;
+          }
+          const branchCode = String(row[storeCol] ?? "").trim();
+          regularDateCols.forEach(({ col }, index) => {
+            const rawValue = row[col];
+            const value = String(rawValue ?? "").trim();
+            const otRaw = row[overtimeCols[index]?.col];
+            const otValue = Number(otRaw);
+            const hasOvertime = String(otRaw ?? "").trim() !== "" && Number.isFinite(otValue) && otValue > 0;
+            if (!value && !hasOvertime) return;
+            const numericHours = value !== "" && Number.isFinite(Number(value)) ? Number(value) : 0;
+            const record = {
+              employee_no: employeeNo,
+              employee_name: employeeName,
+              branch_code: branchCode,
+              date: dateHeaders[index],
+              total_hours_worked: numericHours,
+              attendance_code: value || "Present",
+              overtime_hours: hasOvertime ? otValue : 0,
+            };
+            normalizedRecords.push(record);
+          });
+        }
+        if (!normalizedRecords.length) throw new Error("No daily attendance or overtime values were found under the DTR date columns.");
+        const headers = ["employee_no", "employee_name", "branch_code", "date", "total_hours_worked", "attendance_code", "overtime_hours"];
+        const csv = [headers.join(","), ...normalizedRecords.map((record) => headers.map((header) => {
+          const value = String(record[header] ?? "");
+          return /[",\\r\\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
+        }).join(","))].join("\\r\\n");
+        uploadFile = new File(["\\uFEFF", csv], nextFile.name.replace(/\\.xlsx?$/i, ".csv"), { type: "text/csv;charset=utf-8" });
+        data = { headers, records: normalizedRecords, source: "xlsx", sourceRows: previewSourceRows };
+      } else {
+        if (!nextFile.name.toLowerCase().endsWith(".csv")) throw new Error("Please select a CSV file or a CIBO DTR .xlsx workbook.");
+        data = parseCSV(await nextFile.text());
+      }
+
+      if (!data.headers.length) throw new Error("The selected file is empty.");
+      const missing = selected.required.filter((column) => !data.headers.includes(column));
+      setFile(uploadFile);
+      setParsed(data);
       setValidation({
-        ok: false,
-        message: "Please select a CSV file.",
+        ok: missing.length === 0 && (data.sourceRows || []).length === 0,
+        message: missing.length || (data.sourceRows || []).length
+          ? (missing.length ? "Missing required column(s): " + missing.join(", ") : "") +
+            ((data.sourceRows || []).length ? " Some DTR rows have missing employee identifiers; correct the workbook before importing." : "")
+          : `${data.records.length} daily record(s) detected. Required fields are present.`,
       });
-      return;
+    } catch (error) {
+      setFile(nextFile);
+      setValidation({ ok: false, message: error.message || "Unable to read the selected file." });
     }
-
-    const text = await nextFile.text();
-    const data = parseCSV(text);
-
-    if (!data.headers.length) {
-      setValidation({
-        ok: false,
-        message: "The CSV file is empty.",
-      });
-      return;
-    }
-
-    const missing = selected.required.filter(
-      (column) => !data.headers.includes(column)
-    );
-
-    setParsed(data);
-    setValidation({
-      ok: missing.length === 0,
-      message:
-        missing.length === 0
-          ? `${data.records.length} record(s) detected. Required columns are present.`
-          : `Missing required column(s): ${missing.join(", ")}`,
-    });
   };
 
   const downloadDtrTemplate = () => {
@@ -183,7 +278,7 @@ export default function DataMigration() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.detail || "CSV validation failed.");
+        throw new Error(data?.detail || "File validation failed.");
       }
 
       setResult(data);
@@ -198,7 +293,7 @@ export default function DataMigration() {
     if (!file || !validation?.ok) return;
 
     const confirmed = window.confirm(
-      "Import this CSV into the CIBO system?\n\nExisting records will be checked for duplicates before insertion."
+      "Import these validated records into the CIBO system?\n\nExisting records will be checked for duplicates before insertion."
     );
 
     if (!confirmed) return;
@@ -226,7 +321,7 @@ export default function DataMigration() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.detail || "CSV import failed.");
+        throw new Error(data?.detail || "File import failed.");
       }
 
       setResult(data);
@@ -242,13 +337,13 @@ export default function DataMigration() {
       <div className="cibo-page-root" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.title}>Data Migration</h1>
         <p style={styles.subtitle}>
-          Import existing CIBO records using CSV while validating the data before it reaches the database.
+          Import existing CIBO records from CSV files or a CIBO DTR Excel workbook, with validation before data reaches the database.
         </p>
 
         <div style={styles.card}>
           <div style={styles.steps}>
             <div><b>1.</b> Select data type</div>
-            <div><b>2.</b> Upload CSV</div>
+            <div><b>2.</b> Upload CSV / DTR Excel</div>
             <div><b>3.</b> Validate</div>
             <div><b>4.</b> Import</div>
           </div>
@@ -276,10 +371,10 @@ export default function DataMigration() {
             </div>
 
             <div>
-              <label style={styles.label}>CSV File</label>
+              <label style={styles.label}>CSV or CIBO DTR Excel File</label>
               <input
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,text/csv,.xlsx,.xls"
                 onChange={handleFile}
                 style={styles.input}
               />
@@ -369,7 +464,7 @@ export default function DataMigration() {
               disabled={!file || !validation?.ok || loading}
               style={styles.secondaryBtn}
             >
-              {loading ? "Processing..." : "Validate CSV"}
+              {loading ? "Processing..." : "Validate File"}
             </button>
 
             <button
