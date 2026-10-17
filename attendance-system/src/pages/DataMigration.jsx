@@ -230,7 +230,7 @@ export default function DataMigration() {
         const csv = [headers.join(","), ...normalizedRecords.map((record) => headers.map((header) => {
           const value = String(record[header] ?? "");
           return /[",\r\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
-        }).join(","))].join("\\r\\n");
+        }).join(","))].join("\r\n");
         uploadFile = new File(["\uFEFF", csv], nextFile.name.replace(/\.xlsx?$/i, ".csv"), { type: "text/csv;charset=utf-8" });
         data = { headers, records: normalizedRecords, source: "xlsx", sourceRows: previewSourceRows };
       } else {
