@@ -446,7 +446,7 @@ async def admin_migrate_csv(
                 if profile_rows is None:
                     profile_rows = (
                         supabase.from_("employee_profiles")
-                        .select("id,employee_no,full_name,email,branch_id,shift_id,contact,position")
+                        .select("id,employee_no,full_name,email,branch_id,shift_id")
                         .eq("employee_no", employee_no)
                         .limit(2)
                         .execute().data or []
