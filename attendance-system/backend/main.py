@@ -339,7 +339,7 @@ async def admin_migrate_csv(
     caller = authenticate_hr_bearer(token)
 
     dataset = (dataset or "").strip().lower()
-    if dataset not in {"attendance", "leave", "employees"}:
+    if dataset not in {"attendance", "cibo_dtr_summary", "leave", "employees"}:
         raise HTTPException(status_code=400, detail="Unsupported CSV data type.")
 
     if not file.filename or not file.filename.lower().endswith(".csv"):
@@ -374,6 +374,7 @@ async def admin_migrate_csv(
 
     required_columns = {
         "attendance": {"email", "date", "time_in", "time_out", "status"},
+        "cibo_dtr_summary": {"employee_no", "branch_code", "date", "total_hours_worked", "attendance_code"},
         "leave": {"email", "leave_type", "start_date", "end_date", "status"},
         "employees": {"email", "full_name", "contact", "position", "branch_code"},
     }[dataset]
@@ -434,24 +435,43 @@ async def admin_migrate_csv(
         row_number = row["_row"]
         try:
             email = row.get("email", "").strip().lower()
-            if not email:
-                raise ValueError("email is required")
+            employee_no = row.get("employee_no", "").strip()
 
-            profile_rows = profile_cache.get(email)
-            if profile_rows is None:
-                profile_rows = (
-                    supabase.from_("employee_profiles")
-                    .select("id,full_name,email,branch_id,shift_id,contact,position")
-                    .eq("email", email)
-                    .limit(1)
-                    .execute().data or []
-                )
-                profile_cache[email] = profile_rows
+            if dataset == "cibo_dtr_summary":
+                if not employee_no:
+                    raise ValueError("employee_no is required to match the CIBO employee code")
+                cache_key = "employee_no:" + employee_no
+                profile_rows = profile_cache.get(cache_key)
+                if profile_rows is None:
+                    profile_rows = (
+                        supabase.from_("employee_profiles")
+                        .select("id,employee_no,full_name,email,branch_id,shift_id,contact,position")
+                        .eq("employee_no", employee_no)
+                        .limit(2)
+                        .execute().data or []
+                    )
+                    profile_cache[cache_key] = profile_rows
+                if len(profile_rows) > 1:
+                    raise ValueError("Employee code '" + employee_no + "' matches multiple employee profiles")
+            else:
+                if not email:
+                    raise ValueError("email is required")
+                profile_rows = profile_cache.get(email)
+                if profile_rows is None:
+                    profile_rows = (
+                        supabase.from_("employee_profiles")
+                        .select("id,employee_no,full_name,email,branch_id,shift_id,contact,position")
+                        .eq("email", email)
+                        .limit(1)
+                        .execute().data or []
+                    )
+                    profile_cache[email] = profile_rows
 
             if not profile_rows:
+                lookup_value = "employee code " + employee_no if dataset == "cibo_dtr_summary" else email
                 raise ValueError(
-                    f"No employee account/profile found for {email}. "
-                    "Register or link the employee before importing history."
+                    "No employee account/profile found for " + lookup_value + ". "
+                    "Register or link the employee and verify its employee code before importing."
                 )
 
             profile = profile_rows[0]
@@ -485,6 +505,56 @@ async def admin_migrate_csv(
                     "scheduled_time_out": row.get("scheduled_time_out") or None,
                     "time_in_location": row.get("time_in_location") or None,
                     "time_out_location": row.get("time_out_location") or None,
+                })
+
+            elif dataset == "cibo_dtr_summary":
+                log_date = parse_date(row.get("date"), "date")
+                branch_code = row.get("branch_code", "").strip()
+                if not branch_code:
+                    raise ValueError("branch_code is required")
+                branch_rows = (
+                    supabase.from_("branches")
+                    .select("id,branch_name,branch_code")
+                    .ilike("branch_code", branch_code)
+                    .limit(2)
+                    .execute().data or []
+                )
+                if not branch_rows:
+                    raise ValueError("Branch code '" + branch_code + "' was not found")
+                if len(branch_rows) > 1:
+                    raise ValueError("Branch code '" + branch_code + "' matches multiple branches")
+                if str(profile.get("branch_id") or "") != str(branch_rows[0]["id"]):
+                    raise ValueError(
+                        "Employee code '" + employee_no + "' is not assigned to branch '" + branch_code + "' in this system. "
+                        "Correct the employee's branch or the CSV mapping before importing."
+                    )
+
+                hours_text = row.get("total_hours_worked", "").strip()
+                code = row.get("attendance_code", "").strip()
+                if not code:
+                    raise ValueError("attendance_code is required (for example 8, OFF, SL, VL, or AA)")
+                try:
+                    hours = float(hours_text) if hours_text else 0.0
+                    if hours < 0 or hours > 24:
+                        raise ValueError
+                except ValueError:
+                    raise ValueError("total_hours_worked must be a number from 0 to 24")
+                if code.upper() == "OFF" and hours_text and hours != 0:
+                    raise ValueError("OFF records must have 0 total_hours_worked")
+                status = "Rest Day" if code.upper() == "OFF" else (
+                    "On Leave" if code.upper() in {"SL", "VL", "SIL", "EL", "BL", "ML", "PL", "CL", "AL"} else (
+                        "Present" if hours > 0 else "Absent"
+                    )
+                )
+                valid_rows.append({
+                    "_row": row_number,
+                    "kind": "cibo_dtr_summary",
+                    "employee_id": profile["id"],
+                    "log_date": log_date.isoformat(),
+                    "total_hours_worked": round(hours, 2),
+                    "attendance_code": code,
+                    "status": status,
+                    "branch_code": branch_code,
                 })
 
             elif dataset == "leave":
@@ -580,9 +650,9 @@ async def admin_migrate_csv(
     duplicate_count = 0
 
     for item in valid_rows:
-        if item["kind"] == "attendance":
+        if item["kind"] in {"attendance", "cibo_dtr_summary"}:
             key = (
-                "attendance",
+                item["kind"],
                 str(item["employee_id"]),
                 item["log_date"],
             )
@@ -626,7 +696,7 @@ async def admin_migrate_csv(
 
     for item in valid_rows:
         try:
-            if item["kind"] == "attendance":
+            if item["kind"] in {"attendance", "cibo_dtr_summary"}:
                 existing = (
                     supabase.from_("attendance_logs")
                     .select("id")
@@ -657,6 +727,23 @@ async def admin_migrate_csv(
                     "time_in_location": item["time_in_location"],
                     "time_out_location": item["time_out_location"],
                 }
+                if item["kind"] == "cibo_dtr_summary":
+                    payload = {
+                        "employee_id": item["employee_id"],
+                        "log_date": item["log_date"],
+                        "attendance_date": item["log_date"],
+                        "time_in": None,
+                        "time_out": None,
+                        "scheduled_time_in": None,
+                        "scheduled_time_out": None,
+                        "late_minutes": 0,
+                        "overtime_minutes": 0,
+                        "status": item["status"],
+                        "source": "imported",
+                        "notes": "Imported from legacy CIBO DTR Summary CSV",
+                        "total_hours_worked": item["total_hours_worked"],
+                        "attendance_code": item["attendance_code"],
+                    }
                 response = supabase.from_("attendance_logs").insert(payload).execute()
                 if not response.data:
                     raise ValueError("Database did not return an inserted attendance record.")
