@@ -27,7 +27,7 @@ const DATASET_OPTIONS = [
     value: "employees",
     label: "Employee Data",
     required: ["email", "full_name", "contact", "position", "branch_code"],
-    example: "email,full_name,contact,position,branch_code,shift_name",
+    example: "email,full_name,contact,position,branch_code,shift_name,employee_no",
   },
 ];
 
@@ -291,6 +291,11 @@ export default function DataMigration() {
             {selected.required.join(", ")}
             <br />
             <span>Example: {selected.example}</span>
+            {dataset === "employees" && (
+              <p style={{ margin: "8px 0 0" }}>
+                Optional employee_no lets HR link existing employee profiles to CIBO employee codes before importing the historical DTR summary.
+              </p>
+            )}
             {dataset === "cibo_dtr_summary" && (
               <>
                 <p style={{ margin: "8px 0 0" }}>
