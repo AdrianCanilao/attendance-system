@@ -122,22 +122,32 @@ export default function DataMigration() {
         if (!sheet) throw new Error("No worksheet was found in the Excel workbook.");
         const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: true });
         const cellText = (value) => String(value ?? "").trim().toLowerCase();
-        const headerIndex = matrix.findIndex((row) =>
-          row.some((value) => cellText(value) === "employee code") &&
-          row.some((value) => cellText(value).includes("name of employee"))
+        // CIBO's original template uses three header rows: employee "Code" and
+        // "NAME OF EMPLOYEE" on the weekday row, with numeric dates above them.
+        // The system-generated workbook uses a single column-header row.
+        const headerIndex = matrix.findIndex((row, rowIndex) =>
+          row.some((value) => cellText(value).includes("name of employee")) &&
+          (row.some((value) => cellText(value) === "employee code") ||
+            cellText(row[row.findIndex((value) => cellText(value).includes("name of employee")) - 1]) === "code")
         );
-        if (headerIndex < 0) throw new Error("Could not find the DTR header row. Use the CIBO DTR template or the system's exported DTR workbook.");
+        if (headerIndex < 0) throw new Error("Could not find the DTR header row. Use the original CIBO DTR template or the system's exported DTR workbook.");
 
         const headerRow = matrix[headerIndex];
         const nameCol = headerRow.findIndex((value) => cellText(value).includes("name of employee"));
-        const employeeCol = headerRow.findIndex((value) => cellText(value) === "employee code");
+        const isOriginalCibo = !headerRow.some((value) => cellText(value) === "employee code");
+        const employeeCol = isOriginalCibo
+          ? headerRow.findIndex((value) => cellText(value) === "code")
+          : headerRow.findIndex((value) => cellText(value) === "employee code");
         const storeCol = headerRow.findIndex((value) => cellText(value) === "store");
-        const regularTotalCol = headerRow.findIndex((value) => cellText(value).includes("total hours"));
+        const dateRow = isOriginalCibo ? (matrix[headerIndex - 1] || []) : headerRow;
+        const regularTotalCol = isOriginalCibo
+          ? dateRow.findIndex((value, col) => col > nameCol && cellText(value).includes("total"))
+          : headerRow.findIndex((value) => cellText(value).includes("total hours"));
         if (nameCol < 0 || employeeCol < 0 || regularTotalCol < 0) throw new Error("The DTR is missing Employee Code, Name of Employee, or Total Hours columns.");
 
         const regularDateCols = [];
         for (let col = nameCol + 1; col < regularTotalCol; col++) {
-          const value = headerRow[col];
+          const value = dateRow[col];
           const day = typeof value === "number" ? value : /^\d{1,2}$/.test(String(value).trim()) ? Number(value) : NaN;
           if (Number.isInteger(day) && day >= 1 && day <= 31) regularDateCols.push({ col, day });
         }
@@ -166,7 +176,7 @@ export default function DataMigration() {
           return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
         });
 
-        const otGroupRowIndex = matrix.slice(0, headerIndex + 1).findIndex((row) =>
+        const otGroupRowIndex = matrix.findIndex((row) =>
           row.some((value) => cellText(value).includes("ot regular"))
         );
         const otStartCol = otGroupRowIndex >= 0
@@ -187,7 +197,7 @@ export default function DataMigration() {
             previewSourceRows.push({ _row: rowIndex + 1, _error: "Employee Code and Name of Employee are both required." });
             continue;
           }
-          const branchCode = String(row[storeCol] ?? "").trim();
+          const branchCode = String(row[storeCol >= 0 ? storeCol : 1] ?? "").trim();
           regularDateCols.forEach(({ col }, index) => {
             const rawValue = row[col];
             const value = String(rawValue ?? "").trim();
