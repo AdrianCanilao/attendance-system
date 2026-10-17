@@ -145,8 +145,8 @@ export default function DataMigration() {
       "11423,\"SAMPLE EMPLOYEE A\",MAIN,2026-09-17,0,OFF",
       "11259,\"SAMPLE EMPLOYEE B\",MAIN,2026-09-16,7.5,7.5",
       "11259,\"SAMPLE EMPLOYEE B\",MAIN,2026-09-17,0,SL",
-    ].join("\\n");
-    const blob = new Blob(["\\uFEFF", template], { type: "text/csv;charset=utf-8;" });
+    ].join("\n");
+    const blob = new Blob(["\uFEFF", template], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
