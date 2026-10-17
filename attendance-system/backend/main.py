@@ -714,19 +714,6 @@ async def admin_migrate_csv(
                     })
                     continue
 
-                payload = {
-                    "employee_id": item["employee_id"],
-                    "log_date": item["log_date"],
-                    "time_in": item["time_in"],
-                    "time_out": item["time_out"],
-                    "scheduled_time_in": item["scheduled_time_in"],
-                    "scheduled_time_out": item["scheduled_time_out"],
-                    "late_minutes": item["late_minutes"],
-                    "overtime_minutes": item["overtime_minutes"],
-                    "status": item["status"],
-                    "time_in_location": item["time_in_location"],
-                    "time_out_location": item["time_out_location"],
-                }
                 if item["kind"] == "cibo_dtr_summary":
                     payload = {
                         "employee_id": item["employee_id"],
@@ -743,6 +730,20 @@ async def admin_migrate_csv(
                         "notes": "Imported from legacy CIBO DTR Summary CSV",
                         "total_hours_worked": item["total_hours_worked"],
                         "attendance_code": item["attendance_code"],
+                    }
+                else:
+                    payload = {
+                        "employee_id": item["employee_id"],
+                        "log_date": item["log_date"],
+                        "time_in": item["time_in"],
+                        "time_out": item["time_out"],
+                        "scheduled_time_in": item["scheduled_time_in"],
+                        "scheduled_time_out": item["scheduled_time_out"],
+                        "late_minutes": item["late_minutes"],
+                        "overtime_minutes": item["overtime_minutes"],
+                        "status": item["status"],
+                        "time_in_location": item["time_in_location"],
+                        "time_out_location": item["time_out_location"],
                     }
                 response = supabase.from_("attendance_logs").insert(payload).execute()
                 if not response.data:
