@@ -19,6 +19,7 @@ export default function RegisterEmployee() {
   const webcamRef = useRef(null);
 
   const [form, setForm] = useState({
+    employee_no: "",
     name: "",
     email: "",
     password: "",
@@ -361,6 +362,7 @@ export default function RegisterEmployee() {
             Authorization: "Bearer " + accessToken,
           },
           body: JSON.stringify({
+            employee_no: form.employee_no.trim(),
             name,
             email,
             password,
@@ -640,6 +642,24 @@ export default function RegisterEmployee() {
 
           <form onSubmit={handleRegister} noValidate>
             <div className="cibo-register-employee-grid" style={styles.grid}>
+              <div>
+                <div style={styles.fieldHeader}>
+                  <label style={styles.label}>Employee Code <span style={styles.required}>*</span></label>
+                  <span style={styles.counter}>Max 50 characters</span>
+                </div>
+                <input
+                  name="employee_no"
+                  placeholder="Enter CIBO employee code"
+                  value={form.employee_no}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  maxLength={50}
+                  required
+                  aria-required="true"
+                  aria-invalid={isFieldInvalid("employee_no")}
+                  style={{ ...styles.input, ...(isFieldInvalid("employee_no") ? styles.inputError : {}) }}
+                />
+              </div>
               <div>
                 <div style={styles.fieldHeader}>
                   <label style={styles.label}>Full Name <span style={styles.required}>*</span></label>
