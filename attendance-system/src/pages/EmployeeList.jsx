@@ -268,20 +268,89 @@ export default function EmployeeList() {
         }
       });
 
-      records.sort((a, b) => a.date.localeCompare(b.date) || a.employee_name.localeCompare(b.employee_name));
       if (!records.length) throw new Error("No attendance or approved leave records were found for this month.");
 
+      // Pivot the daily records into the familiar CIBO DTR layout:
+      // one employee per row, one column per date, then total hours.
+      const dateColumns = [];
+      const dateCursor = new Date(monthStart + "T12:00:00");
+      const lastDate = new Date(todayKey + "T12:00:00");
+      while (dateCursor <= lastDate) {
+        dateColumns.push([
+          dateCursor.getFullYear(),
+          String(dateCursor.getMonth() + 1).padStart(2, "0"),
+          String(dateCursor.getDate()).padStart(2, "0"),
+        ].join("-"));
+        dateCursor.setDate(dateCursor.getDate() + 1);
+      }
+
+      const dailyByEmployee = new Map();
+      records.forEach((record) => {
+        if (!dailyByEmployee.has(record.employee_no + "|" + record.employee_name)) {
+          dailyByEmployee.set(record.employee_no + "|" + record.employee_name, {
+            employee_no: record.employee_no,
+            employee_name: record.employee_name,
+            branch_code: record.branch_code,
+            branch_name: record.branch_name,
+            daily: new Map(),
+          });
+        }
+        const employeeRecord = dailyByEmployee.get(record.employee_no + "|" + record.employee_name);
+        const hours = Number(record.total_hours_worked);
+        const hasHours = record.total_hours_worked !== "" && Number.isFinite(hours) && hours > 0;
+        employeeRecord.daily.set(record.date, {
+          value: hasHours ? Number(hours.toFixed(2)).toString() : (record.attendance_code || ""),
+          hours: hasHours ? hours : 0,
+        });
+      });
+
       const headers = [
-        "employee_no", "employee_name", "email", "branch_code", "branch_name", "date",
-        "total_hours_worked", "attendance_code", "late_minutes", "overtime_minutes", "source",
+        "Store",
+        "Employee Code",
+        "Name of Employee",
+        ...dateColumns.map((date) => {
+          const [, monthPart, dayPart] = date.split("-");
+          return monthPart + "/" + dayPart;
+        }),
+        "Total Hours",
       ];
-      const worksheet = XLSX.utils.json_to_sheet(records, { header: headers });
-      const csvContent = "\uFEFF" + XLSX.utils.sheet_to_csv(worksheet);
+
+      const dtrRows = [...dailyByEmployee.values()]
+        .sort((a, b) => a.employee_name.localeCompare(b.employee_name))
+        .map((employee) => {
+          let totalHours = 0;
+          const dailyValues = dateColumns.map((date) => {
+            const daily = employee.daily.get(date);
+            if (!daily) return "";
+            totalHours += daily.hours;
+            return daily.value;
+          });
+          return [
+            employee.branch_code || employee.branch_name || "",
+            employee.employee_no || "",
+            employee.employee_name || "",
+            ...dailyValues,
+            Number(totalHours.toFixed(2)).toString(),
+          ];
+        });
+
+      const csvRows = [
+        ["CIBO ATTENDANCE DTR SUMMARY"],
+        [branch.branch_name || "Branch", "Cutoff Period", monthStart, "to", todayKey],
+        headers,
+        ...dtrRows,
+      ];
+      const csvContent = "\uFEFF" + csvRows.map((row) =>
+        row.map((value) => {
+          const text = String(value ?? "");
+          return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+        }).join(",")
+      ).join("\r\n");
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "cibo-daily-hours-" + todayKey + ".csv";
+      link.download = "cibo-dtr-summary-" + todayKey + ".csv";
       document.body.appendChild(link);
       link.click();
       link.remove();
