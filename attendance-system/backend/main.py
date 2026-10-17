@@ -540,11 +540,23 @@ async def admin_migrate_csv(
                         raise ValueError
                 except ValueError:
                     raise ValueError("total_hours_worked must be a number from 0 to 24")
+                overtime_text = row.get("overtime_hours", "").strip()
+                try:
+                    overtime_hours = float(overtime_text) if overtime_text else 0.0
+                    if overtime_hours < 0 or overtime_hours > 24:
+                        raise ValueError
+                except ValueError:
+                    raise ValueError("overtime_hours must be a number from 0 to 24")
                 if code.upper() == "OFF" and hours_text and hours != 0:
                     raise ValueError("OFF records must have 0 total_hours_worked")
-                status = "Rest Day" if code.upper() == "OFF" else (
-                    "On Leave" if code.upper() in {"SL", "VL", "SIL", "EL", "BL", "ML", "PL", "CL", "AL", "AA", "SUS"} else (
-                        "Present" if hours > 0 else "Absent"
+                normalized_code = code.strip().upper()
+                status = "Rest Day" if normalized_code == "OFF" else (
+                    "On Leave" if normalized_code in {"SL", "VL", "SIL", "EL", "BL", "ML", "PL", "CL", "AL", "AA", "SUS"} else (
+                        "Late" if normalized_code == "LATE" else (
+                            "Absent" if normalized_code == "ABSENT" else (
+                                "Present" if hours > 0 or normalized_code == "PRESENT" else "Absent"
+                            )
+                        )
                     )
                 )
                 valid_rows.append({
@@ -553,6 +565,7 @@ async def admin_migrate_csv(
                     "employee_id": profile["id"],
                     "log_date": log_date.isoformat(),
                     "total_hours_worked": round(hours, 2),
+                    "overtime_hours": round(overtime_hours, 2),
                     "attendance_code": code,
                     "status": status,
                     "branch_code": branch_code,
@@ -739,10 +752,11 @@ async def admin_migrate_csv(
                         "scheduled_time_in": None,
                         "scheduled_time_out": None,
                         "late_minutes": 0,
-                        "overtime_minutes": 0,
+                        "overtime_minutes": int(round(item.get("overtime_hours", 0) * 60)),
+                        "overtime_hours": item.get("overtime_hours", 0),
                         "status": item["status"],
                         "source": "imported",
-                        "notes": "Imported from legacy CIBO DTR Summary CSV",
+                        "notes": "Imported from legacy CIBO DTR Summary CSV/Excel",
                         "total_hours_worked": item["total_hours_worked"],
                         "attendance_code": item["attendance_code"],
                     }
