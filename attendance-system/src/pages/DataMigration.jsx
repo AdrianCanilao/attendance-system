@@ -7,9 +7,15 @@ const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replac
 const DATASET_OPTIONS = [
   {
     value: "attendance",
-    label: "Attendance History",
+    label: "Attendance History (Clock Times)",
     required: ["email", "date", "time_in", "time_out", "status"],
     example: "email,date,time_in,time_out,status,late_minutes,overtime_minutes",
+  },
+  {
+    value: "cibo_dtr_summary",
+    label: "CIBO DTR Summary (Daily Hours)",
+    required: ["employee_no", "branch_code", "date", "total_hours_worked", "attendance_code"],
+    example: "employee_no,branch_code,date,total_hours_worked,attendance_code",
   },
   {
     value: "leave",
@@ -130,6 +136,25 @@ export default function DataMigration() {
           ? `${data.records.length} record(s) detected. Required columns are present.`
           : `Missing required column(s): ${missing.join(", ")}`,
     });
+  };
+
+  const downloadDtrTemplate = () => {
+    const template = [
+      "employee_no,employee_name,branch_code,date,total_hours_worked,attendance_code",
+      "11423,\"SAMPLE EMPLOYEE A\",MAIN,2026-09-16,8,8",
+      "11423,\"SAMPLE EMPLOYEE A\",MAIN,2026-09-17,0,OFF",
+      "11259,\"SAMPLE EMPLOYEE B\",MAIN,2026-09-16,7.5,7.5",
+      "11259,\"SAMPLE EMPLOYEE B\",MAIN,2026-09-17,0,SL",
+    ].join("\\n");
+    const blob = new Blob(["\\uFEFF", template], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "cibo-dtr-summary-import-template.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   const validateCSV = async () => {
@@ -266,6 +291,19 @@ export default function DataMigration() {
             {selected.required.join(", ")}
             <br />
             <span>Example: {selected.example}</span>
+            {dataset === "cibo_dtr_summary" && (
+              <>
+                <p style={{ margin: "8px 0 0" }}>
+                  Use one row per employee per date. Match employee_no and branch_code to the employee profile already registered in this system. Enter daily hours as a number (for example 8 or 7.5); use 0 for OFF or leave codes. Preserve the original CIBO code in attendance_code.
+                </p>
+                <p style={{ margin: "6px 0 10px" }}>
+                  The original CIBO workbook has multi-row headers, so exporting the worksheet directly to CSV will not make it import-ready. Reshape its day columns into one row per employee/date using this template.
+                </p>
+                <button type="button" onClick={downloadDtrTemplate} style={styles.secondaryBtn}>
+                  Download DTR CSV Template
+                </button>
+              </>
+            )}
           </div>
 
           {validation && (
