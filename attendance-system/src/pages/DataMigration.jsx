@@ -166,11 +166,16 @@ export default function DataMigration() {
           return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
         });
 
-        const tardyHoursCol = headerRow.findIndex((value) => cellText(value).includes("tardy hrs"));
-        const tardyMinutesCol = headerRow.findIndex((value) => cellText(value).includes("tardy min"));
-        const otStartCol = tardyMinutesCol >= 0 ? tardyMinutesCol + 1 : regularTotalCol + 4;
-        const otTotalCol = headerRow.findIndex((value) => cellText(value).includes("ot total hours"));
-        const overtimeCols = regularDateCols.map((item, index) => ({ col: otStartCol + index, date: dateHeaders[index] }));
+        const otGroupRowIndex = matrix.slice(0, headerIndex + 1).findIndex((row) =>
+          row.some((value) => cellText(value).includes("ot regular"))
+        );
+        const otStartCol = otGroupRowIndex >= 0
+          ? matrix[otGroupRowIndex].findIndex((value) => cellText(value).includes("ot regular"))
+          : -1;
+        const overtimeCols = regularDateCols.map((item, index) => ({
+          col: otStartCol >= 0 ? otStartCol + index : -1,
+          date: dateHeaders[index],
+        }));
         const normalizedRecords = [];
         const previewSourceRows = [];
         for (let rowIndex = headerIndex + 1; rowIndex < matrix.length; rowIndex++) {
@@ -186,7 +191,7 @@ export default function DataMigration() {
           regularDateCols.forEach(({ col }, index) => {
             const rawValue = row[col];
             const value = String(rawValue ?? "").trim();
-            const otRaw = row[overtimeCols[index]?.col];
+            const otRaw = overtimeCols[index]?.col >= 0 ? row[overtimeCols[index].col] : "";
             const otValue = Number(otRaw);
             const hasOvertime = String(otRaw ?? "").trim() !== "" && Number.isFinite(otValue) && otValue > 0;
             if (!value && !hasOvertime) return;
