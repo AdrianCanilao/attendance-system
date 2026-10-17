@@ -543,7 +543,7 @@ async def admin_migrate_csv(
                 if code.upper() == "OFF" and hours_text and hours != 0:
                     raise ValueError("OFF records must have 0 total_hours_worked")
                 status = "Rest Day" if code.upper() == "OFF" else (
-                    "On Leave" if code.upper() in {"SL", "VL", "SIL", "EL", "BL", "ML", "PL", "CL", "AL"} else (
+                    "On Leave" if code.upper() in {"SL", "VL", "SIL", "EL", "BL", "ML", "PL", "CL", "AL", "AA", "SUS"} else (
                         "Present" if hours > 0 else "Absent"
                     )
                 )
