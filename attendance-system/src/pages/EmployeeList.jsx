@@ -37,17 +37,12 @@ export default function EmployeeList() {
   );
   const cutoffOptions = [];
   for (let offset = 0; offset < 24; offset++) {
-    const monthDate = new Date(initialToday.year, initialToday.month - 1 - Math.floor(offset / 2), 1, 12);
-    const year = monthDate.getFullYear();
-    const month = monthDate.getMonth() + 1;
-    const half = offset % 2 === 0
+    // List cutoffs newest first, then the other half of that month, then prior months.
+    const actualMonthOffset = Math.floor(offset / 2);
+    const actualMonth = new Date(initialToday.year, initialToday.month - 1 - actualMonthOffset, 1, 12);
+    const actualHalf = offset % 2 === 0
       ? (initialToday.day <= 15 ? 1 : 2)
       : (initialToday.day <= 15 ? 2 : 1);
-    // Build newest-to-oldest half-month cutoffs, including both halves for older months.
-    const actualMonthOffset = Math.floor((offset + (initialToday.day <= 15 ? 0 : 1)) / 2);
-    const actualMonth = new Date(initialToday.year, initialToday.month - 1 - actualMonthOffset, 1, 12);
-    const actualHalf = offset === 0 ? (initialToday.day <= 15 ? 1 : 2)
-      : (initialToday.day <= 15 ? (offset % 2 === 1 ? 2 : 1) : (offset % 2 === 1 ? 1 : 2));
     const start = makeCutoffValue(actualMonth.getFullYear(), actualMonth.getMonth() + 1, actualHalf);
     const endDay = actualHalf === 1 ? 15 : new Date(actualMonth.getFullYear(), actualMonth.getMonth() + 1, 0).getDate();
     cutoffOptions.push({
