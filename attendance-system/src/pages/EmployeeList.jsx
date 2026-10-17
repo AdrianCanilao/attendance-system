@@ -341,7 +341,7 @@ export default function EmployeeList() {
       });
 
       const startLabel = new Date(monthStart + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric" });
-      const endLabel = new Date(todayKey + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric, year: numeric" });
+      const endLabel = new Date(todayKey + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
       const shortDate = (date) => {
         const d = new Date(date + "T12:00:00");
         return d.toLocaleDateString("en-US", { day: "numeric" });
