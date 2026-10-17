@@ -19,6 +19,50 @@ export default function EmployeeList() {
     useState(false);
 
   const [isExporting, setIsExporting] = useState(false);
+  const getManilaToday = () => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date());
+    return {
+      year: Number(parts.find((p) => p.type === "year")?.value),
+      month: Number(parts.find((p) => p.type === "month")?.value),
+      day: Number(parts.find((p) => p.type === "day")?.value),
+    };
+  };
+  const makeCutoffValue = (year, month, half) =>
+    year + "-" + String(month).padStart(2, "0") + "-" + (half === 1 ? "01" : "16");
+  const initialToday = getManilaToday();
+  const [selectedCutoff, setSelectedCutoff] = useState(
+    makeCutoffValue(initialToday.year, initialToday.month, initialToday.day <= 15 ? 1 : 2)
+  );
+  const cutoffOptions = [];
+  for (let offset = 0; offset < 24; offset++) {
+    const monthDate = new Date(initialToday.year, initialToday.month - 1 - Math.floor(offset / 2), 1, 12);
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth() + 1;
+    const half = offset % 2 === 0
+      ? (initialToday.day <= 15 ? 1 : 2)
+      : (initialToday.day <= 15 ? 2 : 1);
+    // Build newest-to-oldest half-month cutoffs, including both halves for older months.
+    const actualMonthOffset = Math.floor((offset + (initialToday.day <= 15 ? 0 : 1)) / 2);
+    const actualMonth = new Date(initialToday.year, initialToday.month - 1 - actualMonthOffset, 1, 12);
+    const actualHalf = offset === 0 ? (initialToday.day <= 15 ? 1 : 2)
+      : (initialToday.day <= 15 ? (offset % 2 === 1 ? 2 : 1) : (offset % 2 === 1 ? 1 : 2));
+    const start = makeCutoffValue(actualMonth.getFullYear(), actualMonth.getMonth() + 1, actualHalf);
+    const endDay = actualHalf === 1 ? 15 : new Date(actualMonth.getFullYear(), actualMonth.getMonth() + 1, 0).getDate();
+    cutoffOptions.push({
+      value: start,
+      label: new Date(actualMonth.getFullYear(), actualMonth.getMonth(), 1).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+        + " " + (actualHalf === 1 ? "1–15" : "16–" + endDay),
+    });
+  }
+  const selectedCutoffStart = selectedCutoff;
+  const selectedCutoffDate = new Date(selectedCutoffStart + "T12:00:00");
+  const cutoffStartDate = selectedCutoffDate.getFullYear() + "-" + String(selectedCutoffDate.getMonth() + 1).padStart(2, "0") + "-" + String(selectedCutoffDate.getDate()).padStart(2, "0");
+  const cutoffEndDay = selectedCutoffDate.getDate() === 1
+    ? 15
+    : new Date(selectedCutoffDate.getFullYear(), selectedCutoffDate.getMonth() + 1, 0).getDate();
+  const cutoffEndDate = selectedCutoffDate.getFullYear() + "-" + String(selectedCutoffDate.getMonth() + 1).padStart(2, "0") + "-" + String(cutoffEndDay).padStart(2, "0");
 
   useEffect(() => {
     fetchEmployees();
@@ -147,16 +191,9 @@ export default function EmployeeList() {
         .single();
       if (profileError || !profile?.branch_id) throw new Error("Your profile has no branch assigned.");
 
-      const now = new Date();
-      const dateParts = new Intl.DateTimeFormat("en-US", {
-        timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
-      }).formatToParts(now);
-      const year = Number(dateParts.find((p) => p.type === "year")?.value);
-      const month = Number(dateParts.find((p) => p.type === "month")?.value);
-      const today = Number(dateParts.find((p) => p.type === "day")?.value);
-      const monthStart = year + "-" + String(month).padStart(2, "0") + "-01";
-      const todayKey = year + "-" + String(month).padStart(2, "0") + "-" + String(today).padStart(2, "0");
-      const nextMonthStart = (month === 12 ? year + 1 : year) + "-" + String(month === 12 ? 1 : month + 1).padStart(2, "0") + "-01";
+      const monthStart = cutoffStartDate;
+      const todayKey = cutoffEndDate;
+      const nextMonthStart = cutoffEndDate;
 
       const { data: branch, error: branchError } = await supabase
         .from("branches").select("id,branch_name,branch_code").eq("id", profile.branch_id).single();
@@ -178,7 +215,6 @@ export default function EmployeeList() {
         .select("*")
         .in("employee_id", employeeIds)
         .gte("log_date", monthStart)
-        .lt("log_date", nextMonthStart)
         .lte("log_date", todayKey)
         .order("log_date", { ascending: true });
       if (attendanceError) throw new Error(attendanceError.message);
@@ -268,10 +304,9 @@ export default function EmployeeList() {
         }
       });
 
-      if (!records.length) throw new Error("No attendance or approved leave records were found for this month.");
+      if (!records.length) console.warn("No attendance or approved leave records were found for this cutoff; exporting employee rows anyway.");
 
-      // Pivot the daily records into the familiar CIBO DTR layout:
-      // one employee per row, one column per date, then total hours.
+      // Build the selected cutoff's daily columns and include every branch employee.
       const dateColumns = [];
       const dateCursor = new Date(monthStart + "T12:00:00");
       const lastDate = new Date(todayKey + "T12:00:00");
@@ -285,17 +320,23 @@ export default function EmployeeList() {
       }
 
       const dailyByEmployee = new Map();
+      employees.forEach((employee) => {
+        dailyByEmployee.set(employee.id, {
+          id: employee.id,
+          employee_no: employee.employee_no || "",
+          employee_name: employee.full_name || "",
+          branch_code: branch.branch_code || "",
+          branch_name: branch.branch_name || "",
+          daily: new Map(),
+        });
+      });
       records.forEach((record) => {
-        if (!dailyByEmployee.has(record.employee_no + "|" + record.employee_name)) {
-          dailyByEmployee.set(record.employee_no + "|" + record.employee_name, {
-            employee_no: record.employee_no,
-            employee_name: record.employee_name,
-            branch_code: record.branch_code,
-            branch_name: record.branch_name,
-            daily: new Map(),
-          });
-        }
-        const employeeRecord = dailyByEmployee.get(record.employee_no + "|" + record.employee_name);
+        const employee = employees.find((item) =>
+          String(item.employee_no || "") === String(record.employee_no || "") &&
+          String(item.full_name || "") === String(record.employee_name || "")
+        );
+        if (!employee) return;
+        const employeeRecord = dailyByEmployee.get(employee.id);
         const hours = Number(record.total_hours_worked);
         const hasHours = record.total_hours_worked !== "" && Number.isFinite(hours) && hours > 0;
         employeeRecord.daily.set(record.date, {
@@ -304,53 +345,93 @@ export default function EmployeeList() {
         });
       });
 
-      const headers = [
-        "Store",
-        "Employee Code",
-        "Name of Employee",
-        ...dateColumns.map((date) => {
-          const [, monthPart, dayPart] = date.split("-");
-          return monthPart + "/" + dayPart;
-        }),
-        "Total Hours",
-      ];
+      const startLabel = new Date(monthStart + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric" });
+      const endLabel = new Date(todayKey + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric, year: numeric" });
+      const shortDate = (date) => {
+        const d = new Date(date + "T12:00:00");
+        return d.toLocaleDateString("en-US", { day: "numeric" });
+      };
+      const dayName = (date) => new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" });
+      const dateHeaders = dateColumns.map((date) => shortDate(date));
+      const weekdayHeaders = dateColumns.map((date) => dayName(date));
 
-      const dtrRows = [...dailyByEmployee.values()]
+      // CIBO-style multi-row DTR header, with a formatted Excel worksheet.
+      const rows = [
+        ["", "", (branch.branch_name || branch.branch_code || "CIBO").toUpperCase() + " ATTENDANCE DTR SUMMARY"],
+        ["", "", "For the cut-off period of " + startLabel + "–" + endLabel],
+        [],
+        ["STORE", "Employee Code", "NAME OF EMPLOYEE", ...dateHeaders, "TOTAL HOURS", "NO. OF DAYS", "TARDY HRS", "TARDY MIN"],
+        ["", "", "", ...weekdayHeaders, "", "", "", ""],
+      ];
+      const dataRows = [...dailyByEmployee.values()]
         .sort((a, b) => a.employee_name.localeCompare(b.employee_name))
         .map((employee) => {
           let totalHours = 0;
+          let daysOfWork = 0;
           const dailyValues = dateColumns.map((date) => {
             const daily = employee.daily.get(date);
             if (!daily) return "";
             totalHours += daily.hours;
+            if (daily.hours > 0) daysOfWork += 1;
             return daily.value;
           });
           return [
             employee.branch_code || employee.branch_name || "",
-            employee.employee_no || "",
-            employee.employee_name || "",
+            employee.employee_no,
+            employee.employee_name,
             ...dailyValues,
-            Number(totalHours.toFixed(2)).toString(),
+            Number(totalHours.toFixed(2)),
+            daysOfWork,
+            "", "",
           ];
         });
-
-      const csvRows = [
-        ["CIBO ATTENDANCE DTR SUMMARY"],
-        [branch.branch_name || "Branch", "Cutoff Period", monthStart, "to", todayKey],
-        headers,
-        ...dtrRows,
+      const worksheet = XLSX.utils.aoa_to_sheet([...rows, ...dataRows]);
+      const lastCol = 2 + dateColumns.length + 4;
+      worksheet["!merges"] = [
+        { s: { r: 0, c: 2 }, e: { r: 0, c: Math.min(lastCol, 10) } },
+        { s: { r: 1, c: 2 }, e: { r: 1, c: Math.min(lastCol, 10) } },
       ];
-      const csvContent = "\uFEFF" + csvRows.map((row) =>
-        row.map((value) => {
-          const text = String(value ?? "");
-          return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
-        }).join(",")
-      ).join("\r\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      worksheet["!cols"] = [
+        { wch: 12 }, { wch: 16 }, { wch: 32 },
+        ...dateColumns.map(() => ({ wch: 8 })),
+        { wch: 13 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+      ];
+      worksheet["!freeze"] = { xSplit: 3, ySplit: 5 };
+      const range = XLSX.utils.decode_range(worksheet["!ref"]);
+      for (let row = 0; row <= range.e.r; row++) {
+        for (let col = 0; col <= range.e.c; col++) {
+          const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
+          if (!worksheet[cellRef]) continue;
+          const cell = worksheet[cellRef];
+          cell.s = {
+            font: { name: "Arial", sz: row < 5 ? 10 : 9, bold: row < 5 || col === 0 },
+            alignment: { vertical: "center", horizontal: col < 3 ? (col === 2 ? "left" : "center") : "center", wrapText: true },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } },
+            },
+          };
+          if (row === 0) cell.s = { ...cell.s, font: { name: "Arial", sz: 14, bold: true }, alignment: { vertical: "center", horizontal: "left" } };
+          if (row === 1) cell.s = { ...cell.s, fill: { fgColor: { rgb: "FFFF00" } }, font: { name: "Arial", sz: 10, bold: true } };
+          if (row === 3 || row === 4) {
+            cell.s = { ...cell.s, fill: { fgColor: { rgb: col === 2 ? "FF0000" : "FFFF00" } }, font: { name: "Arial", sz: 9, bold: true, color: { rgb: col === 2 ? "FFFFFF" : "000000" } } };
+          }
+          if (row >= 5 && col >= 3 && col < 3 + dateColumns.length && typeof cell.v === "number") {
+            cell.z = "0.0#";
+          }
+        }
+      }
+      worksheet["!rows"] = [{ hpt: 22 }, { hpt: 20 }, { hpt: 8 }, { hpt: 24 }, { hpt: 18 }];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "DTR TEMPLATE");
+      const workbookArray = XLSX.write(workbook, { bookType: "xlsx", type: "array", cellStyles: true });
+      const blob = new Blob([workbookArray], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "cibo-dtr-summary-" + todayKey + ".csv";
+      link.download = "cibo-dtr-summary-" + monthStart + "-to-" + todayKey + ".xlsx";
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -410,6 +491,17 @@ export default function EmployeeList() {
             />
           </div>
 
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <select
+              aria-label="Payroll cutoff period"
+              value={selectedCutoff}
+              onChange={(e) => setSelectedCutoff(e.target.value)}
+              style={styles.cutoffSelect}
+            >
+              {cutoffOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
           <button
             type="button"
             onClick={exportCSV}
@@ -420,8 +512,9 @@ export default function EmployeeList() {
               cursor: isExporting ? "wait" : "pointer",
             }}
           >
-            {isExporting ? "Exporting..." : "Export Data"}
+            {isExporting ? "Exporting..." : "Export DTR"}
           </button>
+          </div>
         </div>
 
         {/* EMPLOYEE LIST */}
@@ -669,6 +762,17 @@ const styles = {
     width: "100%",
     fontSize: "14px",
     background: "transparent",
+  },
+
+  cutoffSelect: {
+    minWidth: "220px",
+    height: "40px",
+    padding: "0 12px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
+    background: "#fff",
+    color: "#111827",
+    fontSize: "13px",
   },
 
   exportButton: {
