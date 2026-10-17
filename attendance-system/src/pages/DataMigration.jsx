@@ -169,6 +169,13 @@ export default function DataMigration() {
         } else {
           throw new Error("Could not read the payroll cutoff from the worksheet heading. Make sure it says 'For the cut-off period of October 1–October 15, 2026'.");
         }
+        // Ignore template columns outside the stated cutoff (some legacy templates
+        // retain a day-31 column even for 30-day months).
+        const cutoffLastDay = cutoffEnd.getDate();
+        const filteredDateCols = regularDateCols.filter(({ day }) =>
+          day >= cutoffStart.getDate() && day <= cutoffLastDay
+        );
+        regularDateCols.splice(0, regularDateCols.length, ...filteredDateCols);
         const dateForDay = (day) => new Date(cutoffStart.getFullYear(), cutoffStart.getMonth(), day, 12);
         const dateHeaders = regularDateCols.map(({ day }) => {
           const date = dateForDay(day);
