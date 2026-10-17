@@ -156,7 +156,7 @@ export default function EmployeeList() {
       const today = Number(dateParts.find((p) => p.type === "day")?.value);
       const monthStart = year + "-" + String(month).padStart(2, "0") + "-01";
       const todayKey = year + "-" + String(month).padStart(2, "0") + "-" + String(today).padStart(2, "0");
-      const nextMonthStart = year + "-" + String(month + 1).padStart(2, "0") + "-01";
+      const nextMonthStart = (month === 12 ? year + 1 : year) + "-" + String(month === 12 ? 1 : month + 1).padStart(2, "0") + "-01";
 
       const { data: branch, error: branchError } = await supabase
         .from("branches").select("id,branch_name,branch_code").eq("id", profile.branch_id).single();
