@@ -140,6 +140,7 @@ class RegisterEmployeeRequest(BaseModel):
     position: str
     branch_id: str
     shift_id: str
+    employee_no: str | None = None
 
 
 class RollbackEmployeeRegistrationRequest(BaseModel):
@@ -622,10 +623,24 @@ async def admin_migrate_csv(
                         )
                     shift_id = shift_rows[0]["id"]
 
+                employee_no_value = row.get("employee_no", "").strip() or None
+                if employee_no_value:
+                    duplicate_code = (
+                        supabase.from_("employee_profiles")
+                        .select("id")
+                        .eq("employee_no", employee_no_value)
+                        .neq("id", profile["id"])
+                        .limit(1)
+                        .execute().data or []
+                    )
+                    if duplicate_code:
+                        raise ValueError("Employee code '" + employee_no_value + "' is already assigned to another profile")
+
                 valid_rows.append({
                     "_row": row_number,
                     "kind": "employees",
                     "employee_id": profile["id"],
+                    "employee_no": employee_no_value,
                     "full_name": row.get("full_name", "").strip(),
                     "contact": row.get("contact", "").strip(),
                     "position": row.get("position", "").strip(),
@@ -782,13 +797,16 @@ async def admin_migrate_csv(
                     raise ValueError("Database did not return an inserted leave record.")
 
             else:
-                response = supabase.from_("employee_profiles").update({
+                employee_update = {
                     "full_name": item["full_name"],
                     "contact": item["contact"],
                     "position": item["position"],
                     "branch_id": item["branch_id"],
                     "shift_id": item["shift_id"],
-                }).eq("id", item["employee_id"]).execute()
+                }
+                if item.get("employee_no"):
+                    employee_update["employee_no"] = item["employee_no"]
+                response = supabase.from_("employee_profiles").update(employee_update).eq("id", item["employee_id"]).execute()
 
                 if not response.data:
                     raise ValueError("Employee profile could not be updated.")
@@ -1196,6 +1214,19 @@ async def admin_register_manager(
         )
 
     normalized_email = payload.email.strip().lower()
+    employee_no = (payload.employee_no or "").strip() or None
+    if employee_no and len(employee_no) > 50:
+        raise HTTPException(status_code=400, detail="Employee code must be 50 characters or fewer.")
+    if employee_no:
+        duplicate_employee_no = (
+            supabase.from_("employee_profiles")
+            .select("id")
+            .eq("employee_no", employee_no)
+            .limit(1)
+            .execute().data or []
+        )
+        if duplicate_employee_no:
+            raise HTTPException(status_code=409, detail="This employee code is already assigned.")
 
     existing_profile_result = (
         supabase
@@ -1266,6 +1297,7 @@ async def admin_register_manager(
             .from_("employee_profiles")
             .insert({
                 "id": user_id,
+                "employee_no": employee_no,
                 "full_name": payload.name,
                 "email": normalized_email,
                 "contact_number": payload.contact,
@@ -1763,6 +1795,7 @@ async def admin_register_employee(
         "user_id": user_id,
         "employee": {
             "id": user_id,
+            "employee_no": employee_no,
             "full_name": payload.name,
             "email": normalized_email,
             "branch_id": payload.branch_id,
