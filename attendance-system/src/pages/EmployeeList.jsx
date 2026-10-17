@@ -251,6 +251,7 @@ export default function EmployeeList() {
           attendance_code: values.attendance_code || "",
           late_minutes: values.late_minutes ?? 0,
           overtime_minutes: values.overtime_minutes ?? 0,
+          overtime_hours: values.overtime_hours ?? 0,
           source: values.source || "",
         });
       };
@@ -267,6 +268,7 @@ export default function EmployeeList() {
           attendance_code: log.attendance_code || status,
           late_minutes: Number(log.late_minutes || 0),
           overtime_minutes: Number(log.overtime_minutes || 0),
+          overtime_hours: Number(log.overtime_hours ?? (Number(log.overtime_minutes || 0) / 60)),
           source: log.source || "web",
         });
       });
@@ -293,6 +295,7 @@ export default function EmployeeList() {
             attendance_code: leave.leave_type || "Approved Leave",
             late_minutes: 0,
             overtime_minutes: 0,
+            overtime_hours: 0,
             source: "leave",
           });
           cursor.setDate(cursor.getDate() + 1);
@@ -323,6 +326,7 @@ export default function EmployeeList() {
           branch_code: branch.branch_code || "",
           branch_name: branch.branch_name || "",
           daily: new Map(),
+          overtime: new Map(),
         });
       });
       records.forEach((record) => {
@@ -338,6 +342,10 @@ export default function EmployeeList() {
           value: hasHours ? Number(hours.toFixed(2)).toString() : (record.attendance_code || ""),
           hours: hasHours ? hours : 0,
         });
+        const overtimeHours = Number(record.overtime_hours || 0);
+        if (Number.isFinite(overtimeHours) && overtimeHours > 0) {
+          employeeRecord.overtime.set(record.date, Number(overtimeHours.toFixed(2)));
+        }
       });
 
       const startLabel = new Date(monthStart + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric" });
@@ -350,25 +358,35 @@ export default function EmployeeList() {
       const dateHeaders = dateColumns.map((date) => shortDate(date));
       const weekdayHeaders = dateColumns.map((date) => dayName(date));
 
-      // CIBO-style multi-row DTR header, with a formatted Excel worksheet.
+      // CIBO-style daily attendance block followed by a separate OT Regular block.
+      const baseEndCol = 3 + dateColumns.length + 4;
+      const overtimeStartCol = baseEndCol;
+      const overtimeEndCol = overtimeStartCol + dateColumns.length;
       const rows = [
         ["", "", (branch.branch_name || branch.branch_code || "CIBO").toUpperCase() + " ATTENDANCE DTR SUMMARY"],
         ["", "", "For the cut-off period of " + startLabel + "–" + endLabel],
         [],
-        ["STORE", "Employee Code", "NAME OF EMPLOYEE", ...dateHeaders, "TOTAL HOURS", "NO. OF DAYS", "TARDY HRS", "TARDY MIN"],
-        ["", "", "", ...weekdayHeaders, "", "", "", ""],
+        ["STORE", "Employee Code", "NAME OF EMPLOYEE", ...dateHeaders, "TOTAL HOURS", "NO. OF DAYS", "TARDY HRS", "TARDY MIN",
+          "OT REGULAR", ...Array(dateColumns.length - 1).fill(""), "OT TOTAL HOURS"],
+        ["", "", "", ...weekdayHeaders, "", "", "", "", ...weekdayHeaders, ""],
       ];
       const dataRows = [...dailyByEmployee.values()]
         .sort((a, b) => a.employee_name.localeCompare(b.employee_name))
         .map((employee) => {
           let totalHours = 0;
           let daysOfWork = 0;
+          let totalOvertime = 0;
           const dailyValues = dateColumns.map((date) => {
             const daily = employee.daily.get(date);
             if (!daily) return "";
             totalHours += daily.hours;
             if (daily.hours > 0) daysOfWork += 1;
             return daily.value;
+          });
+          const overtimeValues = dateColumns.map((date) => {
+            const hours = employee.overtime.get(date) || 0;
+            totalOvertime += hours;
+            return hours > 0 ? Number(hours.toFixed(2)) : "";
           });
           return [
             employee.branch_code || employee.branch_name || "",
@@ -378,18 +396,23 @@ export default function EmployeeList() {
             Number(totalHours.toFixed(2)),
             daysOfWork,
             "", "",
+            ...overtimeValues,
+            Number(totalOvertime.toFixed(2)),
           ];
         });
       const worksheet = XLSX.utils.aoa_to_sheet([...rows, ...dataRows]);
-      const lastCol = 2 + dateColumns.length + 4;
+      const lastCol = overtimeEndCol;
       worksheet["!merges"] = [
         { s: { r: 0, c: 2 }, e: { r: 0, c: Math.min(lastCol, 10) } },
         { s: { r: 1, c: 2 }, e: { r: 1, c: Math.min(lastCol, 10) } },
+        { s: { r: 3, c: overtimeStartCol }, e: { r: 3, c: overtimeEndCol - 1 } },
       ];
       worksheet["!cols"] = [
         { wch: 12 }, { wch: 16 }, { wch: 32 },
         ...dateColumns.map(() => ({ wch: 8 })),
         { wch: 13 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+        ...dateColumns.map(() => ({ wch: 8 })),
+        { wch: 14 },
       ];
       worksheet["!freeze"] = { xSplit: 3, ySplit: 5 };
       const range = XLSX.utils.decode_range(worksheet["!ref"]);
