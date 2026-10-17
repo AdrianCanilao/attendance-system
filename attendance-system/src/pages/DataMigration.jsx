@@ -89,6 +89,7 @@ export default function DataMigration() {
   const [validation, setValidation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [matchReport, setMatchReport] = useState(null);
 
   const selected = DATASET_OPTIONS.find((item) => item.value === dataset);
 
@@ -103,6 +104,7 @@ export default function DataMigration() {
     setParsed(null);
     setValidation(null);
     setResult(null);
+    setMatchReport(null);
     if (!nextFile) return;
 
     try {
@@ -256,6 +258,91 @@ export default function DataMigration() {
     }
   };
 
+  const checkEmployeeMatches = async () => {
+    if (dataset !== "cibo_dtr_summary" || !parsed?.records?.length) return;
+    try {
+      setLoading(true);
+      setMatchReport(null);
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        throw new Error("Your session has expired. Please log in again.");
+      }
+
+      const [{ data: profiles, error: profileError }, { data: branches, error: branchError }] = await Promise.all([
+        supabase.from("employee_profiles").select("id,employee_no,full_name,branch_id"),
+        supabase.from("branches").select("id,branch_code,branch_name"),
+      ]);
+      if (profileError) throw profileError;
+      if (branchError) throw branchError;
+
+      const profileRows = profiles || [];
+      const branchRows = branches || [];
+      const profileByCode = new Map();
+      profileRows.filter((p) => String(p.employee_no || "").trim()).forEach((p) => {
+        const key = String(p.employee_no).trim().toLowerCase();
+        profileByCode.set(key, [...(profileByCode.get(key) || []), p]);
+      });
+      const branchByCode = new Map(branchRows.map((b) => [String(b.branch_code || "").trim().toLowerCase(), b]));
+      const grouped = new Map();
+
+      parsed.records.forEach((record) => {
+        const employeeNo = String(record.employee_no || "").trim();
+        const branchCode = String(record.branch_code || "").trim();
+        if (!employeeNo) return;
+        const key = employeeNo.toLowerCase() + "::" + branchCode.toLowerCase();
+        const existing = grouped.get(key) || {
+          employee_no: employeeNo,
+          employee_name: String(record.employee_name || "").trim(),
+          branch_code: branchCode,
+          record_count: 0,
+          dates: new Set(),
+          names: new Set(),
+        };
+        existing.record_count += 1;
+        if (record.date) existing.dates.add(record.date);
+        if (record.employee_name) existing.names.add(String(record.employee_name).trim());
+        if (!existing.employee_name && record.employee_name) existing.employee_name = String(record.employee_name).trim();
+        grouped.set(key, existing);
+      });
+
+      const report = Array.from(grouped.values()).map((item) => {
+        const candidates = profileByCode.get(item.employee_no.toLowerCase()) || [];
+        const branch = branchByCode.get(item.branch_code.toLowerCase());
+        let match_status = "No matching employee code";
+        let matched_profile = null;
+        if (candidates.length > 1) {
+          match_status = "Duplicate employee codes in system";
+        } else if (candidates.length === 1) {
+          matched_profile = candidates[0];
+          if (!branch) match_status = "Branch code not found";
+          else if (String(matched_profile.branch_id || "") !== String(branch.id)) match_status = "Branch mismatch";
+          else match_status = "Matched";
+        } else if (!branch) {
+          match_status = "Branch code not found";
+        }
+        return {
+          ...item,
+          dates: item.dates.size,
+          names: Array.from(item.names),
+          branch_name: branch?.branch_name || "",
+          matched_name: matched_profile?.full_name || "",
+          match_status,
+        };
+      }).sort((a, b) => a.employee_no.localeCompare(b.employee_no, undefined, { numeric: true }));
+
+      setMatchReport({
+        totalEmployees: report.length,
+        matched: report.filter((row) => row.match_status === "Matched").length,
+        needsReview: report.filter((row) => row.match_status !== "Matched").length,
+        employees: report,
+      });
+    } catch (error) {
+      setMatchReport({ error: error.message || "Unable to check employee matches." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const downloadDtrTemplate = () => {
     const template = [
       "employee_no,employee_name,branch_code,date,total_hours_worked,attendance_code",
@@ -382,6 +469,7 @@ export default function DataMigration() {
                   setParsed(null);
                   setValidation(null);
                   setResult(null);
+                  setMatchReport(null);
                 }}
                 style={styles.input}
               >
@@ -440,6 +528,53 @@ export default function DataMigration() {
             >
               {validation.ok ? "✓ " : "✕ "}
               {validation.message}
+            </div>
+          )}
+
+          {parsed?.records?.length > 0 && dataset === "cibo_dtr_summary" && (
+            <div style={{ ...styles.requirements, marginTop: "16px" }}>
+              <b>Employee matching</b>
+              <p style={{ margin: "6px 0 10px" }}>
+                Check which DTR employees match existing system profiles. This is a read-only check; it does not create employees or import attendance.
+              </p>
+              <button type="button" onClick={checkEmployeeMatches} disabled={loading} style={styles.secondaryBtn}>
+                {loading ? "Checking..." : "Check Employee Matches"}
+              </button>
+              {matchReport?.error && <p style={{ color: "#991b1b" }}>{matchReport.error}</p>}
+              {matchReport?.employees && (
+                <div style={{ marginTop: "14px" }}>
+                  <div style={styles.stats}>
+                    <span>Distinct employees: <b>{matchReport.totalEmployees}</b></span>
+                    <span>Matched: <b>{matchReport.matched}</b></span>
+                    <span>Needs review: <b>{matchReport.needsReview}</b></span>
+                  </div>
+                  <div style={{ ...styles.tableWrap, marginTop: "12px" }}>
+                    <table style={styles.table}>
+                      <thead><tr>
+                        <th style={styles.th}>Employee No.</th>
+                        <th style={styles.th}>DTR Name</th>
+                        <th style={styles.th}>Branch</th>
+                        <th style={styles.th}>Daily Records</th>
+                        <th style={styles.th}>System Profile</th>
+                        <th style={styles.th}>Match Status</th>
+                      </tr></thead>
+                      <tbody>
+                        {matchReport.employees.map((row) => (
+                          <tr key={row.employee_no + "::" + row.branch_code}>
+                            <td style={styles.td}>{row.employee_no}</td>
+                            <td style={styles.td}>{row.employee_name || "-"}</td>
+                            <td style={styles.td}>{row.branch_code || "-"}{row.branch_name ? " — " + row.branch_name : ""}</td>
+                            <td style={styles.td}>{row.record_count}</td>
+                            <td style={styles.td}>{row.matched_name || "-"}</td>
+                            <td style={{ ...styles.td, color: row.match_status === "Matched" ? "#166534" : "#991b1b", fontWeight: 600 }}>{row.match_status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p style={styles.previewNote}>No employee profiles or attendance records are changed by this report.</p>
+                </div>
+              )}
             </div>
           )}
 
