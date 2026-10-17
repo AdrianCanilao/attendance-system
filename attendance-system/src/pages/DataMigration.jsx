@@ -106,7 +106,7 @@ export default function DataMigration() {
     if (!nextFile) return;
 
     try {
-      const isExcel = /\\.xlsx?$/i.test(nextFile.name);
+      const isExcel = /\.xlsx?$/i.test(nextFile.name);
       if (isExcel && dataset !== "cibo_dtr_summary") {
         setValidation({ ok: false, message: "Excel DTR import is currently supported for CIBO DTR Summary only. Other datasets should use CSV." });
         return;
@@ -138,14 +138,14 @@ export default function DataMigration() {
         const regularDateCols = [];
         for (let col = nameCol + 1; col < regularTotalCol; col++) {
           const value = headerRow[col];
-          const day = typeof value === "number" ? value : /^\\d{1,2}$/.test(String(value).trim()) ? Number(value) : NaN;
+          const day = typeof value === "number" ? value : /^\d{1,2}$/.test(String(value).trim()) ? Number(value) : NaN;
           if (Number.isInteger(day) && day >= 1 && day <= 31) regularDateCols.push({ col, day });
         }
         if (!regularDateCols.length) throw new Error("No daily date columns were found in the DTR header.");
 
         const titleText = matrix.flat().map((value) => String(value ?? "")).find((value) => /cut.?off period/i.test(value)) || "";
-        const cutoffMatch = titleText.match(/([A-Za-z]+)\\s+(\\d{1,2})\\s*[–-]\\s*([A-Za-z]+)?\\s*(\\d{1,2}),?\\s*(\\d{4})/i)
-          || titleText.match(/([A-Za-z]+)\\s+(\\d{1,2}),?\\s*(\\d{4})/i);
+        const cutoffMatch = titleText.match(/([A-Za-z]+)\s+(\d{1,2})\s*[–-]\s*([A-Za-z]+)?\s*(\d{1,2}),?\s*(\d{4})/i)
+          || titleText.match(/([A-Za-z]+)\s+(\d{1,2}),?\s*(\d{4})/i);
         let cutoffStart;
         let cutoffEnd;
         if (cutoffMatch && cutoffMatch.length >= 6) {
@@ -207,9 +207,9 @@ export default function DataMigration() {
         const headers = ["employee_no", "employee_name", "branch_code", "date", "total_hours_worked", "attendance_code", "overtime_hours"];
         const csv = [headers.join(","), ...normalizedRecords.map((record) => headers.map((header) => {
           const value = String(record[header] ?? "");
-          return /[",\\r\\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
+          return /[",\r\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
         }).join(","))].join("\\r\\n");
-        uploadFile = new File(["\\uFEFF", csv], nextFile.name.replace(/\\.xlsx?$/i, ".csv"), { type: "text/csv;charset=utf-8" });
+        uploadFile = new File(["\uFEFF", csv], nextFile.name.replace(/\.xlsx?$/i, ".csv"), { type: "text/csv;charset=utf-8" });
         data = { headers, records: normalizedRecords, source: "xlsx", sourceRows: previewSourceRows };
       } else {
         if (!nextFile.name.toLowerCase().endsWith(".csv")) throw new Error("Please select a CSV file or a CIBO DTR .xlsx workbook.");
