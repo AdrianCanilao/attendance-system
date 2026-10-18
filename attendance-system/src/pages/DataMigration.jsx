@@ -283,6 +283,13 @@ export default function DataMigration() {
         profileByCode.set(key, [...(profileByCode.get(key) || []), p]);
       });
       const branchByCode = new Map(branchRows.map((b) => [String(b.branch_code || "").trim().toLowerCase(), b]));
+      // Legacy CIBO DTR uses MAIN for the existing Cubao Head Office branch,
+      // whose current system code is CUB-HO. Treat this as a matching alias only;
+      // do not create or rename branches in the database.
+      const cubaoBranch = branchRows.find((b) =>
+        String(b.branch_name || "").trim().toLowerCase() === "cubao head office"
+      );
+      if (cubaoBranch) branchByCode.set("main", cubaoBranch);
       const grouped = new Map();
 
       parsed.records.forEach((record) => {
