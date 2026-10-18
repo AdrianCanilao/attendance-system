@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Webcam from "react-webcam";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
@@ -19,6 +19,7 @@ const isStrongPassword = (password) =>
 export default function RegisterManager() {
   const webcamRef = useRef(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const stagedEmployee = location.state?.stagedEmployee || null;
 
   const [form, setForm] = useState({
@@ -266,6 +267,7 @@ const captureFace = () => {
   !password ||
   !contact ||
   !position ||
+  (stagedEmployee && !String(form.employee_no || "").trim()) ||
   !form.branch_id ||
   !form.shift_id
 ) {
@@ -424,7 +426,11 @@ action: "REGISTER_MAINTENANCE",
   description: `Registered manager: ${name}`,
 });
 
-      alert("✅ Maintenance Specialist registered!");
+      alert(stagedEmployee ? "✅ Maintenance Specialist registered and linked to the staged DTR record!" : "✅ Maintenance Specialist registered!");
+      if (stagedEmployee) {
+        navigate("/hr/staged-employees", { replace: true });
+        return;
+      }
 
       setForm({
         employee_no: "",
@@ -616,6 +622,7 @@ shift_id: "",
                 name="employee_no"
                 placeholder="Enter employee number"
                 value={form.employee_no}
+                readOnly={Boolean(stagedEmployee)}
                 onChange={handleChange}
                 onBlur={handleBlur}
                 maxLength={50}
@@ -634,6 +641,7 @@ shift_id: "",
                 name="name"
                 placeholder="Enter full name"
                 value={form.name}
+                readOnly={Boolean(stagedEmployee)}
                 onChange={handleChange}
                 onBlur={handleBlur}
                 autoComplete="name"
