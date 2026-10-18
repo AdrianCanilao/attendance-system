@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
+import Swal from "sweetalert2";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -26,6 +27,44 @@ export default function StagedEmployees() {
   }, []);
 
   useEffect(() => { loadEmployees(); }, [loadEmployees]);
+
+  const updateIntendedRole = (id, intended_role) => {
+    setEmployees((current) => current.map((employee) => employee.id === id ? { ...employee, intended_role } : employee));
+  };
+
+  const saveIntendedRole = async (employee) => {
+    if (!employee.intended_role) {
+      await Swal.fire({ title: "Select a role", text: "Choose Employee or Maintenance Specialist first.", icon: "warning", confirmButtonColor: "#f97316" });
+      return;
+    }
+    const confirmation = await Swal.fire({
+      title: "Save intended role?",
+      text: "This only saves the employee's planned role for registration. It does not create an account or grant permissions.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Save role",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#f97316",
+      cancelButtonColor: "#6b7280",
+    });
+    if (!confirmation.isConfirmed) return;
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Your session has expired. Please log in again.");
+      const response = await fetch(API_URL + "/admin/staged-legacy-employees/" + encodeURIComponent(employee.id) + "/role", {
+        method: "PATCH",
+        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ intended_role: employee.intended_role }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.detail || "Unable to save role.");
+      await Swal.fire({ title: "Role saved", text: data.message || "The intended role was saved.", icon: "success", confirmButtonColor: "#f97316" });
+      await loadEmployees();
+    } catch (e) {
+      await Swal.fire({ title: "Could not save role", text: e.message || "Please try again.", icon: "error", confirmButtonColor: "#f97316" });
+    }
+  };
 
   const filtered = employees.filter((employee) => {
     const term = search.trim().toLowerCase();
@@ -60,14 +99,22 @@ export default function StagedEmployees() {
         {error && <div style={styles.error}>{error}</div>}
         {loading ? <p style={styles.note}>Loading staged employees...</p> : filtered.length === 0 ? <p style={styles.note}>No staged employees match your search.</p> :
           <div style={styles.tableWrap}><table style={styles.table}>
-            <thead><tr><th style={styles.th}>Employee No.</th><th style={styles.th}>Name from DTR</th><th style={styles.th}>Source Branch</th><th style={styles.th}>Mapped Branch</th><th style={styles.th}>Source File</th><th style={styles.th}>Profile Status</th></tr></thead>
+            <thead><tr><th style={styles.th}>Employee No.</th><th style={styles.th}>Name from DTR</th><th style={styles.th}>Source Branch</th><th style={styles.th}>Mapped Branch</th><th style={styles.th}>Source File</th><th style={styles.th}>Profile Status</th><th style={styles.th}>Intended Role</th><th style={styles.th}>Action</th></tr></thead>
             <tbody>{filtered.map((employee) => <tr key={employee.id}>
               <td style={styles.td}>{employee.employee_no}</td><td style={styles.td}>{employee.full_name}</td><td style={styles.td}>{employee.source_branch_code || "-"}</td>
               <td style={styles.td}>{employee.branches?.branch_name || "Branch needs mapping"}</td><td style={styles.td}>{employee.source_file_name || "-"}</td>
               <td style={styles.td}><span style={{ ...styles.badge, background: employee.profile_status === "linked" ? "#dcfce7" : employee.profile_status === "ready" ? "#fef3c7" : "#fee2e2", color: employee.profile_status === "linked" ? "#166534" : employee.profile_status === "ready" ? "#92400e" : "#991b1b" }}>{label(employee.profile_status)}</span></td>
+              <td style={styles.td}>
+                <select value={employee.intended_role || ""} disabled={employee.profile_status === "linked"} onChange={(event) => updateIntendedRole(employee.id, event.target.value)} style={styles.roleSelect}>
+                  <option value="">Select role</option>
+                  <option value="employee">Employee</option>
+                  <option value="maintenance">Maintenance Specialist (MS)</option>
+                </select>
+              </td>
+              <td style={styles.td}><button disabled={employee.profile_status === "linked"} onClick={() => saveIntendedRole(employee)} style={{ ...styles.saveRole, opacity: employee.profile_status === "linked" ? 0.5 : 1 }}>Save role</button></td>
             </tr>)}</tbody>
           </table></div>}
-        <p style={styles.note}>Review-only for this step. Profile completion and account linking will be added separately.</p>
+        <p style={styles.note}>Select and save the intended role here. This does not create an account or change access permissions. Actual registration and personal-information editing remain in the existing registration/Edit Employee workflows.</p>
       </div>
     </div>
   </HRLayout>;
@@ -87,6 +134,8 @@ const styles = {
   th: { textAlign: "left", padding: "12px 10px", background: "#f3f4f6", borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" },
   td: { padding: "12px 10px", borderBottom: "1px solid #e5e7eb", verticalAlign: "top" },
   badge: { display: "inline-block", padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" },
+  roleSelect: { minWidth: 190, border: "1px solid #cbd5e1", borderRadius: 7, padding: "8px", background: "#fff" },
+  saveRole: { border: 0, borderRadius: 7, padding: "8px 12px", background: "#f97316", color: "#fff", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
   note: { color: "#64748b", fontSize: 13, margin: "16px 0 0" },
   error: { color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 12, marginBottom: 12 },
 };
