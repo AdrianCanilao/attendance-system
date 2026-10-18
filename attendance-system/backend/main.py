@@ -334,6 +334,27 @@ class StageLegacyEmployeesRequest(BaseModel):
     source_file_name: str | None = None
 
 
+@app.get("/admin/staged-legacy-employees")
+async def get_staged_legacy_employees(
+    authorization: str | None = Header(default=None),
+):
+    authenticate_hr_bearer(
+        authorization[7:].strip()
+        if authorization and authorization.startswith("Bearer ")
+        else None
+    )
+    try:
+        rows = (
+            supabase.from_("legacy_employee_staging")
+            .select("id,employee_no,full_name,source_branch_code,source_file_name,profile_status,created_at,branches(branch_name,branch_code)")
+            .order("created_at", desc=True)
+            .execute().data or []
+        )
+        return {"employees": rows, "total": len(rows)}
+    except Exception as error:
+        raise HTTPException(status_code=500, detail="Unable to load staged employees.")
+
+
 @app.post("/admin/stage-legacy-employees")
 async def stage_legacy_employees(
     payload: StageLegacyEmployeesRequest,
