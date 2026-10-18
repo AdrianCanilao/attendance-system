@@ -27,6 +27,7 @@ import ShiftSettings from "./pages/ShiftSettings";
 import BranchSettings from "./pages/BranchSettings";
 import DeviceManagement from "./pages/DeviceManagement";
 import DataMigration from "./pages/DataMigration";
+import StagedEmployees from "./pages/StagedEmployees";
 
 import Kiosk from "./pages/Kiosk";
 
