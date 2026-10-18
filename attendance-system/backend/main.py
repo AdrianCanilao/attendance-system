@@ -334,6 +334,49 @@ class StageLegacyEmployeesRequest(BaseModel):
     source_file_name: str | None = None
 
 
+class UpdateStagedLegacyRoleRequest(BaseModel):
+    intended_role: str
+
+
+@app.patch("/admin/staged-legacy-employees/{staging_id}/role")
+async def update_staged_legacy_role(
+    staging_id: str,
+    payload: UpdateStagedLegacyRoleRequest,
+    authorization: str | None = Header(default=None),
+):
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    authenticate_hr_bearer(token)
+    intended_role = (payload.intended_role or "").strip().lower()
+    if intended_role not in {"employee", "maintenance"}:
+        raise HTTPException(status_code=400, detail="Role must be Employee or Maintenance Specialist.")
+
+    existing = (
+        supabase.from_("legacy_employee_staging")
+        .select("id,profile_status")
+        .eq("id", staging_id)
+        .limit(1).execute().data or []
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Staged employee was not found.")
+    if existing[0].get("profile_status") == "linked":
+        raise HTTPException(status_code=409, detail="This staged employee is already linked; manage the role through the existing account workflow.")
+
+    try:
+        updated = (
+            supabase.from_("legacy_employee_staging")
+            .update({"intended_role": intended_role, "updated_at": datetime.now(ZoneInfo("UTC")).isoformat()})
+            .eq("id", staging_id)
+            .execute().data or []
+        )
+        if not updated:
+            raise HTTPException(status_code=500, detail="The staged role could not be saved.")
+        return {"status": "UPDATED", "intended_role": intended_role, "message": "Future role saved for this staged record. No account or permissions were created."}
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Unable to save the staged employee role.")
+
+
 @app.get("/admin/staged-legacy-employees")
 async def get_staged_legacy_employees(
     authorization: str | None = Header(default=None),
