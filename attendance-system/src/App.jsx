@@ -204,6 +204,15 @@ export default function App() {
         />
 
         <Route
+          path="/hr/staged-employees"
+          element={
+            <ProtectedRoute role="hr">
+              <StagedEmployees />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/hr/data-migration"
           element={
             <ProtectedRoute role="hr">
