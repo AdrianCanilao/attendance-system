@@ -244,6 +244,7 @@ export default function DataMigration() {
       const activeOptions = DATASET_OPTIONS.find((item) => item.value === activeDataset) || selected;
       const missing = activeOptions.required.filter((column) => !data.headers.includes(column));
       setFile(uploadFile);
+      data.sourceFileName = nextFile.name;
       setParsed(data);
       setValidation({
         ok: missing.length === 0 && (data.sourceRows || []).length === 0,
@@ -345,6 +346,53 @@ export default function DataMigration() {
       });
     } catch (error) {
       setMatchReport({ error: error.message || "Unable to check employee matches." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const stageLegacyEmployees = async () => {
+    if (dataset !== "cibo_dtr_summary" || !parsed?.records?.length || !matchReport?.employees?.length) return;
+    const confirmed = window.confirm(
+      "Prepare " + matchReport.totalEmployees + " legacy employee record(s) for HR profile completion?\\n\\nThis will only create staging records. It will not create login accounts or import attendance."
+    );
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      setResult(null);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Your session has expired. Please log in again.");
+
+      const response = await fetch(API_URL + "/admin/stage-legacy-employees", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          source_file_name: parsed.sourceFileName || file?.name || "Legacy DTR upload",
+          employees: matchReport.employees.map((row) => ({
+            employee_no: row.employee_no,
+            employee_name: row.employee_name,
+            branch_code: row.branch_code,
+          })),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.detail || "Unable to prepare staged employees.");
+      setResult({
+        status: data.status === "STAGED" ? "STAGED" : data.status,
+        message: data.message,
+        total: data.total_employees,
+        valid: data.created,
+        imported: 0,
+        skipped: data.already_staged,
+        errors: data.errors?.map((error, index) => ({ row: index + 1, message: error.employee_no + ": " + error.message })) || [],
+      });
+    } catch (error) {
+      setResult({ status: "ERROR", message: error.message || "Unable to prepare staged employees." });
     } finally {
       setLoading(false);
     }
@@ -547,6 +595,11 @@ export default function DataMigration() {
               <button type="button" onClick={checkEmployeeMatches} disabled={loading} style={styles.secondaryBtn}>
                 {loading ? "Checking..." : "Check Employee Matches"}
               </button>
+              {matchReport?.employees?.length > 0 && matchReport.needsReview > 0 && (
+                <button type="button" onClick={stageLegacyEmployees} disabled={loading} style={{ ...styles.primaryBtn, marginLeft: "8px" }}>
+                  {loading ? "Preparing..." : "Prepare Staged Employees"}
+                </button>
+              )}
               {matchReport?.error && <p style={{ color: "#991b1b" }}>{matchReport.error}</p>}
               {matchReport?.employees && (
                 <div style={{ marginTop: "14px" }}>
@@ -655,6 +708,8 @@ export default function DataMigration() {
                   ? "Migration Error"
                   : result.status === "IMPORTED"
                   ? "Migration Complete"
+                  : result.status === "STAGED"
+                  ? "Staged Employees Prepared"
                   : "Validation Complete"}
               </h3>
 
