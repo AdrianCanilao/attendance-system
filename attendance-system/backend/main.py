@@ -389,7 +389,7 @@ async def get_staged_legacy_employees(
     try:
         rows = (
             supabase.from_("legacy_employee_staging")
-            .select("id,employee_no,full_name,source_branch_code,source_file_name,profile_status,intended_role,created_at,branches(branch_name,branch_code)")
+            .select("id,employee_no,full_name,branch_id,source_branch_code,source_file_name,profile_status,intended_role,created_at,branches(branch_name,branch_code)")
             .order("created_at", desc=True)
             .execute().data or []
         )
