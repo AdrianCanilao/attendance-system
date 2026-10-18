@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
 import * as XLSX from "xlsx-js-style";
+import Swal from "sweetalert2";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -353,10 +354,19 @@ export default function DataMigration() {
 
   const stageLegacyEmployees = async () => {
     if (dataset !== "cibo_dtr_summary" || !parsed?.records?.length || !matchReport?.employees?.length) return;
-    const confirmed = window.confirm(
-      "Prepare " + matchReport.totalEmployees + " legacy employee record(s) for HR profile completion?\\n\\nThis will only create staging records. It will not create login accounts or import attendance."
-    );
-    if (!confirmed) return;
+    const confirmation = await Swal.fire({
+      title: "Prepare staged employees?",
+      text: "Prepare " + matchReport.totalEmployees + " legacy employee record(s) for HR profile completion? This will only create staging records. It will not create login accounts or import attendance.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, prepare records",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#f97316",
+      cancelButtonColor: "#6b7280",
+      reverseButtons: true,
+      focusCancel: true,
+    });
+    if (!confirmation.isConfirmed) return;
 
     try {
       setLoading(true);
@@ -457,11 +467,19 @@ export default function DataMigration() {
   const importCSV = async () => {
     if (!file || !validation?.ok) return;
 
-    const confirmed = window.confirm(
-      "Import these validated records into the CIBO system?\n\nExisting records will be checked for duplicates before insertion."
-    );
-
-    if (!confirmed) return;
+    const confirmation = await Swal.fire({
+      title: "Import validated records?",
+      text: "Import these validated records into the CIBO system? Existing records will be checked for duplicates before insertion.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, import data",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#f97316",
+      cancelButtonColor: "#6b7280",
+      reverseButtons: true,
+      focusCancel: true,
+    });
+    if (!confirmation.isConfirmed) return;
 
     try {
       setLoading(true);
