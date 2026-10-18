@@ -285,7 +285,7 @@ export default function Sidebar({ role }) {
         className={`cibo-sidebar-dropdown ${openEmployee ? "is-open" : ""}`}
         style={{
           ...styles.dropdown,
-          maxHeight: openEmployee ? "250px" : "0px",
+          maxHeight: openEmployee ? "320px" : "0px",
           opacity: openEmployee ? 1 : 0,
         }}
       >
@@ -333,16 +333,6 @@ export default function Sidebar({ role }) {
 </button>
 
                 <button
-  onClick={() => navigate("/hr/staged-employees")}
-  style={{
-    ...styles.sublink,
-    ...(isActive("/hr/staged-employees") && styles.activeSubLink),
-  }}
->
-  Staged Employees
-</button>
-
-                <button
   onClick={() => navigate("/hr/data-migration")}
   style={{
     ...styles.sublink,
@@ -351,6 +341,16 @@ export default function Sidebar({ role }) {
   }}
 >
   Data Migration
+</button>
+
+                <button
+  onClick={() => navigate("/hr/staged-employees")}
+  style={{
+    ...styles.sublink,
+    ...(isActive("/hr/staged-employees") && styles.activeSubLink),
+  }}
+>
+  Staged Employees
 </button>
       </div>
     </div>
@@ -413,6 +413,9 @@ export default function Sidebar({ role }) {
               </button>
               <button onClick={() => { setOpenEmployee(false); navigate("/hr/data-migration"); }}>
                 Data Migration
+              </button>
+              <button onClick={() => { setOpenEmployee(false); navigate("/hr/staged-employees"); }}>
+                Staged Employees
               </button>
             </div>
           )}
