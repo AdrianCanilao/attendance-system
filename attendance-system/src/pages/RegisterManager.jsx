@@ -800,7 +800,7 @@ shift_id: "",
           </div>
 
           <button type="submit" disabled={loading} style={styles.primaryBtn}>
-            {loading ? "Registering..." : "Register Manager"}
+            {loading ? "Registering..." : "Register Maintenance Specialist"}
           </button>
           </form>
         </div>
