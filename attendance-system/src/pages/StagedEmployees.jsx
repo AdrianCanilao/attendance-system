@@ -106,9 +106,9 @@ export default function StagedEmployees() {
               <td style={styles.td}><span style={{ ...styles.badge, background: employee.profile_status === "linked" ? "#dcfce7" : employee.profile_status === "ready" ? "#fef3c7" : "#fee2e2", color: employee.profile_status === "linked" ? "#166534" : employee.profile_status === "ready" ? "#92400e" : "#991b1b" }}>{label(employee.profile_status)}</span></td>
               <td style={styles.td}>
                 <select value={employee.intended_role || ""} disabled={employee.profile_status === "linked"} onChange={(event) => updateIntendedRole(employee.id, event.target.value)} style={styles.roleSelect}>
-                  <option value="">Select role</option>
-                  <option value="employee">Employee</option>
-                  <option value="maintenance">Maintenance Specialist (MS)</option>
+                  <option value="" style={{ color: "#111827", backgroundColor: "#ffffff" }}>Select role</option>
+                  <option value="employee" style={{ color: "#111827", backgroundColor: "#ffffff" }}>Employee</option>
+                  <option value="maintenance" style={{ color: "#111827", backgroundColor: "#ffffff" }}>Maintenance Specialist (MS)</option>
                 </select>
               </td>
               <td style={styles.td}><button disabled={employee.profile_status === "linked"} onClick={() => saveIntendedRole(employee)} style={{ ...styles.saveRole, opacity: employee.profile_status === "linked" ? 0.5 : 1 }}>Save role</button></td>
@@ -134,7 +134,7 @@ const styles = {
   th: { textAlign: "left", padding: "12px 10px", background: "#f3f4f6", borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" },
   td: { padding: "12px 10px", borderBottom: "1px solid #e5e7eb", verticalAlign: "top" },
   badge: { display: "inline-block", padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" },
-  roleSelect: { minWidth: 190, border: "1px solid #cbd5e1", borderRadius: 7, padding: "8px", background: "#fff" },
+  roleSelect: { minWidth: 190, border: "1px solid #cbd5e1", borderRadius: 7, padding: "8px", backgroundColor: "#ffffff", color: "#111827", colorScheme: "light", fontSize: 13, appearance: "auto" },
   saveRole: { border: 0, borderRadius: 7, padding: "8px 12px", background: "#f97316", color: "#fff", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
   note: { color: "#64748b", fontSize: 13, margin: "16px 0 0" },
   error: { color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 12, marginBottom: 12 },
