@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
 import Swal from "sweetalert2";
@@ -6,6 +7,7 @@ import Swal from "sweetalert2";
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
 export default function StagedEmployees() {
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -111,7 +113,17 @@ export default function StagedEmployees() {
                   <option value="maintenance" style={{ color: "#111827", backgroundColor: "#ffffff" }}>Maintenance Specialist (MS)</option>
                 </select>
               </td>
-              <td style={styles.td}><button disabled={employee.profile_status === "linked"} onClick={() => saveIntendedRole(employee)} style={{ ...styles.saveRole, opacity: employee.profile_status === "linked" ? 0.5 : 1 }}>Save role</button></td>
+              <td style={styles.td}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button disabled={employee.profile_status === "linked"} onClick={() => saveIntendedRole(employee)} style={{ ...styles.saveRole, opacity: employee.profile_status === "linked" ? 0.5 : 1 }}>Save role</button>
+                  {employee.intended_role === "maintenance" && employee.profile_status !== "linked" && (
+                    <button
+                      onClick={() => navigate("/hr/register-manager", { state: { stagedEmployee: employee } })}
+                      style={styles.continueRole}
+                    >Continue registration</button>
+                  )}
+                </div>
+              </td>
             </tr>)}</tbody>
           </table></div>}
         <p style={styles.note}>Select and save the intended role here. This does not create an account or change access permissions. Actual registration and personal-information editing remain in the existing registration/Edit Employee workflows.</p>
@@ -137,6 +149,7 @@ const styles = {
   badge: { display: "inline-block", padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" },
   roleSelect: { minWidth: 190, border: "1px solid #cbd5e1", borderRadius: 7, padding: "8px", backgroundColor: "#ffffff", color: "#111827", colorScheme: "light", fontSize: 13, appearance: "auto" },
   saveRole: { border: 0, borderRadius: 7, padding: "8px 12px", background: "#f97316", color: "#fff", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
+  continueRole: { border: "1px solid #f97316", borderRadius: 7, padding: "8px 10px", background: "#fff7ed", color: "#9a3412", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
   note: { color: "#64748b", fontSize: 13, margin: "16px 0 0" },
   error: { color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 12, marginBottom: 12 },
 };
