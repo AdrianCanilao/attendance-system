@@ -377,6 +377,69 @@ async def update_staged_legacy_role(
         raise HTTPException(status_code=500, detail="Unable to save the staged employee role.")
 
 
+class LinkStagedLegacyEmployeeRequest(BaseModel):
+    user_id: str
+
+
+@app.post("/admin/staged-legacy-employees/{staging_id}/link")
+async def link_staged_legacy_employee(
+    staging_id: str,
+    payload: LinkStagedLegacyEmployeeRequest,
+    authorization: str | None = Header(default=None),
+):
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    authenticate_hr_bearer(token)
+
+    staged_rows = (
+        supabase.from_("legacy_employee_staging")
+        .select("id,employee_no,branch_id,intended_role,profile_status")
+        .eq("id", staging_id).limit(1).execute().data or []
+    )
+    if not staged_rows:
+        raise HTTPException(status_code=404, detail="Staged employee was not found.")
+    staged = staged_rows[0]
+    if staged.get("intended_role") != "maintenance":
+        raise HTTPException(status_code=409, detail="Only staged records assigned to Maintenance Specialist can be linked through HR registration.")
+    if staged.get("profile_status") == "linked":
+        if staged.get("linked_employee_id") == payload.user_id:
+            return {"status": "LINKED", "message": "This staged employee is already linked to this account."}
+        raise HTTPException(status_code=409, detail="This staged employee is already linked to another account.")
+
+    profiles = (
+        supabase.from_("employee_profiles")
+        .select("id,employee_no,branch_id,role_id")
+        .eq("id", payload.user_id).limit(1).execute().data or []
+    )
+    if not profiles:
+        raise HTTPException(status_code=404, detail="The registered employee profile was not found.")
+    profile = profiles[0]
+    if str(profile.get("employee_no") or "").strip() != str(staged.get("employee_no") or "").strip():
+        raise HTTPException(status_code=409, detail="The registered employee number does not match the staged DTR employee number.")
+    if str(profile.get("branch_id") or "") != str(staged.get("branch_id") or ""):
+        raise HTTPException(status_code=409, detail="The registered branch does not match the staged employee branch.")
+
+    role_rows = (
+        supabase.from_("roles").select("name").eq("id", profile.get("role_id")).limit(1).execute().data or []
+    )
+    role_name = (role_rows[0].get("name") or "").strip().lower() if role_rows else ""
+    if role_name not in {"maintenance", "maintenance specialist", "branch supervisor", "manager"}:
+        raise HTTPException(status_code=409, detail="The registered account does not have the expected Maintenance Specialist role.")
+
+    updated = (
+        supabase.from_("legacy_employee_staging")
+        .update({
+            "profile_status": "linked",
+            "linked_employee_id": payload.user_id,
+            "updated_at": datetime.now(ZoneInfo("UTC")).isoformat(),
+        })
+        .eq("id", staging_id)
+        .execute().data or []
+    )
+    if not updated:
+        raise HTTPException(status_code=500, detail="The account was registered, but the staged record could not be linked. Contact an administrator before retrying registration.")
+    return {"status": "LINKED", "message": "Staged employee linked to the registered account."}
+
+
 @app.get("/admin/staged-legacy-employees")
 async def get_staged_legacy_employees(
     authorization: str | None = Header(default=None),
