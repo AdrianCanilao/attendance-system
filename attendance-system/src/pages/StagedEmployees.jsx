@@ -91,9 +91,9 @@ export default function StagedEmployees() {
       </div>
       <div style={styles.panel}>
         <div style={styles.filters}>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search employee no., name, or branch..." style={styles.search} />
-          <select value={status} onChange={(e) => setStatus(e.target.value)} style={styles.select}>
-            <option value="all">All statuses</option><option value="incomplete">Incomplete profile</option><option value="ready">Ready to link</option><option value="linked">Linked</option>
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search employee no., name, or branch..." style={styles.search} aria-label="Search staged employees" />
+          <select value={status} onChange={(e) => setStatus(e.target.value)} style={styles.select} aria-label="Filter staged employees by profile status">
+            <option value="all" style={styles.option}>All statuses</option><option value="incomplete" style={styles.option}>Incomplete profile</option><option value="ready" style={styles.option}>Ready to link</option><option value="linked" style={styles.option}>Linked</option>
           </select>
         </div>
         {error && <div style={styles.error}>{error}</div>}
@@ -128,8 +128,9 @@ const styles = {
   stat: { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: 16, display: "flex", flexDirection: "column", gap: 8 },
   panel: { background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: 18 },
   filters: { display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" },
-  search: { flex: "1 1 280px", minWidth: 220, border: "1px solid #cbd5e1", borderRadius: 8, padding: "10px 12px", fontSize: 14 },
-  select: { minWidth: 180, border: "1px solid #cbd5e1", borderRadius: 8, padding: "10px 12px", background: "#fff" },
+  search: { flex: "1 1 280px", minWidth: 220, border: "1px solid #cbd5e1", borderRadius: 8, padding: "10px 12px", fontSize: 14, backgroundColor: "#ffffff", color: "#111827", colorScheme: "light", boxSizing: "border-box", outlineColor: "#f97316" },
+  select: { minWidth: 180, border: "1px solid #cbd5e1", borderRadius: 8, padding: "10px 12px", backgroundColor: "#ffffff", color: "#111827", colorScheme: "light", fontSize: 14, boxSizing: "border-box" },
+  option: { backgroundColor: "#ffffff", color: "#111827" },
   tableWrap: { overflowX: "auto", width: "100%" }, table: { borderCollapse: "collapse", width: "100%", minWidth: 900, fontSize: 13 },
   th: { textAlign: "left", padding: "12px 10px", background: "#f3f4f6", borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" },
   td: { padding: "12px 10px", borderBottom: "1px solid #e5e7eb", verticalAlign: "top" },
