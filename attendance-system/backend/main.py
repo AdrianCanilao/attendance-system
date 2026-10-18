@@ -329,6 +329,103 @@ async def admin_update_device(
 
 
 
+class StageLegacyEmployeesRequest(BaseModel):
+    employees: List[dict]
+    source_file_name: str | None = None
+
+
+@app.post("/admin/stage-legacy-employees")
+async def stage_legacy_employees(
+    payload: StageLegacyEmployeesRequest,
+    authorization: str | None = Header(default=None),
+):
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    caller = authenticate_hr_bearer(token)
+
+    if not payload.employees:
+        raise HTTPException(status_code=400, detail="No DTR employee records were provided.")
+    if len(payload.employees) > 5000:
+        raise HTTPException(status_code=400, detail="Too many employee records.")
+
+    branch_rows = (
+        supabase.from_("branches")
+        .select("id,branch_name,branch_code")
+        .execute().data or []
+    )
+    branch_by_code = {
+        str(row.get("branch_code") or "").strip().lower(): row
+        for row in branch_rows
+    }
+    cubao = next(
+        (row for row in branch_rows
+         if str(row.get("branch_name") or "").strip().lower() == "cubao head office"),
+        None,
+    )
+    if cubao:
+        branch_by_code["main"] = cubao
+
+    unique = {}
+    for row in payload.employees:
+        employee_no = str(row.get("employee_no") or "").strip()
+        full_name = str(row.get("employee_name") or row.get("full_name") or "").strip()
+        branch_code = str(row.get("branch_code") or "").strip()
+        if not employee_no or not full_name or not branch_code:
+            continue
+        key = (employee_no.lower(), branch_code.lower())
+        unique.setdefault(key, {
+            "employee_no": employee_no,
+            "full_name": full_name,
+            "branch_code": branch_code,
+        })
+
+    if not unique:
+        raise HTTPException(status_code=400, detail="No valid employee number, name, and branch code were found.")
+
+    created = 0
+    existing = 0
+    errors = []
+    for item in unique.values():
+        branch = branch_by_code.get(item["branch_code"].lower())
+        try:
+            query = (
+                supabase.from_("legacy_employee_staging")
+                .select("id,employee_no,source_branch_code")
+                .eq("employee_no", item["employee_no"])
+                .eq("source_branch_code", item["branch_code"])
+                .limit(1)
+                .execute().data or []
+            )
+            if query:
+                existing += 1
+                continue
+
+            supabase.from_("legacy_employee_staging").insert({
+                "employee_no": item["employee_no"],
+                "full_name": item["full_name"],
+                "branch_id": branch.get("id") if branch else None,
+                "source_branch_code": item["branch_code"],
+                "source_file_name": (payload.source_file_name or "Legacy DTR upload")[:255],
+                "profile_status": "incomplete",
+                "created_by": caller.id,
+            }).execute()
+            created += 1
+        except Exception as error:
+            errors.append({
+                "employee_no": item["employee_no"],
+                "message": str(error)[:300],
+            })
+
+    return {
+        "status": "STAGED" if not errors else "PARTIAL",
+        "total_employees": len(unique),
+        "created": created,
+        "already_staged": existing,
+        "failed": len(errors),
+        "errors": errors[:20],
+        "message": f"{created} employee(s) staged, {existing} already staged, {len(errors)} failed. No attendance records or login accounts were created.",
+    }
+
+
 @app.post("/admin/migrate-csv")
 async def admin_migrate_csv(
     file: UploadFile = File(...),
