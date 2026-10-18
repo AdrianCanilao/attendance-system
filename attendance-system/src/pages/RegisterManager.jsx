@@ -395,6 +395,24 @@ const captureFace = () => {
       } catch (reloadError) {
       }
 
+      if (stagedEmployee?.id) {
+        const linkResponse = await fetch(
+          API_URL + "/admin/staged-legacy-employees/" + encodeURIComponent(stagedEmployee.id) + "/link",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + accessToken,
+            },
+            body: JSON.stringify({ user_id: userId }),
+          }
+        );
+        const linkData = await linkResponse.json();
+        if (!linkResponse.ok) {
+          throw new Error(linkData?.detail || "Account registered, but the staged employee record could not be linked. Contact an administrator before retrying.");
+        }
+      }
+
       const { data: currentUser } =
         await supabase.auth.getUser();
 
@@ -439,6 +457,7 @@ shift_id: "",
     <HRLayout>
       <div className="cibo-page-root cibo-hr-page cibo-hr-register-page" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>Register Maintenance Specialist</h1>
+        {stagedEmployee && <div style={{ background: "#fff7ed", border: "1px solid #fdba74", borderRadius: 8, padding: 12, marginBottom: 16, color: "#9a3412" }}>Registering staged DTR employee <strong>{stagedEmployee.employee_no} — {stagedEmployee.full_name}</strong>. The name, employee number, and mapped branch have been prefilled. Confirm the details and complete all required fields and facial enrollment.</div>}
 
         <div style={styles.card}>
           <div className={`topSection ${showCamera ? "camera-open" : ""}`} style={styles.topSection}>
