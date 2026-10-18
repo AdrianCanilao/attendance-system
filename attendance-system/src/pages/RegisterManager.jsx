@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Webcam from "react-webcam";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
@@ -17,14 +18,17 @@ const isStrongPassword = (password) =>
 
 export default function RegisterManager() {
   const webcamRef = useRef(null);
+  const location = useLocation();
+  const stagedEmployee = location.state?.stagedEmployee || null;
 
   const [form, setForm] = useState({
-  name: "",
+  employee_no: stagedEmployee?.employee_no || "",
+  name: stagedEmployee?.full_name || "",
   email: "",
   password: "",
   contact: "",
   position: "",
-  branch_id: "",
+  branch_id: stagedEmployee?.branch_id || "",
   shift_id: "",
 });
 
@@ -58,6 +62,7 @@ export default function RegisterManager() {
 
   useEffect(() => {
   fetchBranches();
+  if (stagedEmployee?.branch_id) fetchShifts(stagedEmployee.branch_id);
 }, []);
 
 const fetchBranches = async () => {
@@ -311,6 +316,7 @@ const captureFace = () => {
             Authorization: "Bearer " + accessToken,
           },
           body: JSON.stringify({
+            employee_no: form.employee_no.trim(),
             name,
             email,
             password,
@@ -403,6 +409,7 @@ action: "REGISTER_MAINTENANCE",
       alert("✅ Maintenance Specialist registered!");
 
       setForm({
+        employee_no: "",
         name: "",
         email: "",
         password: "",
@@ -582,6 +589,23 @@ shift_id: "",
 
           <form onSubmit={handleRegister} noValidate>
           <div className="cibo-hr-form-grid" style={styles.grid}>
+            <div>
+              <div style={styles.fieldHeader}>
+                <label style={styles.label}>Employee Number <span style={styles.required}>*</span></label>
+              </div>
+              <input
+                name="employee_no"
+                placeholder="Enter employee number"
+                value={form.employee_no}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                maxLength={50}
+                required
+                aria-required="true"
+                aria-invalid={isFieldInvalid("employee_no")}
+                style={{ ...styles.input, ...(isFieldInvalid("employee_no") ? styles.inputError : {}) }}
+              />
+            </div>
             <div>
               <div style={styles.fieldHeader}>
                 <label style={styles.label}>Full Name <span style={styles.required}>*</span></label>
