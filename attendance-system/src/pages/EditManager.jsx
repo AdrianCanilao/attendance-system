@@ -3,6 +3,7 @@ import { supabase } from "../supabaseClient";
 import { getStorageAccessUrl } from "../utils/storageAccess";
 import HRLayout from "../layouts/HRLayout";
 import Webcam from "react-webcam";
+import Swal from "sweetalert2";
 import { logCurrentUserAudit } from "../utils/auditlogger";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
@@ -464,39 +465,32 @@ const uploadFaces = async () => {
 
   const handleUpdate = async () => {
   if (form.name && /[0-9]/.test(form.name)) {
-    alert("Full name must not contain numbers.");
+    await Swal.fire({ title: "Invalid full name", text: "Full name must not contain numbers.", icon: "warning", confirmButtonColor: "#f97316" });
     return;
   }
 
   if (form.contact && !/^\d{1,11}$/.test(form.contact)) {
-    alert("Contact number must contain digits only and be at most 11 digits.");
+    await Swal.fire({ title: "Invalid contact number", text: "Contact number must contain digits only and be at most 11 digits.", icon: "warning", confirmButtonColor: "#f97316" });
     return;
   }
 
   if (form.position && form.position.length > 100) {
-    alert("Position must be 100 characters or fewer.");
+    await Swal.fire({ title: "Position is too long", text: "Position must be 100 characters or fewer.", icon: "warning", confirmButtonColor: "#f97316" });
     return;
   }
 
   if (form.email && form.email.length > 254) {
-    alert("Email must be 254 characters or fewer.");
+    await Swal.fire({ title: "Email is too long", text: "Email must be 254 characters or fewer.", icon: "warning", confirmButtonColor: "#f97316" });
     return;
   }
 
   if (form.password && form.password.length > 64) {
-    alert("Password must be 64 characters or fewer.");
+    await Swal.fire({ title: "Password is too long", text: "Password must be 64 characters or fewer.", icon: "warning", confirmButtonColor: "#f97316" });
     return;
   }
 
   if (form.password && !isStrongPassword(form.password)) {
-    alert(
-      "Password must have:\n\n" +
-      "• 8 or more characters\n" +
-      "• 1 uppercase letter\n" +
-      "• 1 lowercase letter\n" +
-      "• 1 number\n" +
-      "• 1 special character"
-    );
+    await Swal.fire({ title: "Password does not meet requirements", text: "Use at least 8 characters, including uppercase and lowercase letters, a number, and a special character.", icon: "warning", confirmButtonColor: "#f97316" });
     return;
   }
 
@@ -507,13 +501,18 @@ const uploadFaces = async () => {
       const previousBranch = branches.find((branch) => branch.id === selected?.branch_id);
       const newBranch = branches.find((branch) => branch.id === form.branch_id);
 
-      const confirmed = confirm(
-        `Transfer ${form.name} from ${previousBranch?.branch_name || "Unassigned"} to ${newBranch?.branch_name || "Unassigned"}?\n\nTheir existing account, attendance history, leave records, and face registration will remain with the same employee profile.`
-      );
+      const confirmation = await Swal.fire({
+        title: "Confirm branch transfer?",
+        text: `Transfer ${form.name} from ${previousBranch?.branch_name || "Unassigned"} to ${newBranch?.branch_name || "Unassigned"}? Their existing account, attendance history, leave records, and face registration will remain with the same employee profile.`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Transfer MS",
+        cancelButtonText: "Cancel",
+        confirmButtonColor: "#f97316",
+        cancelButtonColor: "#6b7280",
+      });
 
-      if (!confirmed) {
-        return;
-      }
+      if (!confirmation.isConfirmed) return;
     }
 
     try {
@@ -645,15 +644,12 @@ const uploadFaces = async () => {
         description: `Updated maintenance specialist: ${form.name}`,
       });
 
-      alert("✅ Updated!");
+      await Swal.fire({ title: "Maintenance Specialist updated", text: "The profile, branch, and shift assignment were saved successfully.", icon: "success", confirmButtonColor: "#f97316" });
       closeModal();
       fetchEmployees();
     } catch (error) {
       console.error("Branch Supervisor update failed:", error);
-      alert(
-        "Update failed:\n\n" +
-        (error?.message || "Unknown error. Check the browser console for details.")
-      );
+      await Swal.fire({ title: "Update failed", text: error?.message || "Unknown error. Check the browser console for details.", icon: "error", confirmButtonColor: "#f97316" });
     } finally {
       setLoading(false);
     }
