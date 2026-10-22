@@ -142,7 +142,7 @@ export default function StagedEmployees() {
                 </select>
               </td>
               <td style={styles.td}>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minHeight: 38, padding: "2px 0" }}>
                   <button disabled={employee.profile_status === "linked"} onClick={() => saveIntendedRole(employee)} style={{ ...styles.saveRole, opacity: employee.profile_status === "linked" ? 0.5 : 1 }}>Save role</button>
                   {employee.intended_role === "maintenance" && employee.profile_status !== "linked" && (
                     <button
@@ -152,7 +152,7 @@ export default function StagedEmployees() {
                   )}
                   {employee.intended_role === "employee" && employee.profile_status !== "linked" && (
                     employee.sent_to_ms_at ? (
-                      <span style={{ ...styles.note, color: "#166534", fontWeight: 600 }}>Sent to MS</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", marginLeft: 2, padding: "7px 10px", minHeight: 34, boxSizing: "border-box", borderRadius: 7, background: "#f0fdf4", color: "#166534", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>Sent to MS</span>
                     ) : (
                       <button onClick={() => sendToMS(employee)} style={styles.continueRole}>Send to MS</button>
                     )
@@ -183,8 +183,8 @@ const styles = {
   td: { padding: "12px 10px", borderBottom: "1px solid #e5e7eb", verticalAlign: "top" },
   badge: { display: "inline-block", padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" },
   roleSelect: { minWidth: 190, border: "1px solid #cbd5e1", borderRadius: 7, padding: "8px", backgroundColor: "#ffffff", color: "#111827", colorScheme: "light", fontSize: 13, appearance: "auto" },
-  saveRole: { border: 0, borderRadius: 7, padding: "8px 12px", background: "#f97316", color: "#fff", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
-  continueRole: { border: "1px solid #f97316", borderRadius: 7, padding: "8px 10px", background: "#fff7ed", color: "#9a3412", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
+  saveRole: { border: 0, borderRadius: 7, padding: "8px 12px", minHeight: 38, background: "#f97316", color: "#fff", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", margin: 0 },
+  continueRole: { minHeight: 38, margin: 0, border: "1px solid #f97316", borderRadius: 7, padding: "8px 10px", background: "#fff7ed", color: "#9a3412", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" },
   note: { color: "#64748b", fontSize: 13, margin: "16px 0 0" },
   error: { color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, padding: 12, marginBottom: 12 },
 };
