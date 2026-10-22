@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Swal from "sweetalert2";
 import { useLocation, useNavigate } from "react-router-dom";
 import Webcam from "react-webcam";
 import { supabase } from "../supabaseClient";
@@ -436,6 +437,25 @@ export default function RegisterEmployee() {
         }
       }
 
+      if (stagedEmployee?.id) {
+        const linkResponse = await fetch(
+          API_URL + "/admin/staged-legacy-employees/" + encodeURIComponent(stagedEmployee.id) + "/link",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + accessToken,
+            },
+            body: JSON.stringify({ user_id: userId }),
+          }
+        );
+        let linkData = {};
+        try { linkData = await linkResponse.json(); } catch {}
+        if (!linkResponse.ok) {
+          throw new Error(linkData?.detail || "The account was registered, but the staged DTR record could not be linked.");
+        }
+      }
+
       const { data: currentUser } = await supabase.auth.getUser();
 
       await logAudit({
@@ -463,7 +483,7 @@ export default function RegisterEmployee() {
       } catch (reloadError) {
       }
 
-      alert(stagedEmployee ? "Employee account registered. The staged record still needs to be linked through the authorized workflow." : "✅ Employee registered!");
+      await Swal.fire({ title: stagedEmployee ? "Staged employee registered and linked!" : "Employee registered!", text: stagedEmployee ? "The account was created and the DTR employee record is now linked. Historical attendance has not been imported." : "The employee account was created successfully.", icon: "success", confirmButtonColor: "#f97316" });
       if (stagedEmployee) {
         navigate("/hr/staged-employees", { replace: true });
         return;
