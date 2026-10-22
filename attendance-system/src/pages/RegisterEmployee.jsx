@@ -24,6 +24,7 @@ export default function RegisterEmployee() {
   const location = useLocation();
   const navigate = useNavigate();
   const stagedEmployee = location.state?.stagedEmployee || null;
+  const PageLayout = stagedEmployee ? HRLayout : ManagerLayout;
 
   const [form, setForm] = useState({
     employee_no: stagedEmployee?.employee_no || "",
@@ -534,7 +535,7 @@ export default function RegisterEmployee() {
   };
 
   return (
-    {stagedEmployee ? <HRLayout> : <ManagerLayout>}
+    <PageLayout>
       <div className="cibo-page-root cibo-register-employee-page" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>Register Employee</h1>
         {stagedEmployee && <div style={{ background: "#fff7ed", border: "1px solid #fdba74", borderRadius: 8, padding: 12, marginBottom: 16, color: "#9a3412" }}>Preparing registration for staged DTR employee <strong>{stagedEmployee.employee_no} — {stagedEmployee.full_name}</strong>. Confirm the details and complete required fields and facial enrollment.</div>}
@@ -885,7 +886,7 @@ export default function RegisterEmployee() {
           </form>
         </div>
       </div>
-    {stagedEmployee ? </HRLayout> : </ManagerLayout>}
+    </PageLayout>
   );
 }
 
