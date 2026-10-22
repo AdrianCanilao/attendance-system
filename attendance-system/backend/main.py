@@ -810,6 +810,20 @@ async def admin_migrate_csv(
                 if status not in {"Present", "Late", "Absent", "On Leave"}:
                     raise ValueError("status must be Present, Late, Absent, or On Leave")
 
+                existing_attendance = (
+                    supabase.from_("attendance_logs")
+                    .select("id")
+                    .eq("employee_id", profile["id"])
+                    .eq("log_date", log_date.isoformat())
+                    .limit(1)
+                    .execute().data or []
+                )
+                if existing_attendance:
+                    raise ValueError(
+                        "Attendance record already exists for this employee and date. "
+                        "The existing record will not be overwritten."
+                    )
+
                 valid_rows.append({
                     "_row": row_number,
                     "kind": "attendance",
@@ -877,6 +891,22 @@ async def admin_migrate_csv(
                         )
                     )
                 )
+                # Validate against existing attendance before reporting a row as importable.
+                # The import phase checks again to guard against records added after validation.
+                existing_attendance = (
+                    supabase.from_("attendance_logs")
+                    .select("id")
+                    .eq("employee_id", profile["id"])
+                    .eq("log_date", log_date.isoformat())
+                    .limit(1)
+                    .execute().data or []
+                )
+                if existing_attendance:
+                    raise ValueError(
+                        "Attendance record already exists for this employee and date. "
+                        "The existing record will not be overwritten."
+                    )
+
                 valid_rows.append({
                     "_row": row_number,
                     "kind": "cibo_dtr_summary",
