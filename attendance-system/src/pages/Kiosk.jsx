@@ -479,6 +479,11 @@ export default function Kiosk() {
       );
 
       formData.append(
+        "recognized_employee_name",
+        recognition.full_name || ""
+      );
+
+      formData.append(
         "action",
         selectedAction
       );
