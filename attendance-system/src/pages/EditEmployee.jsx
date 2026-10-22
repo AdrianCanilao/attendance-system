@@ -514,34 +514,35 @@ const handleUpdate = async () => {
   }
 
   if (form.contact && !/^\d{1,11}$/.test(form.contact)) {
-    alert("Contact number must contain digits only and be at most 11 digits.");
+    await Swal.fire({ title: "Invalid contact number", text: "Contact number must contain digits only and be at most 11 digits.", icon: "warning", confirmButtonColor: "#f97316" });
     return;
   }
 
   if (form.position && form.position.length > 100) {
-    alert("Position must be 100 characters or fewer.");
+    await Swal.fire({ title: "Position is too long", text: "Position must be 100 characters or fewer.", icon: "warning", confirmButtonColor: "#f97316" });
     return;
   }
 
   if (form.email && form.email.length > 254) {
-    alert("Email must be 254 characters or fewer.");
+    await Swal.fire({ title: "Email is too long", text: "Email must be 254 characters or fewer.", icon: "warning", confirmButtonColor: "#f97316" });
     return;
   }
 
   if (form.password && form.password.length > 64) {
-    alert("Password must be 64 characters or fewer.");
+    await Swal.fire({ title: "Password is too long", text: "Password must be 64 characters or fewer.", icon: "warning", confirmButtonColor: "#f97316" });
     return;
   }
 
   if (form.password && !isStrongPassword(form.password)) {
-    alert(
+    await Swal.fire({ title: "Password does not meet requirements", text: "Use at least 8 characters, including uppercase and lowercase letters, a number, and a special character.", icon: "warning", confirmButtonColor: "#f97316" });
+    /* alert(
       "Password must have:\n\n" +
       "• 8 or more characters\n" +
       "• 1 uppercase letter\n" +
       "• 1 lowercase letter\n" +
       "• 1 number\n" +
       "• 1 special character"
-    );
+    ); */
     return;
   }
 
@@ -552,13 +553,18 @@ const handleUpdate = async () => {
     const previousBranch = branches.find((branch) => branch.id === selected?.branch_id);
     const newBranch = branches.find((branch) => branch.id === form.branch_id);
 
-    const confirmed = confirm(
-      `Transfer ${form.name} from ${previousBranch?.branch_name || "Unassigned"} to ${newBranch?.branch_name || "Unassigned"}?\n\nTheir existing account, attendance history, leave records, and face registration will remain with the same employee profile.`
-    );
+    const confirmation = await Swal.fire({
+      title: "Confirm branch transfer?",
+      text: `Transfer ${form.name} from ${previousBranch?.branch_name || "Unassigned"} to ${newBranch?.branch_name || "Unassigned"}? Their existing account, attendance history, leave records, and face registration will remain with the same employee profile.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Transfer employee",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#f97316",
+      cancelButtonColor: "#6b7280",
+    });
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmation.isConfirmed) return;
   }
 
   try {
@@ -690,9 +696,9 @@ const handleUpdate = async () => {
     });
 
     if (capturedImages.length === 3) {
-      alert("✅ Employee updated and face recognition template refreshed!");
+      await Swal.fire({ title: "Employee updated", text: "Employee details were saved and the face recognition template was refreshed.", icon: "success", confirmButtonColor: "#f97316" });
     } else {
-      alert("✅ Employee updated!");
+      await Swal.fire({ title: "Employee updated", text: "Employee details, branch, and shift assignment were saved successfully.", icon: "success", confirmButtonColor: "#f97316" });
     }
 
     closeModal();
@@ -700,7 +706,7 @@ const handleUpdate = async () => {
 
   } catch (error) {
     
-    alert(`Update failed: ${error?.message || "Unknown error"}`);
+    await Swal.fire({ title: "Update failed", text: error?.message || "Unknown error", icon: "error", confirmButtonColor: "#f97316" });
 
   } finally {
     setLoading(false);
