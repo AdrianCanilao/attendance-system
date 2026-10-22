@@ -487,7 +487,7 @@ export default function RegisterEmployee() {
 
       await Swal.fire({ title: stagedEmployee ? "Staged employee registered and linked!" : "Employee registered!", text: stagedEmployee ? "The account was created and the DTR employee record is now linked. Historical attendance has not been imported." : "The employee account was created successfully.", icon: "success", confirmButtonColor: "#f97316" });
       if (stagedEmployee) {
-        navigate("/hr/staged-employees", { replace: true });
+        navigate(stagedEmployee.sent_to_ms_at ? "/manager/staged-employees" : "/hr/staged-employees", { replace: true });
         return;
       }
 
