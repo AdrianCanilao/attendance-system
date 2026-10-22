@@ -398,8 +398,8 @@ async def link_staged_legacy_employee(
     if not staged_rows:
         raise HTTPException(status_code=404, detail="Staged employee was not found.")
     staged = staged_rows[0]
-    if staged.get("intended_role") != "maintenance":
-        raise HTTPException(status_code=409, detail="Only staged records assigned to Maintenance Specialist can be linked through HR registration.")
+    if staged.get("intended_role") not in {"maintenance", "employee"}:
+        raise HTTPException(status_code=409, detail="Choose Employee or Maintenance Specialist as the staged record intended role before linking.")
     if staged.get("profile_status") == "linked":
         if staged.get("linked_employee_id") == payload.user_id:
             return {"status": "LINKED", "message": "This staged employee is already linked to this account."}
@@ -422,8 +422,15 @@ async def link_staged_legacy_employee(
         supabase.from_("roles").select("name").eq("id", profile.get("role_id")).limit(1).execute().data or []
     )
     role_name = (role_rows[0].get("name") or "").strip().lower() if role_rows else ""
-    if role_name not in {"maintenance", "maintenance specialist", "branch supervisor", "manager"}:
-        raise HTTPException(status_code=409, detail="The registered account does not have the expected Maintenance Specialist role.")
+    expected_role = staged.get("intended_role")
+    if expected_role == "maintenance":
+        allowed_role_names = {"maintenance", "maintenance specialist", "branch supervisor", "manager"}
+        role_error = "The registered account does not have the expected Maintenance Specialist role."
+    else:
+        allowed_role_names = {"employee", "staff"}
+        role_error = "The registered account does not have the expected Employee role."
+    if role_name not in allowed_role_names:
+        raise HTTPException(status_code=409, detail=role_error)
 
     updated = (
         supabase.from_("legacy_employee_staging")
