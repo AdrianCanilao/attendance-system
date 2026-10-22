@@ -24,7 +24,8 @@ export default function RegisterEmployee() {
   const location = useLocation();
   const navigate = useNavigate();
   const stagedEmployee = location.state?.stagedEmployee || null;
-  const PageLayout = stagedEmployee ? HRLayout : ManagerLayout;
+  const isBranchSupervisorStagedRegistration = Boolean(stagedEmployee?.sent_to_ms_at);
+  const PageLayout = isBranchSupervisorStagedRegistration ? ManagerLayout : stagedEmployee ? HRLayout : ManagerLayout;
 
   const [form, setForm] = useState({
     employee_no: stagedEmployee?.employee_no || "",
