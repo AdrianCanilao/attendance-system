@@ -352,7 +352,7 @@ async def update_staged_legacy_role(
 
     existing = (
         supabase.from_("legacy_employee_staging")
-        .select("id,profile_status")
+        .select("id,profile_status,sent_to_ms_at,sent_by")
         .eq("id", staging_id)
         .limit(1).execute().data or []
     )
@@ -364,7 +364,7 @@ async def update_staged_legacy_role(
     try:
         updated = (
             supabase.from_("legacy_employee_staging")
-            .update({"intended_role": intended_role, "sent_to_ms_at": None if intended_role != "employee" else existing[0].get("sent_to_ms_at"), "sent_by": None if intended_role != "employee" else None, "updated_at": datetime.now(ZoneInfo("UTC")).isoformat()})
+            .update({"intended_role": intended_role, "sent_to_ms_at": None if intended_role != "employee" else existing[0].get("sent_to_ms_at"), "sent_by": None if intended_role != "employee" else existing[0].get("sent_by"), "updated_at": datetime.now(ZoneInfo("UTC")).isoformat()})
             .eq("id", staging_id)
             .execute().data or []
         )
