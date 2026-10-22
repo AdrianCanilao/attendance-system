@@ -4682,6 +4682,7 @@ async def kiosk_verify_live(
     action: str = Form(...),
     kiosk_code: str = Form(...),
     recognized_employee_id: str = Form(""),
+    recognized_employee_name: str = Form(""),
     x_kiosk_token: str | None = Header(default=None, alias=KIOSK_DEVICE_HEADER),
 ):
     print("🔥 KIOSK LIVE VERIFICATION STARTED", flush=True)
@@ -4761,6 +4762,47 @@ async def kiosk_verify_live(
             if recognized_employee_id
             else ""
         )
+        recognized_employee_name = (
+            recognized_employee_name.strip()
+            if recognized_employee_name
+            else ""
+        )
+
+        # The separate InsightFace recognition service can retain an older
+        # employee UUID after a profile is re-created. Reconcile an unknown UUID
+        # only when the recognized full name maps to exactly one current profile.
+        # Never write verification attempts against a UUID absent from employee_profiles.
+        if recognized_employee_id:
+            profile_check = (
+                supabase.table("employee_profiles")
+                .select("id,full_name")
+                .eq("id", recognized_employee_id)
+                .limit(1)
+                .execute()
+            )
+            if not (profile_check.data or []):
+                matched_profiles = []
+                if recognized_employee_name:
+                    matched_profiles = (
+                        supabase.table("employee_profiles")
+                        .select("id,full_name")
+                        .ilike("full_name", recognized_employee_name)
+                        .execute().data or []
+                    )
+                if len(matched_profiles) == 1:
+                    recognized_employee_id = str(matched_profiles[0]["id"])
+                    print(
+                        "♻️ RECONCILED STALE KIOSK EMPLOYEE ID BY UNIQUE NAME:",
+                        recognized_employee_name,
+                        flush=True
+                    )
+                else:
+                    print(
+                        "⚠️ KIOSK RECOGNITION UUID IS NOT A CURRENT EMPLOYEE PROFILE; "
+                        "verification-failure tracking will be skipped until live matching resolves identity.",
+                        flush=True
+                    )
+                    recognized_employee_id = ""
 
         if recognized_employee_id:
             lock_state = get_verification_lock(
