@@ -158,6 +158,15 @@ export default function App() {
         />
 
         <Route
+          path="/hr/register-employee"
+          element={
+            <ProtectedRoute role="hr">
+              <RegisterEmployee />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/hr/register-manager"
           element={
             <ProtectedRoute role="hr">
