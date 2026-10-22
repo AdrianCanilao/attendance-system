@@ -388,7 +388,19 @@ async def link_staged_legacy_employee(
     authorization: str | None = Header(default=None),
 ):
     token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
-    authenticate_hr_bearer(token)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    try:
+        caller = supabase.auth.get_user(token).user
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+    if not caller:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+    caller_role, caller_branch_id = get_role_and_branch(caller.id)
+    is_hr = caller_role == "hr"
+    is_ms = caller_role in {"maintenance", "maintenance specialist", "branch supervisor", "manager"}
+    if not is_hr and not is_ms:
+        raise HTTPException(status_code=403, detail="Only HR or the assigned Branch Supervisor can link a staged employee.")
 
     staged_rows = (
         supabase.from_("legacy_employee_staging")
@@ -398,6 +410,13 @@ async def link_staged_legacy_employee(
     if not staged_rows:
         raise HTTPException(status_code=404, detail="Staged employee was not found.")
     staged = staged_rows[0]
+    if is_ms:
+        if staged.get("intended_role") != "employee":
+            raise HTTPException(status_code=403, detail="Branch Supervisors can only register staged Employee records.")
+        if not staged.get("sent_to_ms_at"):
+            raise HTTPException(status_code=403, detail="HR has not sent this staged employee to the Branch Supervisor queue.")
+        if str(caller_branch_id or "") != str(staged.get("branch_id") or ""):
+            raise HTTPException(status_code=403, detail="This staged employee belongs to another branch.")
     if staged.get("intended_role") not in {"maintenance", "employee"}:
         raise HTTPException(status_code=409, detail="Choose Employee or Maintenance Specialist as the staged record intended role before linking.")
     if staged.get("profile_status") == "linked":
@@ -447,6 +466,74 @@ async def link_staged_legacy_employee(
     return {"status": "LINKED", "message": "Staged employee linked to the registered account."}
 
 
+@app.post("/admin/staged-legacy-employees/{staging_id}/send-to-ms")
+async def send_staged_legacy_employee_to_ms(
+    staging_id: str,
+    authorization: str | None = Header(default=None),
+):
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    caller = authenticate_hr_bearer(token)
+    rows = (
+        supabase.from_("legacy_employee_staging")
+        .select("id,employee_no,branch_id,intended_role,profile_status,sent_to_ms_at")
+        .eq("id", staging_id).limit(1).execute().data or []
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Staged employee was not found.")
+    staged = rows[0]
+    if staged.get("profile_status") == "linked":
+        raise HTTPException(status_code=409, detail="This employee is already linked.")
+    if staged.get("intended_role") != "employee":
+        raise HTTPException(status_code=409, detail="Only staged records assigned the Employee role can be sent to a Branch Supervisor.")
+    if not staged.get("branch_id"):
+        raise HTTPException(status_code=409, detail="Map this employee to a branch before sending to the Branch Supervisor.")
+    try:
+        updated = (
+            supabase.from_("legacy_employee_staging")
+            .update({"sent_to_ms_at": datetime.now(ZoneInfo("UTC")).isoformat(), "sent_by": caller.id,
+                     "updated_at": datetime.now(ZoneInfo("UTC")).isoformat()})
+            .eq("id", staging_id).execute().data or []
+        )
+        if not updated:
+            raise HTTPException(status_code=500, detail="Unable to send this employee to the Branch Supervisor.")
+        return {"status": "SENT", "message": "Staged employee is now available to the Branch Supervisor assigned to this branch."}
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Unable to send this staged employee.")
+
+
+@app.get("/manager/staged-legacy-employees")
+async def get_manager_staged_legacy_employees(
+    authorization: str | None = Header(default=None),
+):
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    try:
+        caller = supabase.auth.get_user(token).user
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+    if not caller:
+        raise HTTPException(status_code=401, detail="Invalid authentication session.")
+    role_name, branch_id = get_role_and_branch(caller.id)
+    if role_name not in {"maintenance", "maintenance specialist", "branch supervisor", "manager"}:
+        raise HTTPException(status_code=403, detail="Only a Branch Supervisor can view this queue.")
+    if not branch_id:
+        raise HTTPException(status_code=403, detail="Your account has no assigned branch.")
+    rows = (
+        supabase.from_("legacy_employee_staging")
+        .select("id,employee_no,full_name,branch_id,source_branch_code,source_file_name,profile_status,intended_role,sent_to_ms_at,branches(branch_name,branch_code)")
+        .eq("branch_id", branch_id)
+        .not_.is_("sent_to_ms_at", "null")
+        .neq("profile_status", "linked")
+        .eq("intended_role", "employee")
+        .order("sent_to_ms_at", desc=True)
+        .execute().data or []
+    )
+    return {"employees": rows, "total": len(rows), "branch_id": branch_id}
+
+
 @app.get("/admin/staged-legacy-employees")
 async def get_staged_legacy_employees(
     authorization: str | None = Header(default=None),
@@ -459,7 +546,7 @@ async def get_staged_legacy_employees(
     try:
         rows = (
             supabase.from_("legacy_employee_staging")
-            .select("id,employee_no,full_name,branch_id,source_branch_code,source_file_name,profile_status,intended_role,created_at,branches(branch_name,branch_code)")
+            .select("id,employee_no,full_name,branch_id,source_branch_code,source_file_name,profile_status,intended_role,sent_to_ms_at,created_at,branches(branch_name,branch_code)")
             .order("created_at", desc=True)
             .execute().data or []
         )
