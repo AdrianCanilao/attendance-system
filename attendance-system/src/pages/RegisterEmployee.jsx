@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import Webcam from "react-webcam";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
@@ -17,15 +18,18 @@ const isStrongPassword = (password) =>
 
 export default function RegisterEmployee() {
   const webcamRef = useRef(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const stagedEmployee = location.state?.stagedEmployee || null;
 
   const [form, setForm] = useState({
-    employee_no: "",
-    name: "",
+    employee_no: stagedEmployee?.employee_no || "",
+    name: stagedEmployee?.full_name || "",
     email: "",
     password: "",
     contact: "",
     position: "",
-    branch_id: "",
+    branch_id: stagedEmployee?.branch_id || "",
     shift_id: "",
   });
 
@@ -48,6 +52,7 @@ export default function RegisterEmployee() {
 
   useEffect(() => {
     fetchBranches();
+    if (stagedEmployee?.branch_id) fetchShifts(stagedEmployee.branch_id);
   }, []);
 
   const fetchBranches = async () => {
@@ -277,6 +282,7 @@ export default function RegisterEmployee() {
       !password ||
       !contact ||
       !position ||
+      (stagedEmployee && !String(form.employee_no || "").trim()) ||
       !form.branch_id ||
       !form.shift_id
     ) {
@@ -456,7 +462,11 @@ export default function RegisterEmployee() {
       } catch (reloadError) {
       }
 
-      alert("✅ Employee registered!");
+      alert(stagedEmployee ? "Employee account registered. The staged record still needs to be linked through the authorized workflow." : "✅ Employee registered!");
+      if (stagedEmployee) {
+        navigate("/hr/staged-employees", { replace: true });
+        return;
+      }
 
       setForm({
         name: "",
@@ -505,6 +515,7 @@ export default function RegisterEmployee() {
     <ManagerLayout>
       <div className="cibo-page-root cibo-register-employee-page" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>Register Employee</h1>
+        {stagedEmployee && <div style={{ background: "#fff7ed", border: "1px solid #fdba74", borderRadius: 8, padding: 12, marginBottom: 16, color: "#9a3412" }}>Preparing registration for staged DTR employee <strong>{stagedEmployee.employee_no} — {stagedEmployee.full_name}</strong>. Confirm the details and complete required fields and facial enrollment.</div>}
 
         <div className="cibo-register-employee-card" style={styles.card}>
           <div className={`cibo-register-employee-topSection ${showCamera ? "camera-open" : ""}`} style={styles.topSection}>
@@ -774,6 +785,7 @@ export default function RegisterEmployee() {
                 <select
                   name="branch_id"
                   value={form.branch_id}
+                  disabled={Boolean(stagedEmployee)}
                   onChange={handleChange}
                   onBlur={handleBlur}
                   required
