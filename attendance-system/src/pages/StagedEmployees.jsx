@@ -122,6 +122,12 @@ export default function StagedEmployees() {
                       style={styles.continueRole}
                     >Continue registration</button>
                   )}
+                  {employee.intended_role === "employee" && employee.profile_status !== "linked" && (
+                    <button
+                      onClick={() => navigate("/hr/register-employee", { state: { stagedEmployee: employee } })}
+                      style={styles.continueRole}
+                    >Continue registration</button>
+                  )}
                 </div>
               </td>
             </tr>)}</tbody>
