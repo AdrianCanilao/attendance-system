@@ -68,6 +68,34 @@ export default function StagedEmployees() {
     }
   };
 
+  const sendToMS = async (employee) => {
+    const confirmation = await Swal.fire({
+      title: "Send to Branch Supervisor?",
+      text: `Send ${employee.employee_no} — ${employee.full_name} to the Branch Supervisor assigned to ${employee.branches?.branch_name || "this branch"}? Other branches will not be able to see this record.`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Send to MS",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#f97316",
+    });
+    if (!confirmation.isConfirmed) return;
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Your session expired. Please sign in again.");
+      const response = await fetch(API_URL + "/admin/staged-legacy-employees/" + encodeURIComponent(employee.id) + "/send-to-ms", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.detail || "Unable to send this employee.");
+      await Swal.fire({ title: "Employee sent to MS", text: "Only the Branch Supervisor assigned to " + (employee.branches?.branch_name || "this branch") + " can view and continue registration.", icon: "success", confirmButtonColor: "#f97316" });
+      await loadEmployees();
+    } catch (error) {
+      await Swal.fire({ title: "Could not send employee", text: error.message || "Please try again.", icon: "error", confirmButtonColor: "#f97316" });
+    }
+  };
+
   const filtered = employees.filter((employee) => {
     const term = search.trim().toLowerCase();
     const matches = !term || [employee.employee_no, employee.full_name, employee.source_branch_code, employee.branches?.branch_name]
@@ -123,10 +151,11 @@ export default function StagedEmployees() {
                     >Continue registration</button>
                   )}
                   {employee.intended_role === "employee" && employee.profile_status !== "linked" && (
-                    <button
-                      onClick={() => navigate("/hr/register-employee", { state: { stagedEmployee: employee } })}
-                      style={styles.continueRole}
-                    >Continue registration</button>
+                    employee.sent_to_ms_at ? (
+                      <span style={{ ...styles.note, color: "#166534", fontWeight: 600 }}>Sent to MS</span>
+                    ) : (
+                      <button onClick={() => sendToMS(employee)} style={styles.continueRole}>Send to MS</button>
+                    )
                   )}
                 </div>
               </td>
