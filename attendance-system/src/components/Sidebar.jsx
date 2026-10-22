@@ -162,6 +162,16 @@ export default function Sidebar({ role }) {
     }}
   >
     <button
+      onClick={() => navigate("/manager/staged-employees")}
+      style={{
+        ...styles.sublink,
+        ...(isActive("/manager/staged-employees") && styles.activeSubLink),
+      }}
+    >
+      Staged Employees
+    </button>
+
+    <button
       onClick={() => navigate("/manager/register")}
       style={{
         ...styles.sublink,
