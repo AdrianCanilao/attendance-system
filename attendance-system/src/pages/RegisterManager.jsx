@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Swal from "sweetalert2";
 import { useLocation, useNavigate } from "react-router-dom";
 import Webcam from "react-webcam";
 import { supabase } from "../supabaseClient";
@@ -427,7 +428,7 @@ action: "REGISTER_MAINTENANCE",
   description: `Registered manager: ${name}`,
 });
 
-      alert(stagedEmployee ? "✅ Maintenance Specialist registered and linked to the staged DTR record!" : "✅ Maintenance Specialist registered!");
+      await Swal.fire({ title: stagedEmployee ? "Staged employee registered and linked!" : "Maintenance Specialist registered!", text: stagedEmployee ? "The account was created and the DTR employee record is now linked. Historical attendance has not been imported." : "The Maintenance Specialist account was created successfully.", icon: "success", confirmButtonColor: "#f97316" });
       if (stagedEmployee) {
         navigate("/hr/staged-employees", { replace: true });
         return;
