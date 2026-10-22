@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Webcam from "react-webcam";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
+import HRLayout from "../layouts/HRLayout";
 import { logAudit } from "../utils/auditlogger";
 import { isValidEmail } from "../utils/emailValidation";
 
@@ -533,7 +534,7 @@ export default function RegisterEmployee() {
   };
 
   return (
-    <ManagerLayout>
+    {stagedEmployee ? <HRLayout> : <ManagerLayout>}
       <div className="cibo-page-root cibo-register-employee-page" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>Register Employee</h1>
         {stagedEmployee && <div style={{ background: "#fff7ed", border: "1px solid #fdba74", borderRadius: 8, padding: 12, marginBottom: 16, color: "#9a3412" }}>Preparing registration for staged DTR employee <strong>{stagedEmployee.employee_no} — {stagedEmployee.full_name}</strong>. Confirm the details and complete required fields and facial enrollment.</div>}
@@ -884,7 +885,7 @@ export default function RegisterEmployee() {
           </form>
         </div>
       </div>
-    </ManagerLayout>
+    {stagedEmployee ? </HRLayout> : </ManagerLayout>}
   );
 }
 
