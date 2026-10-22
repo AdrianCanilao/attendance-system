@@ -509,7 +509,7 @@ const snapshotHistoricalAttendance = async (employeeId, clockIn, clockOut, grace
 
 const handleUpdate = async () => {
   if (form.name && /[0-9]/.test(form.name)) {
-    alert("Full name must not contain numbers.");
+    await Swal.fire({ title: "Invalid full name", text: "Full name must not contain numbers.", icon: "warning", confirmButtonColor: "#f97316" });
     return;
   }
 
@@ -535,14 +535,6 @@ const handleUpdate = async () => {
 
   if (form.password && !isStrongPassword(form.password)) {
     await Swal.fire({ title: "Password does not meet requirements", text: "Use at least 8 characters, including uppercase and lowercase letters, a number, and a special character.", icon: "warning", confirmButtonColor: "#f97316" });
-    /* alert(
-      "Password must have:\n\n" +
-      "• 8 or more characters\n" +
-      "• 1 uppercase letter\n" +
-      "• 1 lowercase letter\n" +
-      "• 1 number\n" +
-      "• 1 special character"
-    ); */
     return;
   }
 
