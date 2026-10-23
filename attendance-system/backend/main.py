@@ -647,6 +647,150 @@ async def stage_legacy_employees(
     }
 
 
+
+class StageLegacyAttendanceRequest(BaseModel):
+    source_file_name: str | None = None
+    records: List[dict]
+
+
+@app.post("/admin/stage-legacy-attendance")
+async def stage_legacy_attendance(
+    payload: StageLegacyAttendanceRequest,
+    authorization: str | None = Header(default=None),
+):
+    """Validate and store legacy DTR rows separately; never writes to attendance_logs."""
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    caller = authenticate_hr_bearer(token)
+    if not payload.records:
+        raise HTTPException(status_code=400, detail="No DTR rows were provided.")
+    if len(payload.records) > 10000:
+        raise HTTPException(status_code=400, detail="Too many DTR rows. Maximum is 10,000.")
+
+    source_file = (payload.source_file_name or "Legacy CIBO DTR upload").strip()[:255]
+    branches = supabase.from_("branches").select("id,branch_code,branch_name").execute().data or []
+    branch_by_code = {str(b.get("branch_code") or "").strip().lower(): b for b in branches}
+    cubao = next((b for b in branches if str(b.get("branch_name") or "").strip().lower() == "cubao head office"), None)
+    if cubao:
+        branch_by_code["main"] = cubao
+
+    # Validate duplicates within this upload before attempting inserts.
+    seen = set()
+    created = 0
+    existing = 0
+    needs_review = 0
+    errors = []
+    for index, row in enumerate(payload.records, start=1):
+        employee_no = str(row.get("employee_no") or "").strip()
+        employee_name = str(row.get("employee_name") or "").strip()
+        branch_code = str(row.get("branch_code") or "").strip()
+        date_value = str(row.get("date") or "").strip()
+        code = str(row.get("attendance_code") or "").strip()
+        try:
+            if not employee_no or not branch_code or not date_value or not code:
+                raise ValueError("Employee code, branch code, date, and attendance code are required.")
+            log_date = datetime.strptime(date_value, "%Y-%m-%d").date()
+            branch = branch_by_code.get(branch_code.lower())
+            if not branch:
+                raise ValueError("Branch code '" + branch_code + "' is not mapped to a system branch.")
+            hours = float(row.get("total_hours_worked") or 0)
+            overtime = float(row.get("overtime_hours") or 0)
+            if not (0 <= hours <= 24) or not (0 <= overtime <= 24):
+                raise ValueError("Hours and overtime must be between 0 and 24.")
+            normalized_code = code.upper()
+            if normalized_code == "OFF" and hours != 0:
+                raise ValueError("OFF records must have zero total hours.")
+            key = (employee_no.lower(), branch_code.lower(), log_date.isoformat())
+            if key in seen:
+                errors.append({"row": index, "employee_no": employee_no, "message": "Duplicate employee/date row in this upload."})
+                continue
+            seen.add(key)
+
+            profile_rows = (
+                supabase.from_("employee_profiles")
+                .select("id,employee_no,branch_id")
+                .eq("employee_no", employee_no).limit(2).execute().data or []
+            )
+            linked_id = None
+            review_status = "awaiting_profile"
+            review_note = "Employee profile is not registered yet. Historical attendance is staged and will not be imported until the profile is verified and linked."
+            if len(profile_rows) > 1:
+                review_status = "needs_review"
+                review_note = "Employee code matches multiple profiles; HR review is required."
+            elif len(profile_rows) == 1:
+                profile = profile_rows[0]
+                if str(profile.get("branch_id") or "") != str(branch["id"]):
+                    review_status = "needs_review"
+                    review_note = "Registered employee branch does not match the DTR branch."
+                else:
+                    linked_id = profile["id"]
+                    existing_logs = (
+                        supabase.from_("attendance_logs").select("id")
+                        .eq("employee_id", linked_id).eq("log_date", log_date.isoformat())
+                        .limit(1).execute().data or []
+                    )
+                    if existing_logs:
+                        review_status = "needs_review"
+                        review_note = "Attendance already exists for this employee and date; the existing record will not be overwritten."
+                    else:
+                        review_status = "ready"
+                        review_note = "Profile and branch matched. Historical record is staged for review before import."
+
+            existing_staged = (
+                supabase.from_("legacy_attendance_staging")
+                .select("id,review_status")
+                .eq("source_file_name", source_file)
+                .eq("employee_no", employee_no)
+                .eq("branch_code", branch_code)
+                .eq("log_date", log_date.isoformat())
+                .limit(1).execute().data or []
+            )
+            if existing_staged:
+                existing += 1
+                continue
+
+            supabase.from_("legacy_attendance_staging").insert({
+                "source_file_name": source_file,
+                "employee_no": employee_no,
+                "employee_name": employee_name or None,
+                "branch_code": branch_code,
+                "branch_id": branch["id"],
+                "log_date": log_date.isoformat(),
+                "total_hours_worked": round(hours, 2),
+                "overtime_hours": round(overtime, 2),
+                "attendance_code": code[:40],
+                "proposed_status": "Rest Day" if normalized_code == "OFF" else (
+                    "On Leave" if normalized_code in {"SL", "VL", "SIL", "EL", "BL", "ML", "PL", "CL", "AL", "AA", "SUS"} else (
+                        "Late" if normalized_code == "LATE" else (
+                            "Absent" if normalized_code == "ABSENT" else ("Present" if hours > 0 else "Absent")
+                        )
+                    )
+                ),
+                "linked_employee_id": linked_id,
+                "review_status": review_status,
+                "review_note": review_note,
+                "created_by": caller.id,
+            }).execute()
+            created += 1
+            if review_status in {"needs_review", "awaiting_profile"}:
+                needs_review += 1
+        except ValueError as error:
+            errors.append({"row": index, "employee_no": employee_no or "-", "message": str(error)})
+        except Exception as error:
+            errors.append({"row": index, "employee_no": employee_no or "-", "message": ("Unable to stage row: " + str(error))[:300]})
+
+    return {
+        "status": "STAGED" if not errors else ("PARTIAL" if created or existing else "ERROR"),
+        "source_file_name": source_file,
+        "total": len(payload.records),
+        "created": created,
+        "already_staged": existing,
+        "needs_review": needs_review,
+        "failed": len(errors),
+        "errors": errors[:50],
+        "message": f"{created} historical attendance row(s) staged separately, {existing} already staged, {needs_review} awaiting profile/review, {len(errors)} failed. No live attendance records were inserted or overwritten.",
+    }
+
+
 @app.post("/admin/migrate-csv")
 async def admin_migrate_csv(
     file: UploadFile = File(...),
