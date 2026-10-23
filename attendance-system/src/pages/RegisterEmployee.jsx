@@ -295,6 +295,11 @@ export default function RegisterEmployee() {
       return;
     }
 
+    if (/[0-9]/.test(String(name || ""))) {
+      alert("Full name must not contain numbers.");
+      return;
+    }
+
     if (!isValidEmail(email)) {
       alert("Please enter a valid email address.");
       return;
