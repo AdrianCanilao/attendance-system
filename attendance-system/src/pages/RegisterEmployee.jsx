@@ -282,16 +282,16 @@ export default function RegisterEmployee() {
     } = form;
 
     if (
-      !name ||
-      !email ||
-      !password ||
-      !contact ||
-      !position ||
-      (stagedEmployee && !String(form.employee_no || "").trim()) ||
-      !form.branch_id ||
-      !form.shift_id
+      !String(form.employee_no || "").trim() ||
+      !String(name || "").trim() ||
+      !String(email || "").trim() ||
+      !String(password || "").trim() ||
+      !String(contact || "").trim() ||
+      !String(position || "").trim() ||
+      !String(form.branch_id || "").trim() ||
+      !String(form.shift_id || "").trim()
     ) {
-      alert("Please fill all fields");
+      alert("Please fill all required fields.");
       return;
     }
 
