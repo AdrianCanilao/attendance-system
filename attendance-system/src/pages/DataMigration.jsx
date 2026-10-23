@@ -417,6 +417,41 @@ export default function DataMigration() {
         skipped: data.already_staged,
         errors: data.errors?.map((error, index) => ({ row: index + 1, message: error.employee_no + ": " + error.message })) || [],
       });
+
+      if ((Number(data.created) || 0) > 0) {
+        await Swal.fire({
+          title: "Employees Staged Successfully",
+          html:
+            "<div style='text-align:left'>" +
+            "<p>" + Number(data.created) + " new legacy employee record(s) were staged successfully.</p>" +
+            "<p>" + (Number(data.already_staged) || 0) + " record(s) were already staged.</p>" +
+            "<p><b>No login accounts were created and no attendance was imported.</b></p>" +
+            "</div>",
+          icon: "success",
+          confirmButtonText: "Open Staged Employees",
+          confirmButtonColor: "#f97316",
+          showCancelButton: true,
+          cancelButtonText: "Stay Here",
+          cancelButtonColor: "#374151",
+        }).then((choice) => {
+          if (choice.isConfirmed) navigate("/hr/staged-employees");
+        });
+      } else if ((Number(data.already_staged) || 0) > 0) {
+        await Swal.fire({
+          title: "Employees Already Staged",
+          text:
+            (Number(data.already_staged) || 0) +
+            " employee record(s) already exist in staging. No duplicate staging records, login accounts, or attendance records were created.",
+          icon: "info",
+          confirmButtonText: "Open Staged Employees",
+          confirmButtonColor: "#f97316",
+          showCancelButton: true,
+          cancelButtonText: "Stay Here",
+          cancelButtonColor: "#374151",
+        }).then((choice) => {
+          if (choice.isConfirmed) navigate("/hr/staged-employees");
+        });
+      }
     } catch (error) {
       setResult({ status: "ERROR", message: error.message || "Unable to prepare staged employees." });
     } finally {
