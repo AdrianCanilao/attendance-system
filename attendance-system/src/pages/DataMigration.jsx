@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
 import * as XLSX from "xlsx-js-style";
@@ -84,6 +85,7 @@ function parseCSV(text) {
 }
 
 export default function DataMigration() {
+  const navigate = useNavigate();
   const [dataset, setDataset] = useState("attendance");
   const [file, setFile] = useState(null);
   const [parsed, setParsed] = useState(null);
@@ -354,9 +356,23 @@ export default function DataMigration() {
 
   const stageLegacyEmployees = async () => {
     if (dataset !== "cibo_dtr_summary" || !parsed?.records?.length || !matchReport?.employees?.length) return;
+    // Stage only genuinely new employee codes with a recognized branch. Existing profiles
+    // with branch mismatches or duplicate codes must be reviewed instead of duplicated.
+    const employeesToStage = matchReport.employees.filter((row) =>
+      row.match_status === "No matching employee code" && Boolean(row.branch_name)
+    );
+    if (!employeesToStage.length) {
+      await Swal.fire({
+        title: "No employees ready to stage",
+        text: "Only employees with no existing profile and a recognized branch can be staged automatically. Review branch mismatches, unknown branches, and duplicate employee codes first.",
+        icon: "info",
+        confirmButtonColor: "#f97316",
+      });
+      return;
+    }
     const confirmation = await Swal.fire({
       title: "Prepare staged employees?",
-      text: "Prepare " + matchReport.totalEmployees + " legacy employee record(s) for HR profile completion? This will only create staging records. It will not create login accounts or import attendance.",
+      text: "Prepare " + employeesToStage.length + " unmatched employee record(s) with recognized branches for HR profile completion? Existing profiles and records with branch or duplicate-code issues will not be staged. This will not create login accounts or import attendance.",
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Yes, prepare records",
@@ -383,7 +399,7 @@ export default function DataMigration() {
         },
         body: JSON.stringify({
           source_file_name: parsed.sourceFileName || file?.name || "Legacy DTR upload",
-          employees: matchReport.employees.map((row) => ({
+          employees: employeesToStage.map((row) => ({
             employee_no: row.employee_no,
             employee_name: row.employee_name,
             branch_code: row.branch_code,
@@ -606,16 +622,21 @@ export default function DataMigration() {
 
           {parsed?.records?.length > 0 && dataset === "cibo_dtr_summary" && (
             <div style={{ ...styles.requirements, marginTop: "16px" }}>
-              <b>Employee matching</b>
+              <b>Employee onboarding and matching</b>
               <p style={{ margin: "6px 0 10px" }}>
-                Check which DTR employees match existing system profiles. This is a read-only check; it does not create employees or import attendance.
+                First check which DTR employees already have profiles. For genuinely new employees with a recognized branch, you can prepare staging records, then complete their registration through the existing HR / Branch Supervisor workflow. Staging does not create login accounts or import attendance.
               </p>
               <button type="button" onClick={checkEmployeeMatches} disabled={loading} style={styles.secondaryBtn}>
                 {loading ? "Checking..." : "Check Employee Matches"}
               </button>
               {matchReport?.employees?.length > 0 && matchReport.needsReview > 0 && (
                 <button type="button" onClick={stageLegacyEmployees} disabled={loading} style={{ ...styles.primaryBtn, marginLeft: "8px" }}>
-                  {loading ? "Preparing..." : "Prepare Staged Employees"}
+                  {loading ? "Preparing..." : "Stage New Employees"}
+                </button>
+              )}
+              {matchReport?.employees?.length > 0 && (
+                <button type="button" onClick={() => navigate("/hr/staged-employees")} disabled={loading} style={{ ...styles.secondaryBtn, marginLeft: "8px" }}>
+                  Open Staged Employees
                 </button>
               )}
               {matchReport?.error && <p style={{ color: "#991b1b" }}>{matchReport.error}</p>}
@@ -650,7 +671,7 @@ export default function DataMigration() {
                       </tbody>
                     </table>
                   </div>
-                  <p style={styles.previewNote}>No employee profiles or attendance records are changed by this report.</p>
+                  <p style={styles.previewNote}>No employee profiles or attendance records are changed by this report. Resolve branch mismatches and duplicate employee codes manually. Stage only new employees whose source branch maps to an existing branch, complete their profiles, then return here to validate attendance.</p>
                 </div>
               )}
             </div>
