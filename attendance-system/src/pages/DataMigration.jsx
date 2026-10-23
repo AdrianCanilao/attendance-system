@@ -715,7 +715,7 @@ export default function DataMigration() {
             {dataset === "cibo_dtr_summary" && (
               <>
                 <p style={{ margin: "8px 0 0" }}>
-                  Use one row per employee per date. Match employee_no and branch_code to the employee profile already registered in this system. Enter daily hours as a number (for example 8 or 7.5); use 0 for OFF or leave codes. Preserve the original CIBO code in attendance_code.
+                  Use one row per employee per date. For historical CIBO data, use Stage Historical Attendance to store rows separately while employee profiles are still being verified. Live Import Data is disabled for this dataset to prevent unlinked legacy records from entering attendance_logs. Enter daily hours as a number (for example 8 or 7.5); use 0 for OFF or leave codes. Preserve the original CIBO code in attendance_code.
                 </p>
                 <p style={{ margin: "6px 0 10px" }}>
                   The original CIBO workbook has multi-row headers, so exporting the worksheet directly to CSV will not make it import-ready. Reshape its day columns into one row per employee/date using this template.
@@ -859,8 +859,9 @@ export default function DataMigration() {
             <button
               type="button"
               onClick={importCSV}
-              disabled={!file || !validation?.ok || loading || result?.status !== "VALID"}
+              disabled={dataset === "cibo_dtr_summary" || !file || !validation?.ok || loading || result?.status !== "VALID"}
               style={styles.primaryBtn}
+              title={dataset === "cibo_dtr_summary" ? "Use Stage Historical Attendance for legacy DTR files. Live import is disabled for this dataset." : ""}
             >
               Import Data
             </button>
