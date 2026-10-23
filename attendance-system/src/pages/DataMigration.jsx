@@ -515,6 +515,92 @@ export default function DataMigration() {
     }
   };
 
+  const stageHistoricalAttendance = async () => {
+    if (dataset !== "cibo_dtr_summary" || !parsed?.records?.length) return;
+    const confirmation = await Swal.fire({
+      title: "Stage historical attendance?",
+      text: "Store " + parsed.records.length + " DTR row(s) in the separate historical-attendance staging area. This will not insert into live attendance, create accounts, or overwrite attendance.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Stage Historical Records",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#f97316",
+      cancelButtonColor: "#6b7280",
+      reverseButtons: true,
+      focusCancel: true,
+    });
+    if (!confirmation.isConfirmed) return;
+
+    try {
+      setLoading(true);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Your session has expired. Please log in again.");
+
+      const response = await fetch(API_URL + "/admin/stage-legacy-attendance", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          source_file_name: parsed.sourceFileName || file?.name || "Legacy CIBO DTR upload",
+          records: parsed.records,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.detail || "Unable to stage historical attendance.");
+
+      setResult({
+        status: data.status === "STAGED" ? "STAGED" : data.status,
+        message: data.message,
+        total: data.total,
+        valid: data.created,
+        imported: 0,
+        skipped: (Number(data.already_staged) || 0) + (Number(data.failed) || 0),
+        errors: data.errors || [],
+      });
+
+      if ((Number(data.created) || 0) > 0) {
+        await Swal.fire({
+          title: "Historical Attendance Staged",
+          html:
+            "<div style='text-align:left'>" +
+            "<p><b>" + Number(data.created) + "</b> historical row(s) stored in staging.</p>" +
+            "<p><b>" + (Number(data.needs_review) || 0) + "</b> row(s) await profile linking or HR review.</p>" +
+            "<p><b>" + (Number(data.already_staged) || 0) + "</b> row(s) were already staged.</p>" +
+            "<p><b>No live attendance records were imported or overwritten.</b></p>" +
+            "</div>",
+          icon: "success",
+          confirmButtonColor: "#f97316",
+        });
+      } else if (data.status === "ERROR") {
+        await Swal.fire({
+          title: "Unable to Stage Attendance",
+          text: data.message || "No historical attendance rows were staged.",
+          icon: "error",
+          confirmButtonColor: "#f97316",
+        });
+      } else {
+        await Swal.fire({
+          title: "No New Rows Staged",
+          text: data.message || "The rows may already exist in staging. No live attendance was changed.",
+          icon: "info",
+          confirmButtonColor: "#f97316",
+        });
+      }
+    } catch (error) {
+      await Swal.fire({
+        title: "Historical Attendance Staging Failed",
+        text: error.message || "Unable to stage historical attendance.",
+        icon: "error",
+        confirmButtonColor: "#f97316",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const importCSV = async () => {
     if (!file || !validation?.ok) return;
 
@@ -758,6 +844,17 @@ export default function DataMigration() {
             >
               {loading ? "Processing..." : "Validate File"}
             </button>
+
+            {dataset === "cibo_dtr_summary" && parsed?.records?.length > 0 && (
+              <button
+                type="button"
+                onClick={stageHistoricalAttendance}
+                disabled={!file || !validation?.ok || loading}
+                style={styles.primaryBtn}
+              >
+                {loading ? "Processing..." : "Stage Historical Attendance"}
+              </button>
+            )}
 
             <button
               type="button"
