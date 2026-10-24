@@ -13,9 +13,9 @@ const STATUS_LABELS = {
 };
 
 const EMPLOYEE_STATUS_LABELS = {
-  linked: "Employee linked",
-  incomplete: "Staged employee — incomplete profile",
-  ready: "Staged employee — ready to link",
+  linked: "Staged identity linked to account",
+  incomplete: "Staged identity — not linked",
+  ready: "Staged identity — ready to link",
   not_staged: "No staged employee identity",
 };
 
@@ -152,7 +152,7 @@ export default function StagedAttendance() {
                   <tr key={row.id}>
                     <td style={styles.td}>{row.employee_no}</td>
                     <td style={styles.td}>{row.employee_name || "—"}</td>
-                    <td style={{ ...styles.td, minWidth: "190px" }}><div style={{ fontWeight: 600 }}>{EMPLOYEE_STATUS_LABELS[row.staged_employee_status] || row.staged_employee_status || "Not checked"}</div>{row.staged_employee_name && <div style={{ color: "#64748b", marginTop: "4px" }}>{row.staged_employee_name}</div>}{row.staged_employee_role && <div style={{ color: "#64748b", marginTop: "4px" }}>Role: {row.staged_employee_role}</div>}</td>
+                    <td style={{ ...styles.td, minWidth: "210px" }}><div style={{ fontWeight: 600 }}>{EMPLOYEE_STATUS_LABELS[row.staged_employee_status] || row.staged_employee_status || "Not checked"}</div>{row.staged_employee_name && <div style={{ color: "#64748b", marginTop: "4px" }}>{row.staged_employee_name}</div>}{row.staged_employee_role && <div style={{ color: "#64748b", marginTop: "4px" }}>Intended role: {row.staged_employee_role}</div>}{row.staged_employee_linked_id && <div style={{ color: "#166534", marginTop: "4px", overflowWrap: "anywhere" }}>Account ID: {row.staged_employee_linked_id}</div>}<div style={{ color: "#64748b", marginTop: "6px", fontSize: "12px" }}>{row.employee_link_review_note || "Employee match is informational only."}</div></td>
                     <td style={styles.td}>{row.branch_code}</td>
                     <td style={styles.td}>{row.log_date}</td>
                     <td style={styles.td}>{row.total_hours_worked}</td>
