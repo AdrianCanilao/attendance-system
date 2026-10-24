@@ -25,6 +25,8 @@ export default function StagedAttendance() {
   const [status, setStatus] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reviewingId, setReviewingId] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
@@ -45,6 +47,30 @@ export default function StagedAttendance() {
       setLoading(false);
     }
   }, []);
+
+  const markReviewed = useCallback(async (record) => {
+    if (!record?.id || reviewingId) return;
+    setReviewingId(record.id);
+    setError("");
+    setActionMessage("");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Your session has expired. Please log in again.");
+      const response = await fetch(API_URL + "/admin/staged-legacy-attendance/" + encodeURIComponent(record.id) + "/review", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.detail || "Unable to save the review.");
+      setActionMessage(data?.message || "Review saved. No live attendance was imported.");
+      await loadRecords();
+    } catch (err) {
+      setError(err.message || "Unable to save the review.");
+    } finally {
+      setReviewingId("");
+    }
+  }, [loadRecords, reviewingId]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
 
@@ -77,7 +103,7 @@ export default function StagedAttendance() {
     input: { padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "14px", minWidth: 0, width: "100%", boxSizing: "border-box" },
     button: { background: "#374151", color: "#fff", border: 0, borderRadius: "8px", padding: "10px 15px", fontWeight: 600, cursor: "pointer" },
     tableWrap: { overflowX: "auto", background: "#fff", border: "1px solid #e2e8f0", borderRadius: "10px" },
-    table: { borderCollapse: "collapse", width: "100%", minWidth: "1150px", fontSize: "13px" },
+    table: { borderCollapse: "collapse", width: "100%", minWidth: "1450px", fontSize: "13px" },
     th: { background: "#f3f4f6", padding: "12px 10px", textAlign: "left", whiteSpace: "nowrap", borderBottom: "1px solid #e5e7eb" },
     td: { padding: "12px 10px", borderBottom: "1px solid #e5e7eb", verticalAlign: "top" },
   };
@@ -134,17 +160,18 @@ export default function StagedAttendance() {
             <button type="button" style={styles.button} onClick={loadRecords} disabled={loading}>{loading ? "Refreshing..." : "Refresh"}</button>
           </div>
           <p style={{ color: "#64748b", fontSize: "13px", margin: "12px 0 0" }}>
-            Showing {filtered.length} of {records.length} staged rows. This page is read-only; no employee or attendance records are changed here.
+            Showing {filtered.length} of {records.length} staged rows. HR review notes can be saved here; employee accounts and live attendance are never changed by this action.
           </p>
         </div>
 
+        {actionMessage && <div role="status" style={{ ...styles.panel, color: "#166534", borderColor: "#bbf7d0" }}>{actionMessage}</div>}
         {error && <div role="alert" style={{ ...styles.panel, color: "#b91c1c", borderColor: "#fecaca" }}>{error}</div>}
         {loading ? <div style={styles.panel}>Loading staged attendance...</div> : (
           <div style={styles.tableWrap}>
             <table style={styles.table}>
               <thead>
                 <tr>
-                  {["Employee No.", "Employee Name from DTR", "Staged Employee Match", "Branch", "Date", "Hours", "Overtime", "Original Code", "Proposed Status", "Review Status", "Review Note"].map((heading) => <th key={heading} style={styles.th}>{heading}</th>)}
+                  {["Employee No.", "Employee Name from DTR", "Staged Employee Match", "Branch", "Date", "Hours", "Overtime", "Original Code", "Proposed Status", "Review Status", "HR Check", "Review Note", "Action"].map((heading) => <th key={heading} style={styles.th}>{heading}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -160,10 +187,12 @@ export default function StagedAttendance() {
                     <td style={styles.td}>{row.attendance_code}</td>
                     <td style={styles.td}>{row.proposed_status}</td>
                     <td style={styles.td}><span style={statusStyle(row.review_status)}>{STATUS_LABELS[row.review_status] || row.review_status}</span></td>
+                    <td style={styles.td}><span style={{ ...statusStyle(row.review_checked ? "ready" : "awaiting_profile"), background: row.review_checked ? "#dcfce7" : "#f3f4f6", color: row.review_checked ? "#166534" : "#4b5563" }}>{row.review_checked ? "HR reviewed" : "Not reviewed"}</span>{row.reviewed_at && <div style={{ color: "#64748b", fontSize: "11px", marginTop: "5px" }}>{new Date(row.reviewed_at).toLocaleString()}</div>}</td>
                     <td style={{ ...styles.td, minWidth: "270px", maxWidth: "400px" }}>{row.review_note || "No review note."}</td>
+                    <td style={styles.td}><button type="button" style={{ ...styles.button, background: row.review_checked ? "#64748b" : "#f97316", opacity: reviewingId && reviewingId !== row.id ? 0.6 : 1 }} disabled={Boolean(reviewingId)} onClick={() => markReviewed(row)}>{reviewingId === row.id ? "Saving..." : row.review_checked ? "Review again" : "Mark reviewed"}</button><div style={{ color: "#64748b", fontSize: "11px", marginTop: "5px" }}>Does not import attendance</div></td>
                   </tr>
                 ))}
-                {!filtered.length && <tr><td colSpan="11" style={{ ...styles.td, textAlign: "center", color: "#64748b" }}>{error ? "Records could not be loaded." : "No staged attendance rows match this filter."}</td></tr>}
+                {!filtered.length && <tr><td colSpan="13" style={{ ...styles.td, textAlign: "center", color: "#64748b" }}>{error ? "Records could not be loaded." : "No staged attendance rows match this filter."}</td></tr>}
               </tbody>
             </table>
           </div>
