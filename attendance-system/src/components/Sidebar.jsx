@@ -362,6 +362,16 @@ export default function Sidebar({ role }) {
 >
   Staged Employees
 </button>
+
+                <button
+  onClick={() => navigate("/hr/staged-attendance")}
+  style={{
+    ...styles.sublink,
+    ...(isActive("/hr/staged-attendance") && styles.activeSubLink),
+  }}
+>
+  Staged Attendance
+</button>
       </div>
     </div>
   </>
