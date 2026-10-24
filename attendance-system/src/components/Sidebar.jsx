@@ -295,7 +295,7 @@ export default function Sidebar({ role }) {
         className={`cibo-sidebar-dropdown ${openEmployee ? "is-open" : ""}`}
         style={{
           ...styles.dropdown,
-          maxHeight: openEmployee ? "320px" : "0px",
+          maxHeight: openEmployee ? "360px" : "0px",
           opacity: openEmployee ? 1 : 0,
         }}
       >
