@@ -814,6 +814,43 @@ async def get_staged_legacy_attendance(
         query = query.eq("review_status", status)
     result = query.execute()
     rows = result.data or []
+
+    # Enrich each attendance row with the corresponding staged employee identity.
+    # This is read-only and deliberately does not change attendance review status.
+    employee_numbers = sorted({
+        str(row.get("employee_no") or "").strip()
+        for row in rows
+        if str(row.get("employee_no") or "").strip()
+    })
+    staged_by_number = {}
+    for offset in range(0, len(employee_numbers), 100):
+        batch = employee_numbers[offset:offset + 100]
+        staged_employees = (
+            supabase.from_("legacy_employee_staging")
+            .select("employee_no,full_name,branch_code,mapped_branch_name,profile_status,intended_role")
+            .in_("employee_no", batch)
+            .execute().data or []
+        )
+        for employee in staged_employees:
+            key = str(employee.get("employee_no") or "").strip()
+            if key and key not in staged_by_number:
+                staged_by_number[key] = employee
+
+    for row in rows:
+        staged_employee = staged_by_number.get(str(row.get("employee_no") or "").strip())
+        row["staged_employee_status"] = (
+            staged_employee.get("profile_status") if staged_employee else "not_staged"
+        )
+        row["staged_employee_name"] = (
+            staged_employee.get("full_name") if staged_employee else None
+        )
+        row["staged_employee_branch"] = (
+            staged_employee.get("mapped_branch_name") if staged_employee else None
+        )
+        row["staged_employee_role"] = (
+            staged_employee.get("intended_role") if staged_employee else None
+        )
+
     needle = (search or "").strip().lower()
     if needle:
         rows = [
