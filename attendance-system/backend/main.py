@@ -791,6 +791,45 @@ async def stage_legacy_attendance(
     }
 
 
+
+@app.get("/admin/staged-legacy-attendance")
+async def get_staged_legacy_attendance(
+    authorization: str | None = Header(default=None),
+    status: str = "all",
+    search: str = "",
+    limit: int = 1000,
+):
+    """Read-only HR review list for staged historical DTR records."""
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    authenticate_hr_bearer(token)
+    safe_limit = max(1, min(int(limit or 1000), 5000))
+    query = (
+        supabase.from_("legacy_attendance_staging")
+        .select("id,source_file_name,employee_no,employee_name,branch_code,branch_id,log_date,total_hours_worked,overtime_hours,attendance_code,proposed_status,linked_employee_id,review_status,review_note,created_at")
+        .order("log_date", desc=True)
+        .order("employee_no")
+        .limit(safe_limit)
+    )
+    if status and status.lower() != "all":
+        query = query.eq("review_status", status)
+    result = query.execute()
+    rows = result.data or []
+    needle = (search or "").strip().lower()
+    if needle:
+        rows = [
+            row for row in rows
+            if needle in str(row.get("employee_no") or "").lower()
+            or needle in str(row.get("employee_name") or "").lower()
+            or needle in str(row.get("branch_code") or "").lower()
+            or needle in str(row.get("attendance_code") or "").lower()
+            or needle in str(row.get("log_date") or "").lower()
+        ]
+    counts = {}
+    for state in ("awaiting_profile", "ready", "needs_review", "imported", "skipped"):
+        counts[state] = sum(1 for row in rows if row.get("review_status") == state)
+    return {"total": len(rows), "limit": safe_limit, "counts": counts, "records": rows}
+
+
 @app.post("/admin/migrate-csv")
 async def admin_migrate_csv(
     file: UploadFile = File(...),
