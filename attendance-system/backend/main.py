@@ -872,7 +872,7 @@ async def review_staged_legacy_attendance(
     update_payload = {
         "review_checked": True,
         "reviewed_at": datetime.now(ZoneInfo("Asia/Manila")).isoformat(),
-        "reviewed_by": reviewer.get("id") if isinstance(reviewer, dict) else None,
+        "reviewed_by": getattr(reviewer, "id", None),
         "review_note": review_note,
         "review_status": "needs_review" if issues else row.get("review_status", "awaiting_profile"),
         "updated_at": datetime.now(ZoneInfo("Asia/Manila")).isoformat(),
