@@ -28,6 +28,7 @@ import BranchSettings from "./pages/BranchSettings";
 import DeviceManagement from "./pages/DeviceManagement";
 import DataMigration from "./pages/DataMigration";
 import StagedEmployees from "./pages/StagedEmployees";
+import StagedAttendance from "./pages/StagedAttendance";
 import ManagerStagedEmployees from "./pages/ManagerStagedEmployees";
 
 import Kiosk from "./pages/Kiosk";
@@ -227,6 +228,15 @@ export default function App() {
           element={
             <ProtectedRoute role="hr">
               <StagedEmployees />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/hr/staged-attendance"
+          element={
+            <ProtectedRoute role="hr">
+              <StagedAttendance />
             </ProtectedRoute>
           }
         />
