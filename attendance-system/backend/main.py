@@ -810,6 +810,88 @@ async def stage_legacy_attendance(
 
 
 
+@app.post("/admin/staged-legacy-attendance/{record_id}/review")
+async def review_staged_legacy_attendance(
+    record_id: str,
+    authorization: str | None = Header(default=None),
+):
+    """Record HR's review of a staged DTR row without importing it."""
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    reviewer = authenticate_hr_bearer(token)
+    existing = (
+        supabase.from_("legacy_attendance_staging")
+        .select("id,employee_no,employee_name,branch_code,log_date,total_hours_worked,overtime_hours,attendance_code,review_status")
+        .eq("id", record_id)
+        .limit(1)
+        .execute().data or []
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Staged attendance record was not found.")
+    row = existing[0]
+    issues = []
+    if not str(row.get("employee_no") or "").strip():
+        issues.append("Missing employee number")
+    if not str(row.get("employee_name") or "").strip():
+        issues.append("Missing employee name")
+    if not str(row.get("branch_code") or "").strip():
+        issues.append("Missing branch code")
+    if not row.get("log_date"):
+        issues.append("Missing attendance date")
+    code = str(row.get("attendance_code") or "").strip()
+    if not code:
+        issues.append("Missing original attendance code")
+    try:
+        hours = float(row.get("total_hours_worked") or 0)
+        if hours < 0 or hours > 24:
+            issues.append("Hours worked must be between 0 and 24")
+    except (TypeError, ValueError):
+        issues.append("Hours worked is not numeric")
+        hours = 0
+    try:
+        overtime = float(row.get("overtime_hours") or 0)
+        if overtime < 0 or overtime > 24:
+            issues.append("Overtime must be between 0 and 24")
+        if overtime > hours:
+            issues.append("Overtime exceeds total hours worked")
+    except (TypeError, ValueError):
+        issues.append("Overtime is not numeric")
+    if code.upper() == "OFF" and hours != 0:
+        issues.append("OFF code should have 0 hours worked")
+    if code.upper() not in {"OFF", "8", "0", "P", "A", "L", "SL", "VL", "OL", "RD"}:
+        try:
+            numeric_code = float(code)
+            if numeric_code < 0 or numeric_code > 24:
+                issues.append("Numeric attendance code is outside the expected 0–24 range")
+        except (TypeError, ValueError):
+            issues.append("Unrecognized attendance code; HR confirmation required")
+    review_note = (
+        "HR reviewed this staged row. Issues: " + "; ".join(issues)
+        if issues else
+        "HR reviewed the staged row; basic data checks passed. Employee-profile linking and separate import approval are still required."
+    )
+    update_payload = {
+        "review_checked": True,
+        "reviewed_at": datetime.now(ZoneInfo("Asia/Manila")).isoformat(),
+        "reviewed_by": reviewer.get("id") if isinstance(reviewer, dict) else None,
+        "review_note": review_note,
+        "review_status": "needs_review" if issues else row.get("review_status", "awaiting_profile"),
+        "updated_at": datetime.now(ZoneInfo("Asia/Manila")).isoformat(),
+    }
+    updated = (
+        supabase.from_("legacy_attendance_staging")
+        .update(update_payload)
+        .eq("id", record_id)
+        .execute().data or []
+    )
+    if not updated:
+        raise HTTPException(status_code=500, detail="Unable to save the review result.")
+    return {
+        "message": "Historical row review saved. No live attendance was imported.",
+        "record": updated[0],
+        "issues": issues,
+    }
+
+
 @app.get("/admin/staged-legacy-attendance")
 async def get_staged_legacy_attendance(
     authorization: str | None = Header(default=None),
@@ -823,7 +905,7 @@ async def get_staged_legacy_attendance(
     safe_limit = max(1, min(int(limit or 1000), 5000))
     query = (
         supabase.from_("legacy_attendance_staging")
-        .select("id,source_file_name,employee_no,employee_name,branch_code,branch_id,log_date,total_hours_worked,overtime_hours,attendance_code,proposed_status,linked_employee_id,review_status,review_note,created_at")
+        .select("id,source_file_name,employee_no,employee_name,branch_code,branch_id,log_date,total_hours_worked,overtime_hours,attendance_code,proposed_status,linked_employee_id,review_status,review_note,review_checked,reviewed_at,reviewed_by,created_at")
         .order("log_date", desc=True)
         .order("employee_no")
         .limit(safe_limit)
