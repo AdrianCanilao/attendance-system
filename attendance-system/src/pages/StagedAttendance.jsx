@@ -12,6 +12,13 @@ const STATUS_LABELS = {
   skipped: "Skipped",
 };
 
+const EMPLOYEE_STATUS_LABELS = {
+  linked: "Employee linked",
+  incomplete: "Staged employee — incomplete profile",
+  ready: "Staged employee — ready to link",
+  not_staged: "No staged employee identity",
+};
+
 export default function StagedAttendance() {
   const [records, setRecords] = useState([]);
   const [search, setSearch] = useState("");
@@ -52,7 +59,7 @@ export default function StagedAttendance() {
     return records.filter((row) => {
       const statusMatches = status === "all" || row.review_status === status;
       const searchMatches = !needle || [
-        row.employee_no, row.employee_name, row.branch_code, row.attendance_code, row.log_date, row.source_file_name,
+        row.employee_no, row.employee_name, row.staged_employee_name, row.staged_employee_status, row.branch_code, row.attendance_code, row.log_date, row.source_file_name,
       ].some((value) => String(value || "").toLowerCase().includes(needle));
       return statusMatches && searchMatches;
     });
@@ -137,7 +144,7 @@ export default function StagedAttendance() {
             <table style={styles.table}>
               <thead>
                 <tr>
-                  {["Employee No.", "Employee Name from DTR", "Branch", "Date", "Hours", "Overtime", "Original Code", "Proposed Status", "Review Status", "Review Note"].map((heading) => <th key={heading} style={styles.th}>{heading}</th>)}
+                  {["Employee No.", "Employee Name from DTR", "Staged Employee Match", "Branch", "Date", "Hours", "Overtime", "Original Code", "Proposed Status", "Review Status", "Review Note"].map((heading) => <th key={heading} style={styles.th}>{heading}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -145,6 +152,7 @@ export default function StagedAttendance() {
                   <tr key={row.id}>
                     <td style={styles.td}>{row.employee_no}</td>
                     <td style={styles.td}>{row.employee_name || "—"}</td>
+                    <td style={{ ...styles.td, minWidth: "190px" }}><div style={{ fontWeight: 600 }}>{EMPLOYEE_STATUS_LABELS[row.staged_employee_status] || row.staged_employee_status || "Not checked"}</div>{row.staged_employee_name && <div style={{ color: "#64748b", marginTop: "4px" }}>{row.staged_employee_name}</div>}{row.staged_employee_role && <div style={{ color: "#64748b", marginTop: "4px" }}>Role: {row.staged_employee_role}</div>}</td>
                     <td style={styles.td}>{row.branch_code}</td>
                     <td style={styles.td}>{row.log_date}</td>
                     <td style={styles.td}>{row.total_hours_worked}</td>
@@ -155,7 +163,7 @@ export default function StagedAttendance() {
                     <td style={{ ...styles.td, minWidth: "270px", maxWidth: "400px" }}>{row.review_note || "No review note."}</td>
                   </tr>
                 ))}
-                {!filtered.length && <tr><td colSpan="10" style={{ ...styles.td, textAlign: "center", color: "#64748b" }}>{error ? "Records could not be loaded." : "No staged attendance rows match this filter."}</td></tr>}
+                {!filtered.length && <tr><td colSpan="11" style={{ ...styles.td, textAlign: "center", color: "#64748b" }}>{error ? "Records could not be loaded." : "No staged attendance rows match this filter."}</td></tr>}
               </tbody>
             </table>
           </div>
