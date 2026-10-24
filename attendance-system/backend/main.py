@@ -827,7 +827,7 @@ async def get_staged_legacy_attendance(
         batch = employee_numbers[offset:offset + 100]
         staged_employees = (
             supabase.from_("legacy_employee_staging")
-            .select("employee_no,full_name,branch_code,mapped_branch_name,profile_status,intended_role")
+            .select("employee_no,full_name,source_branch_code,profile_status,intended_role")
             .in_("employee_no", batch)
             .execute().data or []
         )
@@ -845,7 +845,7 @@ async def get_staged_legacy_attendance(
             staged_employee.get("full_name") if staged_employee else None
         )
         row["staged_employee_branch"] = (
-            staged_employee.get("mapped_branch_name") if staged_employee else None
+            staged_employee.get("source_branch_code") if staged_employee else None
         )
         row["staged_employee_role"] = (
             staged_employee.get("intended_role") if staged_employee else None
