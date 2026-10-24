@@ -550,6 +550,24 @@ async def get_staged_legacy_employees(
             .order("created_at", desc=True)
             .execute().data or []
         )
+        # A staged row is only linked when it still references a registered profile.
+        # Deleting an auth user may leave legacy staging metadata behind.
+        for row in rows:
+            if row.get("profile_status") == "linked":
+                linked_id = row.get("linked_employee_id")
+                if not linked_id:
+                    row["profile_status"] = "incomplete"
+                    continue
+                profile = (
+                    supabase.from_("employee_profiles")
+                    .select("id")
+                    .eq("id", linked_id)
+                    .limit(1)
+                    .execute().data or []
+                )
+                if not profile:
+                    row["profile_status"] = "incomplete"
+                    row["linked_employee_id"] = None
         return {"employees": rows, "total": len(rows)}
     except Exception as error:
         raise HTTPException(status_code=500, detail="Unable to load staged employees.")
@@ -838,9 +856,22 @@ async def get_staged_legacy_attendance(
 
     for row in rows:
         staged_employee = staged_by_number.get(str(row.get("employee_no") or "").strip())
-        row["staged_employee_status"] = (
-            staged_employee.get("profile_status") if staged_employee else "not_staged"
-        )
+        effective_status = staged_employee.get("profile_status") if staged_employee else "not_staged"
+        if staged_employee and effective_status == "linked":
+            linked_id = staged_employee.get("linked_employee_id")
+            if not linked_id:
+                effective_status = "incomplete"
+            else:
+                active_profile = (
+                    supabase.from_("employee_profiles")
+                    .select("id")
+                    .eq("id", linked_id)
+                    .limit(1)
+                    .execute().data or []
+                )
+                if not active_profile:
+                    effective_status = "incomplete"
+        row["staged_employee_status"] = effective_status
         row["staged_employee_name"] = (
             staged_employee.get("full_name") if staged_employee else None
         )
