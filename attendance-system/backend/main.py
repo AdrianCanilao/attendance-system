@@ -827,7 +827,7 @@ async def get_staged_legacy_attendance(
         batch = employee_numbers[offset:offset + 100]
         staged_employees = (
             supabase.from_("legacy_employee_staging")
-            .select("employee_no,full_name,source_branch_code,profile_status,intended_role")
+            .select("employee_no,full_name,source_branch_code,profile_status,intended_role,linked_employee_id")
             .in_("employee_no", batch)
             .execute().data or []
         )
@@ -850,6 +850,24 @@ async def get_staged_legacy_attendance(
         row["staged_employee_role"] = (
             staged_employee.get("intended_role") if staged_employee else None
         )
+        row["staged_employee_linked_id"] = (
+            staged_employee.get("linked_employee_id") if staged_employee else None
+        )
+        if staged_employee and staged_employee.get("profile_status") == "linked" and staged_employee.get("linked_employee_id"):
+            row["employee_link_review_note"] = (
+                "The staged employee identity is linked to a registered account. "
+                "This historical attendance row is still awaiting its own review; "
+                "linking does not import or approve attendance."
+            )
+        elif staged_employee:
+            row["employee_link_review_note"] = (
+                "A legacy employee identity is staged, but it is not linked to a registered account. "
+                "Historical attendance remains separate from live attendance."
+            )
+        else:
+            row["employee_link_review_note"] = (
+                "No matching staged employee identity was found for this employee number."
+            )
 
     needle = (search or "").strip().lower()
     if needle:
