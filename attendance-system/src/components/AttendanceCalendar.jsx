@@ -70,9 +70,9 @@ export default function AttendanceCalendar({ attendance = [], leaves = [], emplo
           </button>;
         })}
       </div>
-      <div aria-label="Calendar legend" style={{ display: "flex", flexWrap: "wrap", gap: "6px 12px", marginTop: 12, fontSize: 11 }}>
-        {Object.entries(colors).map(([label, color]) => <span key={label}><span style={{ display: "inline-block", width: 9, height: 9, background: color, borderRadius: 2, marginRight: 4 }} />{label}</span>)}
-        <span><span style={{ display: "inline-block", width: 9, height: 9, background: "#f8fafc", border: "1px solid #cbd5e1", marginRight: 4 }} />No record</span>
+      <div aria-label="Calendar legend" style={{ display: "flex", flexWrap: "nowrap", justifyContent: "space-between", gap: 4, marginTop: 12, fontSize: "clamp(8px, 2.1vw, 11px)", whiteSpace: "nowrap", overflowX: "auto" }}>
+        {Object.entries(colors).map(([label, color]) => <span key={label} title={label} aria-label={label} style={{ flexShrink: 0 }}><span style={{ display: "inline-block", width: 9, height: 9, background: color, borderRadius: 2, marginRight: 3 }} />{label === "Incomplete Attendance" ? "Incomplete" : label}</span>)}
+        <span style={{ flexShrink: 0 }}><span style={{ display: "inline-block", width: 9, height: 9, background: "#f8fafc", border: "1px solid #cbd5e1", marginRight: 4 }} />No record</span>
       </div>
       {errorNotice && <p role="alert">{errorNotice}</p>}
       {current && <div style={{ borderTop: "1px solid #e5e7eb", marginTop: 12, paddingTop: 10, fontSize: 12 }}>
