@@ -82,12 +82,21 @@ export default function HRAuditTrail() {
   return (
     <HRLayout>
       <style>{`
-        .cibo-audit-scroll { max-width: 100%; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
-        .cibo-audit-scroll:focus-visible { outline: 2px solid #f97316; outline-offset: 2px; }
+        .cibo-audit-desktop { display: block; }
+        .cibo-audit-mobile { display: none; }
         @media (max-width: 768px) {
-          .cibo-audit-scroll > div { min-width: 820px; }
-          .cibo-audit-scroll [data-audit-role], .cibo-audit-scroll [data-audit-action] { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
-          .cibo-audit-scroll [data-audit-role] span { max-width: none; overflow-wrap: normal; }
+          .cibo-audit-desktop { display: none; }
+          .cibo-audit-mobile { display: grid; gap: 12px; min-width: 0; }
+          .cibo-audit-mobile-filters { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+          .cibo-audit-mobile-filters select, .cibo-audit-mobile-filters input { width: 100%; min-width: 0; box-sizing: border-box; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; color: #111827; font-size: 12px; }
+          .cibo-audit-mobile-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; min-width: 0; overflow-wrap: break-word; }
+          .cibo-audit-mobile-top { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+          .cibo-audit-mobile-user { font-weight: 700; font-size: 14px; color: #111827; min-width: 0; }
+          .cibo-audit-mobile-action { font-size: 11px; color: #9a3412; background: #fff7ed; border-radius: 20px; padding: 5px 9px; white-space: nowrap; flex-shrink: 0; }
+          .cibo-audit-mobile-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; font-size: 11px; color: #6b7280; }
+          .cibo-audit-mobile-role { color: #fff; background: #f97316; border-radius: 20px; padding: 4px 8px; white-space: nowrap; }
+          .cibo-audit-mobile-description { margin: 12px 0; font-size: 13px; line-height: 1.5; color: #374151; }
+          .cibo-audit-mobile-date { border-top: 1px solid #f3f4f6; padding-top: 10px; font-size: 11px; color: #6b7280; }
         }
       `}</style>
       <div className="cibo-page-root cibo-hr-page cibo-hr-audit-page" style={styles.container}>
@@ -107,7 +116,7 @@ export default function HRAuditTrail() {
           </button>
         </div>
 
-        <div className="cibo-audit-scroll" role="region" aria-label="Audit trail table, swipe horizontally to view all columns" tabIndex={0}>
+        <div className="cibo-audit-desktop">
         <div style={styles.card}>
           <div style={styles.headerRow}>
             <div style={styles.headerCell}>User</div>
@@ -166,6 +175,35 @@ export default function HRAuditTrail() {
             ))
           )}
         </div>
+        </div>
+
+        <div className="cibo-audit-mobile">
+          <div className="cibo-audit-mobile-filters">
+            <select aria-label="Filter audit logs by role" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+              <option value="ALL">All roles</option>
+              {roleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+            </select>
+            <select aria-label="Filter audit logs by action" value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
+              <option value="ALL">All actions</option>
+              {actionOptions.map((action) => <option key={action} value={action}>{action}</option>)}
+            </select>
+            <div>
+              <DatePicker selected={dateFilter ? new Date(dateFilter + "T12:00:00") : null} onChange={(date) => setDateFilter(date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : "")} placeholderText="Filter by date" dateFormat="dd/MM/yyyy" isClearable ariaLabelledBy="audit-mobile-date-filter" />
+            </div>
+          </div>
+          {loading ? <div style={styles.empty}>Loading audit logs...</div> : filteredLogs.length === 0 ? <div style={styles.empty}>No audit logs match your filters.</div> : paginatedLogs.map((log) => (
+            <article className="cibo-audit-mobile-card" key={log.id}>
+              <div className="cibo-audit-mobile-top">
+                <span className="cibo-audit-mobile-user">{log.user_name || "Unknown"}</span>
+                <span className="cibo-audit-mobile-action">{log.action || "-"}</span>
+              </div>
+              <div className="cibo-audit-mobile-meta">
+                <span className="cibo-audit-mobile-role">{normalizeRole(log.role) === "maintenance" ? "Maintenance" : (roleOptions.find((role) => role.value === normalizeRole(log.role))?.label || "Unknown")}</span>
+              </div>
+              <p className="cibo-audit-mobile-description">{log.description || "-"}</p>
+              <div className="cibo-audit-mobile-date">{new Date(log.created_at).toLocaleString()}</div>
+            </article>
+          ))}
         </div>
 
         {!loading && filteredLogs.length > 0 && (
