@@ -20,6 +20,12 @@ export default function Profile() {
   });
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [calendarLeaves, setCalendarLeaves] = useState([]);
+  const [branchLeaveEmployees, setBranchLeaveEmployees] = useState([]);
+  const [branchLeaveRequests, setBranchLeaveRequests] = useState([]);
+  const [branchLeaveDate, setBranchLeaveDate] = useState(null);
+  const [branchLeaveLoading, setBranchLeaveLoading] = useState(false);
+  const [branchLeaveError, setBranchLeaveError] = useState("");
+
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
   const [correctionReason, setCorrectionReason] = useState("");
@@ -141,6 +147,38 @@ const resolvedLogs = await Promise.all(
 setAttendanceLogs(resolvedLogs);
     const { data: approvedLeaves } = await supabase.from("leave_requests").select("id, employee_id, leave_type, start_date, end_date, status").eq("employee_id", emp.id).eq("status", "Approved");
     setCalendarLeaves(approvedLeaves || []);
+    // Branch Supervisor access: only current active employees in the supervisor's branch.
+    // This is read-only and follows the branch filtering used in ManagerLeave.
+    if (window.location.pathname.startsWith("/manager") || window.location.pathname.startsWith("/maintenance")) {
+      setBranchLeaveLoading(true);
+      setBranchLeaveError("");
+      if (!emp.branch_id) {
+        setBranchLeaveError("Your profile has no assigned branch.");
+      } else {
+        const { data: branchEmployees, error: employeesError } = await supabase
+          .from("employee_profiles")
+          .select("id, full_name")
+          .eq("branch_id", emp.branch_id)
+          .eq("is_active", true);
+        if (employeesError) {
+          setBranchLeaveError("Unable to load branch employees.");
+        } else {
+          const ids = (branchEmployees || []).map((employee) => employee.id);
+          setBranchLeaveEmployees(branchEmployees || []);
+          if (ids.length) {
+            const { data: branchLeaves, error: leavesError } = await supabase
+              .from("leave_requests")
+              .select("id, employee_id, leave_type, start_date, end_date, status")
+              .in("employee_id", ids)
+              .eq("status", "Approved");
+            if (leavesError) setBranchLeaveError("Unable to load approved branch leaves.");
+            else setBranchLeaveRequests(branchLeaves || []);
+          } else setBranchLeaveRequests([]);
+        }
+      }
+      setBranchLeaveLoading(false);
+    }
+
   };
 
   const fetchAttendanceStats = async (safeName) => {
@@ -327,7 +365,33 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
             </div>
           </div>
 
-          <div className="cibo-profile-calendar"><AttendanceCalendar attendance={attendanceLogs} leaves={calendarLeaves} /></div>
+          <div className="cibo-profile-calendar">
+            <AttendanceCalendar attendance={attendanceLogs} leaves={calendarLeaves} onSelectDate={setBranchLeaveDate} />
+            {(location.pathname.startsWith("/manager") || location.pathname.startsWith("/maintenance")) && (
+              <section aria-label="Branch employees on leave" style={{ marginTop: 12, padding: 12, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflowWrap: "anywhere" }}>
+                <h3 style={{ fontSize: 15, margin: "0 0 8px" }}>Employees on Leave — Your Branch</h3>
+                {!branchLeaveDate ? <p style={{ fontSize: 13 }}>Select a calendar date to view approved leaves for your branch.</p> :
+                  <>
+                    <p style={{ fontSize: 13, margin: "0 0 8px" }}>Selected date: {branchLeaveDate}</p>
+                    {branchLeaveLoading ? <p>Loading branch leaves…</p> :
+                      branchLeaveError ? <p role="alert">{branchLeaveError}</p> :
+                        (() => {
+                          const names = new Map(branchLeaveEmployees.map((employee) => [employee.id, employee.full_name]));
+                          const matching = branchLeaveRequests.filter((leave) => leave.start_date <= branchLeaveDate && leave.end_date >= branchLeaveDate && names.has(leave.employee_id));
+                          return matching.length ? (
+                            <ul style={{ paddingLeft: 20, margin: 0, fontSize: 13 }}>
+                              {matching.map((leave) => <li key={leave.id} style={{ marginBottom: 8 }}>
+                                <strong>{names.get(leave.employee_id)}</strong> — {leave.leave_type || "Approved Leave"}
+                                <div style={{ color: "#64748b" }}>{leave.start_date} to {leave.end_date} · Approved</div>
+                              </li>)}
+                            </ul>
+                          ) : <p style={{ fontSize: 13, margin: 0 }}>No approved employee leaves for this date in your branch.</p>;
+                        })()}
+                  </>
+                }
+              </section>
+            )}
+          </div>
         </div>
 
         <div className="cibo-profile-attendance" style={{
