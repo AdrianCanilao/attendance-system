@@ -12,6 +12,8 @@ export default function LeaveRequest() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
+  const [durationType, setDurationType] = useState("full_day");
+  const [halfDayPeriod, setHalfDayPeriod] = useState("morning");
 
   const [credits, setCredits] = useState({
     sick_leave: 1,
@@ -89,6 +91,8 @@ export default function LeaveRequest() {
 
   const openModal = (leaveType) => {
     setSelectedLeave(leaveType);
+    setDurationType("full_day");
+    setHalfDayPeriod("morning");
     setShowModal(true);
   };
 
@@ -101,6 +105,11 @@ export default function LeaveRequest() {
 
     if (!user) {
       alert("Not logged in");
+      return;
+    }
+
+    if (!start || !end || end < start || (durationType === "half_day" && start !== end)) {
+      alert("Please select valid dates. Half-day leave must be on one date.");
       return;
     }
 
@@ -147,6 +156,9 @@ export default function LeaveRequest() {
             end_date: end,
             reason,
             status: "Pending",
+            duration_type: durationType,
+            half_day_period: durationType === "half_day" ? halfDayPeriod : null,
+            credit_amount: durationType === "half_day" ? 0.5 : 1,
             attachment: attachmentUrl,
           },
         ]);
@@ -160,16 +172,14 @@ export default function LeaveRequest() {
         return;
       }
 
-      // Leave credits are consumed by a database trigger when the
-      // leave request is inserted. This prevents employees from
-      // directly modifying their own leave balances through the API.
+      // Database reserves pending credits and deducts only on approval.
       await fetchCredits();
       await logAudit({
   user_id: profile.id,
   user_name: profile.full_name,
   role: "employee",
   action: "LEAVE_REQUEST",
-  description: `${selectedLeave} leave requested from ${start} to ${end}`,
+  description: `${selectedLeave} ${durationType === "half_day" ? `half-day (${halfDayPeriod})` : "full-day"} leave requested from ${start} to ${end}`,
 });
 
       alert("Leave request submitted!");
@@ -179,6 +189,8 @@ export default function LeaveRequest() {
       setStart("");
       setEnd("");
       setReason("");
+      setDurationType("full_day");
+      setHalfDayPeriod("morning");
       setAttachment(null);
 
     } catch (err) {
@@ -249,6 +261,26 @@ export default function LeaveRequest() {
                 style={styles.form}
               >
                 <div style={styles.formGroup}>
+                  <label style={styles.label}>Leave Duration</label>
+                  <select value={durationType} onChange={(e) => {
+                    setDurationType(e.target.value);
+                    if (e.target.value === "half_day" && start) setEnd(start);
+                  }} style={styles.input}>
+                    <option value="full_day">Full Day (1 credit)</option>
+                    <option value="half_day">Half Day (0.5 credit)</option>
+                  </select>
+                </div>
+                {durationType === "half_day" && (
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Half-Day Period</label>
+                    <select value={halfDayPeriod} onChange={(e) => setHalfDayPeriod(e.target.value)} style={styles.input}>
+                      <option value="morning">Morning — first half of shift</option>
+                      <option value="afternoon">Afternoon — second half of shift</option>
+                    </select>
+                    <small style={{ color: "#64748b" }}>Half-day leave applies to one date. Recorded attendance is retained.</small>
+                  </div>
+                )}
+                <div style={styles.formGroup}>
                   <label style={styles.label}>
                     Start Date
                   </label>
@@ -256,9 +288,7 @@ export default function LeaveRequest() {
                   <input
                     type="date"
                     value={start}
-                    onChange={(e) =>
-                      setStart(e.target.value)
-                    }
+                    onChange={(e) => { setStart(e.target.value); if (durationType === "half_day") setEnd(e.target.value); }}
                     style={styles.input}
                     required
                   />
@@ -271,10 +301,10 @@ export default function LeaveRequest() {
 
                   <input
                     type="date"
-                    value={end}
-                    onChange={(e) =>
-                      setEnd(e.target.value)
-                    }
+                    value={durationType === "half_day" ? start : end}
+                    min={start || undefined}
+                    disabled={durationType === "half_day"}
+                    onChange={(e) => setEnd(e.target.value)}
                     style={styles.input}
                     required
                   />
@@ -413,6 +443,10 @@ const styles = {
 
   modal: {
     width: "500px",
+    maxWidth: "calc(100vw - 24px)",
+    maxHeight: "90dvh",
+    overflowY: "auto",
+    boxSizing: "border-box",
     background: "#fff",
     borderRadius: "20px",
     padding: "25px",
