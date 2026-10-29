@@ -55,7 +55,7 @@ export default function MobileAttendanceCards({ logs, onCorrect }) {
           .cibo-mobile-details summary::before { content: "⌄  "; }
           .cibo-mobile-details[open] summary::before { content: "⌃  "; }
           .cibo-mobile-details .cibo-mobile-event-grid { margin-top: 14px; }
-          .cibo-mobile-photo { background: #f3f4f6; border-radius: 10px; height: 104px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 7px; }
+          .cibo-mobile-photo { background: #f3f4f6; border-radius: 10px; height: 116px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 7px; }
           .cibo-mobile-photo img { width: 100%; height: 100%; object-fit: contain; }
           .cibo-mobile-photo span { font-size: 11px; color: #6b7280; }
           .cibo-mobile-photo-label { display: block; text-align: center; font-size: 11px; color: #374151; margin-bottom: 8px; }
@@ -80,12 +80,12 @@ export default function MobileAttendanceCards({ logs, onCorrect }) {
               <span className="cibo-mobile-card-status">{status}</span>
             </div>
             <div className="cibo-mobile-event-grid">
-              {[["TIME IN", log.time_in, log.time_in_location, log.time_in_face_url], ["TIME OUT", log.time_out, log.time_out_location, log.time_out_face_url]].map(([label, time, location, photo]) => (
+              {[["TIME IN", log.time_in, log.time_in_location], ["TIME OUT", log.time_out, log.time_out_location]].map(([label, time, location]) => (
                 <div key={label}>
                   <div className="cibo-mobile-event-label">{label}</div>
                   <div className="cibo-mobile-event-time">{formatTime(time)}</div>
-                  <div className="cibo-mobile-event-location">{location ? (/offsite|off-site/i.test(location) ? "Off-site" : "Recorded location") : "Location unavailable"}</div>
-                  <div className="cibo-mobile-event-photo-state">{photo ? "Photo saved" : "Photo unavailable"}</div>
+                  <div className="cibo-mobile-event-location"><span aria-hidden="true">⌖</span>{location ? (/offsite|off-site/i.test(location) ? "Off-site" : "Recorded location") : "Location unavailable"}</div>
+                  
                 </div>
               ))}
             </div>
