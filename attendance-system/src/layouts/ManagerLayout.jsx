@@ -4,6 +4,7 @@ import { supabase } from "../supabaseClient";
 import { logCurrentUserAudit } from "../utils/auditlogger";
 import { FaBell } from "react-icons/fa";
 import Sidebar from "../components/Sidebar";
+import RoleMobileNavigation from "../components/RoleMobileNavigation";
 
 export default function ManagerLayout({ children }) {
   const navigate = useNavigate();
@@ -160,7 +161,30 @@ export default function ManagerLayout({ children }) {
   const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   return (
-    <div className="cibo-layout" style={styles.container}>
+    <div className="cibo-layout cibo-role-responsive" style={styles.container}>
+      <style>{`
+        .cibo-role-menu-toggle, .cibo-role-mobile-nav, .cibo-role-mobile-logo { display: none; }
+        @media (max-width: 768px) {
+          .cibo-role-responsive > .cibo-sidebar { display: none !important; }
+          .cibo-role-responsive .cibo-main, .cibo-role-responsive .cibo-hr-main { min-width: 0 !important; width: 100% !important; }
+          .cibo-role-responsive .cibo-topbar, .cibo-role-responsive .cibo-hr-topbar { height: 64px !important; min-height: 64px !important; padding: 0 12px !important; gap: 8px !important; position: relative !important; overflow: visible !important; }
+          .cibo-role-mobile-logo { display: block; width: 42px; height: 42px; object-fit: contain; flex-shrink: 0; }
+          .cibo-role-responsive .cibo-topbar-title, .cibo-role-responsive .cibo-hr-topbar > h3 { flex: 1 1 auto !important; min-width: 0 !important; max-width: none !important; overflow: hidden !important; white-space: nowrap !important; text-overflow: ellipsis !important; font-size: 14px !important; }
+          .cibo-role-top-actions { gap: 10px !important; min-width: 0 !important; flex-shrink: 0 !important; }
+          .cibo-role-top-actions > div:not(.cibo-notification-wrapper):not(.cibo-hr-notification), .cibo-role-top-actions > button:not(.cibo-role-menu-toggle) { display: none !important; }
+          .cibo-role-menu-toggle { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: transparent; color: #1f2937; border: 0; border-radius: 8px; font-size: 21px; cursor: pointer; }
+          .cibo-role-mobile-nav.is-open { display: flex; }
+          .cibo-role-mobile-nav { position: absolute; top: 64px; left: 0; right: 0; z-index: 4000; flex-direction: column; gap: 4px; padding: 12px; background: #1f2937; max-height: calc(100dvh - 64px); overflow-y: auto; box-shadow: 0 10px 22px rgba(0,0,0,.18); }
+          .cibo-role-mobile-nav button { width: 100%; min-height: 44px; text-align: left; padding: 12px 14px; border: 0; border-radius: 8px; color: white; background: transparent; font-size: 14px; font-weight: 500; white-space: normal; cursor: pointer; }
+          .cibo-role-mobile-nav button[aria-current="page"], .cibo-role-mobile-nav button:hover { background: #f97316; }
+          .cibo-role-menu-toggle:focus-visible, .cibo-role-mobile-nav button:focus-visible { outline: 3px solid #f97316; outline-offset: 2px; }
+          .cibo-role-responsive .cibo-content, .cibo-role-responsive .cibo-hr-content { padding: 16px 14px !important; min-width: 0 !important; }
+        }
+        @media (max-width: 374px) {
+          .cibo-role-responsive .cibo-topbar, .cibo-role-responsive .cibo-hr-topbar { padding: 0 8px !important; gap: 6px !important; }
+          .cibo-role-responsive .cibo-topbar-title, .cibo-role-responsive .cibo-hr-topbar > h3 { font-size: 12px !important; }
+        }
+      `}</style>
       {/* SIDEBAR */}
       <Sidebar role="maintenance" />
 
@@ -168,12 +192,13 @@ export default function ManagerLayout({ children }) {
       <div className="cibo-main" style={styles.main}>
         {/* TOPBAR */}
         <div className="cibo-topbar" style={styles.topbar}>
+          <img className="cibo-role-mobile-logo" src="/cibologo.png" alt="CIBO" />
           <h3 className="cibo-topbar-title" style={{ margin: 0 }}>
             Maintenance Specialist Dashboard
             {branchName && ` - ${branchName}`}
           </h3>
 
-          <div style={styles.topRight}>
+          <div className="cibo-role-top-actions" style={styles.topRight}>
             {/* NOTIFICATION */}
             <div
               className="cibo-notification-wrapper"
@@ -251,6 +276,7 @@ export default function ManagerLayout({ children }) {
               )}
             </div>
 
+            <RoleMobileNavigation role="maintenance" onLogout={handleLogout} />
             {/* PROFILE */}
             <div className="cibo-top-profile" style={styles.profile}>
               <div style={styles.avatar}>M</div>
