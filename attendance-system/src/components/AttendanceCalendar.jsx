@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-const colors = { Present: "#15803d", Absent: "#b91c1c", "On Leave": "#a16207", "Rest Day": "#64748b" };
+const colors = { Present: "#15803d", Absent: "#b91c1c", "On Leave": "#a16207", "Incomplete Attendance": "#64748b" };
 const localDate = (value) => value ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value)) : null;
 const dateKey = (year, month, day) => `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 const timeLabel = (value) => value ? new Date(value).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "—";
@@ -32,11 +32,12 @@ export default function AttendanceCalendar({ attendance = [], leaves = [], emplo
   const statusFor = (date, employeeId) => {
     const items = (records.get(date) || []).filter((item) => !employeeId || item.employee_id === employeeId);
     const logs = items.filter((item) => item.type === "attendance");
-    if (logs.some((item) => item.status === "On Leave")) return "On Leave";
-    if (logs.some((item) => item.status === "Rest Day")) return "Rest Day";
-    if (logs.some((item) => item.time_in || Number(item.total_hours_worked || 0) > 0 || /^(present|late)$/i.test(item.status || ""))) return "Present";
-    if (items.some((item) => item.type === "leave")) return "On Leave";
+    if (logs.some((item) => item.status === "On Leave") || items.some((item) => item.type === "leave")) return "On Leave";
+    // An attendance row with a missing punch is incomplete, not present.
+    // Do not classify dates with no attendance row as incomplete or absent.
     if (logs.some((item) => /absent/i.test(item.status || ""))) return "Absent";
+    if (logs.some((item) => !item.time_in || !item.time_out)) return "Incomplete Attendance";
+    if (logs.some((item) => item.time_in && item.time_out)) return "Present";
     return null; // No record is not evidence of absence.
   };
   const current = selected && selected.startsWith(`${year}-${String(monthIndex + 1).padStart(2, "0")}`) ? selected : null;
@@ -76,7 +77,7 @@ export default function AttendanceCalendar({ attendance = [], leaves = [], emplo
       {errorNotice && <p role="alert">{errorNotice}</p>}
       {current && <div style={{ borderTop: "1px solid #e5e7eb", marginTop: 12, paddingTop: 10, fontSize: 12 }}>
         <strong>{new Date(`${current}T12:00:00+08:00`).toLocaleDateString("en-US", { dateStyle: "full", timeZone: "Asia/Manila" })}</strong>
-        {overview && <p style={{ margin: "8px 0" }}>Present: {counts.Present || 0} · Absent: {counts.Absent || 0} · On Leave: {counts["On Leave"] || 0} · Rest Day: {counts["Rest Day"] || 0} · No record: {counts["No record"] || 0}</p>}
+        {overview && <p style={{ margin: "8px 0" }}>Present: {counts.Present || 0} · Absent: {counts.Absent || 0} · On Leave: {counts["On Leave"] || 0} · Incomplete Attendance: {counts["Incomplete Attendance"] || 0} · No record: {counts["No record"] || 0}</p>}
         {overview ? <div style={{ maxHeight: 190, overflowY: "auto" }}>{employees.map((emp) => {
           const status = statusFor(current, emp.id) || "No record";
           const log = selectedItems.find((item) => item.type === "attendance" && item.employee_id === emp.id);
