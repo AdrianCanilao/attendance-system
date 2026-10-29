@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
 import StaffMobileAttendanceCards from "../components/StaffMobileAttendanceCards";
@@ -10,6 +10,9 @@ import { saveAs } from "file-saver";
 export default function EmployeeList() {
   const [employees, setEmployees] = useState([]);
   const [search, setSearch] = useState("");
+  const [employeePage, setEmployeePage] = useState(1);
+  const [attendancePage, setAttendancePage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const [selectedEmployee, setSelectedEmployee] =
     useState(null);
@@ -97,6 +100,11 @@ export default function EmployeeList() {
       .includes(search.toLowerCase())
   );
 
+  const employeePageCount = Math.max(1, Math.ceil(filteredEmployees.length / PAGE_SIZE));
+  const visibleEmployees = useMemo(() => filteredEmployees.slice((employeePage - 1) * PAGE_SIZE, employeePage * PAGE_SIZE), [employees, search, employeePage]);
+  const attendancePageCount = Math.max(1, Math.ceil(attendanceLogs.length / PAGE_SIZE));
+  const visibleAttendanceLogs = useMemo(() => attendanceLogs.slice((attendancePage - 1) * PAGE_SIZE, attendancePage * PAGE_SIZE), [attendanceLogs, attendancePage]);
+
   const calculateHoursWorked = (
     timeInISO,
     timeOutISO
@@ -129,6 +137,7 @@ export default function EmployeeList() {
   };
 
   const openAttendanceModal = async (employee) => {
+    setAttendancePage(1);
     setSelectedEmployee(employee);
 
     const { data: attendanceData, error } =
@@ -474,7 +483,7 @@ export default function EmployeeList() {
     let active = true;
 
     Promise.all(
-      filteredEmployees.map(async (employee) => [
+      visibleEmployees.map(async (employee) => [
         employee.id,
         await getStorageAccessUrl("faces", employee.face_url),
       ])
@@ -487,7 +496,7 @@ export default function EmployeeList() {
     return () => {
       active = false;
     };
-  }, [filteredEmployees]);
+  }, [visibleEmployees]);
 
   return (
     <ManagerLayout>
@@ -509,9 +518,7 @@ export default function EmployeeList() {
               type="text"
               placeholder="Search employee..."
               value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
+              onChange={(e) => { setSearch(e.target.value); setEmployeePage(1); }}
               style={styles.searchInput}
             />
           </div>
@@ -543,8 +550,8 @@ export default function EmployeeList() {
         </div>
 
         {/* EMPLOYEE LIST */}
-        <div className="cibo-employee-list-cards" style={styles.list}>
-          {filteredEmployees.map((employee) => (
+        <div className="cibo-employee-list-cards" style={{ ...styles.list, maxHeight: "min(62vh, 650px)", overflowY: "auto", overscrollBehavior: "contain", paddingRight: 4 }}>
+          {visibleEmployees.map((employee) => (
             <div
               key={employee.id}
               className="cibo-employee-list-card"
@@ -596,6 +603,7 @@ export default function EmployeeList() {
             </div>
           ))}
         </div>
+        <nav aria-label="Employee list pagination" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 12, fontSize: 12, color: "#6b7280" }}><span>{filteredEmployees.length === 0 ? "No records found" : `Showing ${(employeePage - 1) * PAGE_SIZE + 1}–${Math.min(employeePage * PAGE_SIZE, filteredEmployees.length)} of ${filteredEmployees.length}`}</span><div style={{ display: "flex", alignItems: "center", gap: 8 }}><button type="button" disabled={employeePage <= 1} onClick={() => setEmployeePage((p) => Math.max(1, p - 1))}>Previous</button><span>Page {employeePage} of {employeePageCount}</span><button type="button" disabled={employeePage >= employeePageCount} onClick={() => setEmployeePage((p) => Math.min(employeePageCount, p + 1))}>Next</button></div></nav>
       </div>
 
       {/* MODAL */}
@@ -617,7 +625,8 @@ export default function EmployeeList() {
               </button>
             </div>
 
-            <StaffMobileAttendanceCards logs={attendanceLogs.map((log) => ({
+            <div style={{ maxHeight: "min(65dvh, 650px)", overflowY: "auto", overscrollBehavior: "contain", paddingRight: 4 }}>
+            <StaffMobileAttendanceCards logs={visibleAttendanceLogs.map((log) => ({
               ...log,
               name: selectedEmployee?.full_name,
               position: selectedEmployee?.position,
@@ -651,9 +660,9 @@ export default function EmployeeList() {
                 </thead>
 
                 <tbody>
-                  {attendanceLogs.length >
+                  {visibleAttendanceLogs.length >
                   0 ? (
-                    attendanceLogs.map(
+                    visibleAttendanceLogs.map(
                       (log) => (
                         <tr key={log.id}>
                           <td style={styles.td}>
@@ -752,6 +761,8 @@ export default function EmployeeList() {
                 </tbody>
               </table>
             </div>
+            </div>
+            <nav aria-label="Attendance history pagination" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 12, fontSize: 12, color: "#6b7280" }}><span>{attendanceLogs.length === 0 ? "No records found" : `Showing ${(attendancePage - 1) * PAGE_SIZE + 1}–${Math.min(attendancePage * PAGE_SIZE, attendanceLogs.length)} of ${attendanceLogs.length}`}</span><div style={{ display: "flex", alignItems: "center", gap: 8 }}><button type="button" disabled={attendancePage <= 1} onClick={() => setAttendancePage((p) => Math.max(1, p - 1))}>Previous</button><span>Page {attendancePage} of {attendancePageCount}</span><button type="button" disabled={attendancePage >= attendancePageCount} onClick={() => setAttendancePage((p) => Math.min(attendancePageCount, p + 1))}>Next</button></div></nav>
           </div>
         </div>
       )}
