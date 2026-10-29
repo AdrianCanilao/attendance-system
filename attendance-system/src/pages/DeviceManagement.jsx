@@ -118,6 +118,7 @@ export default function DeviceManagement() {
 
   return (
     <HRLayout>
+      <style>{`@media (max-width: 768px) { .cibo-device-desktop { display: none !important; } .cibo-device-mobile { display: grid !important; gap: 12px; } .cibo-device-card { border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; padding: 14px; min-width: 0; overflow-wrap: anywhere; } .cibo-device-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; } .cibo-device-card-title { font-size: 14px; font-weight: 700; color: #111827; } .cibo-device-card-id { color: #98a2b3; font-size: 10px; margin-top: 4px; } .cibo-device-card-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; } .cibo-device-card-details small { display: block; color: #6b7280; font-size: 10px; margin-bottom: 4px; } .cibo-device-card-details span { display: block; color: #374151; font-size: 12px; } .cibo-device-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #f3f4f6; } .cibo-device-card-actions button { min-height: 36px; padding: 8px 14px !important; font-weight: 600; } .cibo-device-mobile-filters { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .cibo-device-mobile-filters select, .cibo-device-mobile-filters input { width: 100%; min-width: 0; box-sizing: border-box; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; color: #111827; font-size: 12px; } }`}</style>
       <div className="cibo-page-root" style={styles.page}>
         <div style={styles.header}>
           <div>
@@ -135,7 +136,7 @@ export default function DeviceManagement() {
           <span style={styles.count}>{filtered.length} device(s)</span>
         </div>
 
-        <div style={styles.tableWrap}>
+        <div className="cibo-device-desktop" style={styles.tableWrap}>
           <table style={styles.table}>
             <colgroup>
               <col style={{ width: "19%" }} />
@@ -226,6 +227,54 @@ export default function DeviceManagement() {
               })}
             </tbody>
           </table>
+        </div>
+
+        <div className="cibo-device-mobile" style={{ display: "none" }}>
+          <div className="cibo-device-mobile-filters">
+            <select aria-label="Filter devices by branch" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}>
+              <option value="ALL">All branches</option>
+              {branchOptions.map((branch) => <option key={branch} value={branch}>{branch}</option>)}
+            </select>
+            <select aria-label="Filter devices by type" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+              <option value="ALL">All types</option>
+              {typeOptions.map((type) => <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>)}
+            </select>
+            <select aria-label="Filter devices by status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="ALL">All statuses</option>
+              <option value="ALLOWED">Allowed</option>
+              <option value="WHITELISTED">Whitelisted</option>
+              <option value="BLOCKED">Denied</option>
+            </select>
+            <DatePicker selected={dateFilter ? new Date(dateFilter + "T12:00:00") : null} onChange={(date) => setDateFilter(date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : "")} dateFormat="dd/MM/yyyy" placeholderText="Filter by date" isClearable />
+          </div>
+          {loading ? <div style={styles.empty}>Loading devices...</div> : filtered.length === 0 ? <div style={styles.empty}>No registered devices match your filters.</div> : paginatedDevices.map((device) => {
+            const status = device.status || "ALLOWED";
+            return <article className="cibo-device-card" key={device.id}>
+              <div className="cibo-device-card-top">
+                <div style={{ minWidth: 0 }}>
+                  <div className="cibo-device-card-title">{device.device_name || "Unknown device"}</div>
+                  <div className="cibo-device-card-id">{device.device_id}</div>
+                </div>
+                <span style={status === "BLOCKED" ? styles.badgeBlocked : status === "WHITELISTED" ? styles.badgeWhite : styles.badgeAllowed}>{status === "BLOCKED" ? "Denied" : status}</span>
+              </div>
+              <div className="cibo-device-card-details">
+                <div><small>User</small><span>{device.employee_profiles?.full_name || "—"}</span></div>
+                <div><small>Branch</small><span>{device.branches?.branch_name || "—"}</span></div>
+                <div><small>Type</small><span>{device.device_type || "web"}</span></div>
+                <div><small>Last seen</small><span>{device.last_seen ? new Date(device.last_seen).toLocaleDateString("en-GB") : "—"}</span></div>
+              </div>
+              <div className="cibo-device-card-actions">
+                {status === "BLOCKED" ? (
+                  <button type="button" disabled={busyId === device.device_id} onClick={() => updateStatus(device, "ALLOWED")} style={styles.allow}>Unblock</button>
+                ) : (
+                  <button type="button" disabled={busyId === device.device_id} onClick={() => updateStatus(device, "BLOCKED")} style={styles.block}>Block</button>
+                )}
+                {status !== "WHITELISTED" && status !== "BLOCKED" && (
+                  <button type="button" disabled={busyId === device.device_id} onClick={() => updateStatus(device, "WHITELISTED")} style={styles.white}>Whitelist</button>
+                )}
+              </div>
+            </article>;
+          })}
         </div>
 
         {!loading && filtered.length > 0 && (
