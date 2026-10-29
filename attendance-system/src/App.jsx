@@ -1,41 +1,43 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import Login from "./pages/Login";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import ManagerDashboard from "./pages/ManagerDashboard";
-import EmployeeDashboard from "./pages/EmployeeDashboard";
+const Login = lazy(() => import("./pages/Login"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
+const EmployeeDashboard = lazy(() => import("./pages/EmployeeDashboard"));
 import ProtectedRoute from "./components/ProtectedRoute";
 
-import LeaveRequest from "./pages/LeaveRequest";
-import ManagerLeave from "./pages/ManagerLeave";
-import MyLeave from "./pages/MyLeave";
+const LeaveRequest = lazy(() => import("./pages/LeaveRequest"));
+const ManagerLeave = lazy(() => import("./pages/ManagerLeave"));
+const MyLeave = lazy(() => import("./pages/MyLeave"));
 
-import RegisterEmployee from "./pages/RegisterEmployee";
-import EditEmployee from "./pages/EditEmployee";
-import Profile from "./pages/Profile";
-import LeaveCounts from "./pages/LeaveCounts";
-import EmployeeList from "./pages/EmployeeList";
+const RegisterEmployee = lazy(() => import("./pages/RegisterEmployee"));
+const EditEmployee = lazy(() => import("./pages/EditEmployee"));
+const Profile = lazy(() => import("./pages/Profile"));
+const LeaveCounts = lazy(() => import("./pages/LeaveCounts"));
+const EmployeeList = lazy(() => import("./pages/EmployeeList"));
 
-import HRDashboard from "./pages/HRDashboard";
-import HRAuditTrail from "./pages/HRAuditTrail";
-import RegisterManager from "./pages/RegisterManager";
-import EditManager from "./pages/EditManager";
+const HRDashboard = lazy(() => import("./pages/HRDashboard"));
+const HRAuditTrail = lazy(() => import("./pages/HRAuditTrail"));
+const RegisterManager = lazy(() => import("./pages/RegisterManager"));
+const EditManager = lazy(() => import("./pages/EditManager"));
 
-import ManagerAttendanceTracker from "./pages/ManagerAttendanceTracker";
-import ShiftSettings from "./pages/ShiftSettings";
-import BranchSettings from "./pages/BranchSettings";
-import DeviceManagement from "./pages/DeviceManagement";
-import DataMigration from "./pages/DataMigration";
-import StagedEmployees from "./pages/StagedEmployees";
-import StagedAttendance from "./pages/StagedAttendance";
-import ManagerStagedEmployees from "./pages/ManagerStagedEmployees";
+const ManagerAttendanceTracker = lazy(() => import("./pages/ManagerAttendanceTracker"));
+const ShiftSettings = lazy(() => import("./pages/ShiftSettings"));
+const BranchSettings = lazy(() => import("./pages/BranchSettings"));
+const DeviceManagement = lazy(() => import("./pages/DeviceManagement"));
+const DataMigration = lazy(() => import("./pages/DataMigration"));
+const StagedEmployees = lazy(() => import("./pages/StagedEmployees"));
+const StagedAttendance = lazy(() => import("./pages/StagedAttendance"));
+const ManagerStagedEmployees = lazy(() => import("./pages/ManagerStagedEmployees"));
 
-import Kiosk from "./pages/Kiosk";
+const Kiosk = lazy(() => import("./pages/Kiosk"));
 
 export default function App() {
   return (
     <BrowserRouter>
+      <Suspense fallback={<div role="status" style={{ padding: 24, textAlign: "center" }}>Loading page…</div>}>
       <Routes>
 
         {/* ================= LOGIN ================= */}
@@ -290,6 +292,7 @@ export default function App() {
         />
 
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
