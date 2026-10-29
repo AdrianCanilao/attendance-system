@@ -379,7 +379,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                           const names = new Map(branchLeaveEmployees.map((employee) => [employee.id, employee.full_name]));
                           const matching = branchLeaveRequests.filter((leave) => leave.start_date <= branchLeaveDate && leave.end_date >= branchLeaveDate && names.has(leave.employee_id));
                           return matching.length ? (
-                            <ul style={{ paddingLeft: 20, margin: 0, fontSize: 13 }}>
+                            <ul aria-label="Employees on approved leave" tabIndex={0} style={{ padding: "4px 8px 4px 20px", margin: 0, fontSize: 13, maxHeight: 220, overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }}>
                               {matching.map((leave) => <li key={leave.id} style={{ marginBottom: 8 }}>
                                 <strong>{names.get(leave.employee_id)}</strong> — {leave.leave_type || "Approved Leave"}
                                 <div style={{ color: "#64748b" }}>{leave.start_date} to {leave.end_date} · Approved</div>
