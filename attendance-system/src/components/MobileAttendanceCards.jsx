@@ -19,18 +19,14 @@ function formatTime(value) {
     : "—";
 }
 
-function AttendanceEvent({ label, time, location, photo }) {
+function AttendanceEvidence({ label, location, photo }) {
   const url = mapsUrl(location);
   return (
     <div className="cibo-mobile-event">
-      <div className="cibo-mobile-event-label">{label}</div>
-      <div className="cibo-mobile-event-time">{formatTime(time)}</div>
-      <div className="cibo-mobile-event-location">{location ? (location.toLowerCase().includes("offsite") || location.toLowerCase().includes("off-site") ? "Off-site" : "Recorded location") : "Location unavailable"}</div>
-      <div className="cibo-mobile-event-photo-state">{photo ? "Photo saved" : "Photo unavailable"}</div>
+      <strong className="cibo-mobile-photo-label">{label} Photo</strong>
       <div className="cibo-mobile-photo">
         {photo ? <img src={photo} alt={`${label} attendance photo`} loading="lazy" /> : <span>Photo unavailable</span>}
       </div>
-      <strong className="cibo-mobile-photo-label">{label} Photo</strong>
       {url ? <a className="cibo-mobile-maps" href={url} target="_blank" rel="noopener noreferrer">View on Google Maps ↗</a> : <span className="cibo-mobile-maps-unavailable">Location unavailable</span>}
     </div>
   );
@@ -62,13 +58,13 @@ export default function MobileAttendanceCards({ logs, onCorrect }) {
           .cibo-mobile-photo { background: #f3f4f6; border-radius: 10px; height: 104px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 7px; }
           .cibo-mobile-photo img { width: 100%; height: 100%; object-fit: contain; }
           .cibo-mobile-photo span { font-size: 11px; color: #6b7280; }
-          .cibo-mobile-photo-label { text-align: center; font-size: 11px; color: #374151; }
+          .cibo-mobile-photo-label { display: block; text-align: center; font-size: 11px; color: #374151; margin-bottom: 8px; }
           .cibo-mobile-maps,.cibo-mobile-maps-unavailable { display: block; margin-top: 9px; font-size: 11px; overflow-wrap: anywhere; text-align: center; }
           .cibo-mobile-maps { color: #c2410c; text-decoration: underline; }
           .cibo-mobile-maps-unavailable { color: #6b7280; }
           .cibo-mobile-correction { display: block; width: 100%; margin-top: 12px; padding: 10px; border: 0; border-radius: 8px; color: white; background: #f97316; font-weight: 600; font-size: 12px; cursor: pointer; }
           .cibo-mobile-correction:disabled { background: #9ca3af; cursor: not-allowed; }
-          .cibo-mobile-metrics { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; color: #6b7280; font-size: 11px; }
+          .cibo-mobile-metrics { margin: 10px 0 0; display: flex; gap: 8px; flex-wrap: wrap; color: #6b7280; font-size: 11px; }
         }
       `}</style>
       {(logs || []).slice(0, 5).map((log) => {
@@ -93,15 +89,15 @@ export default function MobileAttendanceCards({ logs, onCorrect }) {
                 </div>
               ))}
             </div>
+            <div className="cibo-mobile-metrics">
+              <span>Late: {log.late_minutes > 0 ? `${Math.floor(log.late_minutes / 60)}h ${log.late_minutes % 60}m` : "0m"}</span>
+              <span>Overtime: {log.overtime_minutes > 0 ? `${Math.floor(log.overtime_minutes / 60)}h ${log.overtime_minutes % 60}m` : "0m"}</span>
+            </div>
             <details className="cibo-mobile-details">
-              <summary>View attendance details</summary>
+              <summary>View photos &amp; locations</summary>
               <div className="cibo-mobile-event-grid">
-                <AttendanceEvent label="Time In" time={log.time_in} location={log.time_in_location} photo={log.time_in_face_url} />
-                <AttendanceEvent label="Time Out" time={log.time_out} location={log.time_out_location} photo={log.time_out_face_url} />
-              </div>
-              <div className="cibo-mobile-metrics">
-                <span>Late: {log.late_minutes > 0 ? `${Math.floor(log.late_minutes / 60)}h ${log.late_minutes % 60}m` : "0m"}</span>
-                <span>Overtime: {log.overtime_minutes > 0 ? `${Math.floor(log.overtime_minutes / 60)}h ${log.overtime_minutes % 60}m` : "0m"}</span>
+                <AttendanceEvidence label="Time In" location={log.time_in_location} photo={log.time_in_face_url} />
+                <AttendanceEvidence label="Time Out" location={log.time_out_location} photo={log.time_out_face_url} />
               </div>
               <button className="cibo-mobile-correction" disabled={log.correction?.status === "Pending"} onClick={() => onCorrect(log)}>{correctionLabel}</button>
             </details>
