@@ -6,6 +6,7 @@ import { FaUser } from "react-icons/fa";
 import { useLocation } from "react-router-dom";
 import { logAudit } from "../utils/auditlogger";
 import { getStorageAccessUrl } from "../utils/storageAccess";
+import MobileAttendanceCards from "../components/MobileAttendanceCards";
 
 export default function Profile() {
   const [profile, setProfile] = useState(null);
@@ -409,7 +410,14 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
             Attendance Summary
           </h2>
 
-          <div style={{ overflowX: "auto" }}>
+          <MobileAttendanceCards logs={attendanceLogs} onCorrect={(log) => {
+            if (log.correction?.status === "Pending") return;
+            setSelectedLog(log);
+            setCorrectionReason("");
+            setCorrectionFile(null);
+            setShowCorrectionModal(true);
+          }} />
+          <div className="cibo-desktop-attendance-table" style={{ overflowX: "auto" }}>
   <table
     style={{
       width: "100%",
