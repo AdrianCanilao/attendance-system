@@ -7,6 +7,7 @@ import StaffMobileAttendanceCards from "../components/StaffMobileAttendanceCards
 import AttendanceLocationDisplay from "../components/AttendanceLocationDisplay";
 import { getStorageAccessUrl } from "../utils/storageAccess";
 import { logAudit } from "../utils/auditlogger";
+import AttendanceCalendar from "../components/AttendanceCalendar";
 
 export default function HRDashboard() {
   const [logs, setLogs] = useState([]);
@@ -16,6 +17,12 @@ export default function HRDashboard() {
   const [present, setPresent] = useState(0);
   const [absent, setAbsent] = useState(0);
   const [hoveredImage, setHoveredImage] = useState(null);
+  const [calendarMode, setCalendarMode] = useState("overview");
+  const [calendarEmployees, setCalendarEmployees] = useState([]);
+  const [calendarAttendance, setCalendarAttendance] = useState([]);
+  const [calendarLeaves, setCalendarLeaves] = useState([]);
+  const [personalId, setPersonalId] = useState(null);
+  const [calendarError, setCalendarError] = useState("");
 
   const [selectedDate, setSelectedDate] = useState(
     new Date()
@@ -24,6 +31,27 @@ export default function HRDashboard() {
   useEffect(() => {
     fetchDashboardData();
   }, [selectedDate]);
+
+  useEffect(() => {
+    let active = true;
+    const loadCalendar = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const { data: self } = auth?.user ? await supabase.from("employee_profiles").select("id").eq("email", auth.user.email).maybeSingle() : { data: null };
+      const [{ data: employees, error: employeeError }, { data: attendance, error: attendanceError }, { data: leaves, error: leaveError }] = await Promise.all([
+        supabase.from("employee_profiles").select("id, full_name").eq("is_active", true),
+        supabase.from("attendance_logs").select("id, employee_id, log_date, time_in, time_out, status, total_hours_worked").order("log_date", { ascending: false }).limit(10000),
+        supabase.from("leave_requests").select("id, employee_id, leave_type, start_date, end_date, status").eq("status", "Approved")
+      ]);
+      if (!active) return;
+      if (employeeError || attendanceError || leaveError) { setCalendarError("Unable to load calendar data. Please try refreshing."); return; }
+      setPersonalId(self?.id || null);
+      setCalendarEmployees(employees || []);
+      setCalendarAttendance(attendance || []);
+      setCalendarLeaves(leaves || []);
+    };
+    loadCalendar();
+    return () => { active = false; };
+  }, []);
 
   const calculateHoursWorked = (
     timeInISO,
@@ -309,6 +337,19 @@ export default function HRDashboard() {
         </h2>
       </div>
 
+      <section style={{ marginBottom: 20 }}>
+        <h3 style={{ marginBottom: 8 }}>Attendance and Leave Calendar</h3>
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          <button type="button" onClick={() => setCalendarMode("overview")} aria-pressed={calendarMode === "overview"}>All Employees</button>
+          <button type="button" onClick={() => setCalendarMode("personal")} aria-pressed={calendarMode === "personal"}>My Attendance</button>
+        </div>
+        {calendarError && <p role="alert">{calendarError}</p>}
+        {calendarMode === "personal" && !personalId ? <p>No employee profile is linked to your HR login.</p> :
+          <AttendanceCalendar key={calendarMode} overview={calendarMode === "overview"} employees={calendarMode === "overview" ? calendarEmployees : []}
+            attendance={calendarMode === "overview" ? calendarAttendance : calendarAttendance.filter((log) => log.employee_id === personalId)}
+            leaves={calendarMode === "overview" ? calendarLeaves : calendarLeaves.filter((leave) => leave.employee_id === personalId)}
+            onSelectDate={(date) => { if (calendarMode === "overview") setSelectedDate(new Date(date + "T12:00:00+08:00")); }} />}
+      </section>
       <div className="cibo-hr-dashboard-cards" style={styles.cards}>
         <div style={styles.card}>
           <p style={styles.cardLabel}>

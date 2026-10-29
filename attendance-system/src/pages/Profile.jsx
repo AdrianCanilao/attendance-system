@@ -7,6 +7,7 @@ import { useLocation } from "react-router-dom";
 import { logAudit } from "../utils/auditlogger";
 import { getStorageAccessUrl } from "../utils/storageAccess";
 import MobileAttendanceCards from "../components/MobileAttendanceCards";
+import AttendanceCalendar from "../components/AttendanceCalendar";
 import AttendanceLocationDisplay from "../components/AttendanceLocationDisplay";
 
 export default function Profile() {
@@ -18,6 +19,7 @@ export default function Profile() {
     timeOut: 0,
   });
   const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [calendarLeaves, setCalendarLeaves] = useState([]);
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
   const [correctionReason, setCorrectionReason] = useState("");
@@ -137,6 +139,8 @@ const resolvedLogs = await Promise.all(
 );
 
 setAttendanceLogs(resolvedLogs);
+    const { data: approvedLeaves } = await supabase.from("leave_requests").select("id, employee_id, leave_type, start_date, end_date, status").eq("employee_id", emp.id).eq("status", "Approved");
+    setCalendarLeaves(approvedLeaves || []);
   };
 
   const fetchAttendanceStats = async (safeName) => {
@@ -225,35 +229,6 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
 
   return `${mins}m`;
 };
-
-  const generateCalendar = () => {
-    const date = new Date();
-
-    const year = date.getFullYear();
-    const month = date.getMonth();
-
-    const firstDay = new Date(year, month, 1).getDay();
-
-    const daysInMonth = new Date(
-      year,
-      month + 1,
-      0
-    ).getDate();
-
-    const days = [];
-
-    for (let i = 0; i < firstDay; i++) {
-      days.push(null);
-    }
-
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(i);
-    }
-
-    return days;
-  };
-
-  const calendarDays = generateCalendar();
 
   const location = useLocation();
 
@@ -352,45 +327,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
             </div>
           </div>
 
-          {/* CALENDAR */}
-          <div className="cibo-profile-calendar" style={styles.calendarCard}>
-            <h4 style={styles.calendarTitle}>
-              {today.toLocaleString("default", {
-                month: "long",
-              })}{" "}
-              {today.getFullYear()}
-            </h4>
-
-            <div style={styles.calendarGrid}>
-              {[
-                "Sun",
-                "Mon",
-                "Tue",
-                "Wed",
-                "Thu",
-                "Fri",
-                "Sat",
-              ].map((d) => (
-                <div key={d} style={styles.dayHeader}>
-                  {d}
-                </div>
-              ))}
-
-              {calendarDays.map((day, i) => (
-                <div
-                  key={i}
-                  style={{
-                    ...styles.day,
-                    ...(day === today.getDate()
-                      ? styles.today
-                      : {}),
-                  }}
-                >
-                  {day || ""}
-                </div>
-              ))}
-            </div>
-          </div>
+          <div className="cibo-profile-calendar"><AttendanceCalendar attendance={attendanceLogs} leaves={calendarLeaves} /></div>
         </div>
 
         <div className="cibo-profile-attendance" style={{
