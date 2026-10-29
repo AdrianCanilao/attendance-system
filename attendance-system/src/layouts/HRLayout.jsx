@@ -231,6 +231,9 @@ const styles = {
       "0 10px 25px rgba(0,0,0,0.08)",
     padding: "14px",
     zIndex: 999,
+    maxHeight: "min(70vh, 620px)",
+    overflowY: "auto",
+    overscrollBehavior: "contain",
   },
 
   notificationTitle: {
