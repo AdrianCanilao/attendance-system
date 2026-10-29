@@ -4,7 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
 import StaffMobileAttendanceCards from "../components/StaffMobileAttendanceCards";
-import { attendanceMapsUrl, attendanceLocationLabel } from "../utils/attendanceLocation";
+import AttendanceLocationDisplay from "../components/AttendanceLocationDisplay";
 import { logAudit } from "../utils/auditlogger";
 import { getStorageAccessUrl } from "../utils/storageAccess";
 
@@ -696,8 +696,7 @@ correction:
                       <div style={styles.timeDetails}>
                         <span>{log.time_in}</span>
                         {log.time_in_date && log.time_in_date !== new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(`${log.log_date}T12:00:00+08:00`)) && <span style={styles.locationText}>{log.time_in_date}</span>}
-                        <span style={styles.locationText}>{attendanceLocationLabel(log.time_in_location)}</span>
-                        {attendanceMapsUrl(log.time_in_location) && <a href={attendanceMapsUrl(log.time_in_location)} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#c2410c" }}>View on Google Maps ↗</a>}
+                          <AttendanceLocationDisplay location={log.time_in_location} />
                       </div>
                     </div>
                   </td>
@@ -722,8 +721,7 @@ correction:
                       <div style={styles.timeDetails}>
                         <span>{log.time_out}</span>
                         {log.time_out_date && log.time_out_date !== new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(`${log.log_date}T12:00:00+08:00`)) && <span style={styles.locationText}>{log.time_out_date}</span>}
-                        <span style={styles.locationText}>{attendanceLocationLabel(log.time_out_location)}</span>
-                        {attendanceMapsUrl(log.time_out_location) && <a href={attendanceMapsUrl(log.time_out_location)} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#c2410c" }}>View on Google Maps ↗</a>}
+                          <AttendanceLocationDisplay location={log.time_out_location} />
                       </div>
                     </div>
                   </td>
