@@ -3,6 +3,8 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { supabase } from "../supabaseClient";
 import HRLayout from "../layouts/HRLayout";
+import StaffMobileAttendanceCards from "../components/StaffMobileAttendanceCards";
+import { attendanceMapsUrl, attendanceLocationLabel } from "../utils/attendanceLocation";
 import { getStorageAccessUrl } from "../utils/storageAccess";
 import { logAudit } from "../utils/auditlogger";
 
@@ -253,6 +255,8 @@ export default function HRDashboard() {
             emp.clock_out
           ),
 
+          time_in_location: attendanceToday?.time_in_location || null,
+          time_out_location: attendanceToday?.time_out_location || null,
           time_in_face_url: timeInFaceUrl,
           time_out_face_url: timeOutFaceUrl,
 
@@ -297,6 +301,7 @@ export default function HRDashboard() {
 
   return (
     <HRLayout>
+      <style>{`@media (max-width: 768px) { .cibo-hr-dashboard-table .cibo-staff-desktop-table { display: none !important; } }`}</style>
       <div className="cibo-page-root cibo-hr-page cibo-hr-dashboard-page">
       <div style={styles.header}>
         <h2 className="cibo-page-title" style={styles.pageTitle}>
@@ -399,7 +404,8 @@ export default function HRDashboard() {
           </div>
         </div>
 
-        <div style={styles.tableWrapperScrollable}>
+        <StaffMobileAttendanceCards logs={filteredLogs} hoursWorked={(log) => calculateHoursWorked(log.time_in_raw, log.time_out_raw, log.total_hours_worked_raw)} />
+        <div className="cibo-staff-desktop-table" style={styles.tableWrapperScrollable}>
           <table style={styles.table}>
             <thead>
               <tr>
@@ -451,6 +457,8 @@ export default function HRDashboard() {
 
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px" }}>
                           <span>{log.time_in}</span>
+                          <span style={{ fontSize: "11px", color: "#6b7280" }}>{attendanceLocationLabel(log.time_in_location)}</span>
+                          {attendanceMapsUrl(log.time_in_location) && <a href={attendanceMapsUrl(log.time_in_location)} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#c2410c" }}>View on Google Maps ↗</a>}
                           {log.time_in_date && log.time_in_date !== new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(`${log.log_date}T12:00:00+08:00`)) && <span style={{ fontSize: "12px", color: "#6b7280" }}>{log.time_in_date}</span>}
                         </div>
                       </div>
@@ -480,6 +488,8 @@ export default function HRDashboard() {
 
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px" }}>
                           <span>{log.time_out}</span>
+                          <span style={{ fontSize: "11px", color: "#6b7280" }}>{attendanceLocationLabel(log.time_out_location)}</span>
+                          {attendanceMapsUrl(log.time_out_location) && <a href={attendanceMapsUrl(log.time_out_location)} target="_blank" rel="noopener noreferrer" style={{ fontSize: "11px", color: "#c2410c" }}>View on Google Maps ↗</a>}
                           {log.time_out_date && log.time_out_date !== new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(`${log.log_date}T12:00:00+08:00`)) && <span style={{ fontSize: "12px", color: "#6b7280" }}>{log.time_out_date}</span>}
                         </div>
                       </div>
