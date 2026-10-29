@@ -7,6 +7,7 @@ import { useLocation } from "react-router-dom";
 import { logAudit } from "../utils/auditlogger";
 import { getStorageAccessUrl } from "../utils/storageAccess";
 import MobileAttendanceCards from "../components/MobileAttendanceCards";
+import { attendanceMapsUrl, attendanceLocationLabel } from "../utils/attendanceLocation";
 
 export default function Profile() {
   const [profile, setProfile] = useState(null);
@@ -559,7 +560,8 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                   </span>
                 </div>
                 <span style={{ fontSize: "12px", color: "#6b7280", lineHeight: "1.3", maxWidth: "180px", overflowWrap: "anywhere" }}>
-                  {log.time_in_location || "-"}
+                  {attendanceLocationLabel(log.time_in_location)}
+                  {attendanceMapsUrl(log.time_in_location) && <a href={attendanceMapsUrl(log.time_in_location)} target="_blank" rel="noopener noreferrer" style={{ color: "#c2410c", fontSize: "11px" }}>View on Google Maps ↗</a>}
                 </span>
               </div>
             </div>
@@ -642,7 +644,8 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                   )}
                 </div>
                 <span style={{ fontSize: "12px", color: "#6b7280", lineHeight: "1.3", maxWidth: "180px", overflowWrap: "anywhere" }}>
-                  {log.time_out_location || "-"}
+                  {attendanceLocationLabel(log.time_out_location)}
+                  {attendanceMapsUrl(log.time_out_location) && <a href={attendanceMapsUrl(log.time_out_location)} target="_blank" rel="noopener noreferrer" style={{ color: "#c2410c", fontSize: "11px" }}>View on Google Maps ↗</a>}
                 </span>
               </div>
             </div>
