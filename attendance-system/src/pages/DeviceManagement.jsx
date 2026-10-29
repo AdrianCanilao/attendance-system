@@ -136,7 +136,7 @@ export default function DeviceManagement() {
           <span style={styles.count}>{filtered.length} device(s)</span>
         </div>
 
-        <div className="cibo-device-desktop" style={styles.tableWrap}>
+        <div className="cibo-device-desktop" role="region" aria-label="Device management table; scroll horizontally to see all columns" tabIndex={0} style={{ ...styles.tableWrap, maxWidth: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch", overscrollBehaviorX: "contain" }}>
           <table style={styles.table}>
             <colgroup>
               <col style={{ width: "19%" }} />
@@ -144,8 +144,8 @@ export default function DeviceManagement() {
               <col style={{ width: "14%" }} />
               <col style={{ width: "8%" }} />
               <col style={{ width: "10%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "20%" }} />
+              <col style={{ width: "16%" }} />
+              <col style={{ width: "16%" }} />
             </colgroup>
             <thead><tr>
               <th style={styles.th}>Device</th><th style={styles.th}>User</th>
@@ -170,7 +170,7 @@ export default function DeviceManagement() {
                 </select>
               </th>
               <th style={styles.th}>
-                <div style={styles.dateHeader}>
+                <div style={{ ...styles.dateHeader, flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
                   <span>Date</span>
                   <DatePicker
                     selected={dateFilter ? new Date(dateFilter + "T12:00:00") : new Date()}
@@ -188,7 +188,7 @@ export default function DeviceManagement() {
                   />
                 </div>
               </th>
-              <th style={styles.th}>Action</th>
+              <th style={{ ...styles.th, verticalAlign: "bottom" }}><div style={{ paddingBottom: 2 }}>Action</div></th>
             </tr></thead>
             <tbody>
               {loading ? (
@@ -306,7 +306,7 @@ const styles = {
   search: { width: "340px", maxWidth: "100%", padding: "11px 13px", border: "1px solid #d1d5db", borderRadius: "8px", outline: "none", background: "#fff" },
   count: { color: "#667085", fontSize: "13px" },
   tableWrap: { overflowX: "auto", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px" },
-  table: { width: "100%", tableLayout: "fixed", borderCollapse: "collapse", minWidth: "1100px" },
+  table: { width: "100%", tableLayout: "fixed", borderCollapse: "collapse", minWidth: "1200px" },
   th: { textAlign: "left", padding: "13px 14px", background: "#f9fafb", borderBottom: "1px solid #e5e7eb", color: "#475467", fontSize: "12px", fontWeight: 700 },
   headerSelect: { display: "block", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", border: "none", outline: "none", background: "transparent", color: "#475467", fontSize: "12px", fontWeight: 700, cursor: "pointer", padding: 0, textOverflow: "ellipsis" },
   dateHeader: { display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "7px", whiteSpace: "nowrap" },
