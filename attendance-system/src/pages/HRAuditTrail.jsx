@@ -81,6 +81,15 @@ export default function HRAuditTrail() {
 
   return (
     <HRLayout>
+      <style>{`
+        .cibo-audit-scroll { max-width: 100%; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+        .cibo-audit-scroll:focus-visible { outline: 2px solid #f97316; outline-offset: 2px; }
+        @media (max-width: 768px) {
+          .cibo-audit-scroll > div { min-width: 820px; }
+          .cibo-audit-scroll [data-audit-role], .cibo-audit-scroll [data-audit-action] { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
+          .cibo-audit-scroll [data-audit-role] span { max-width: none; overflow-wrap: normal; }
+        }
+      `}</style>
       <div className="cibo-page-root cibo-hr-page cibo-hr-audit-page" style={styles.container}>
         <h1 className="cibo-page-title" style={styles.title}>HR Audit Trail</h1>
 
@@ -98,6 +107,7 @@ export default function HRAuditTrail() {
           </button>
         </div>
 
+        <div className="cibo-audit-scroll" role="region" aria-label="Audit trail table, swipe horizontally to view all columns" tabIndex={0}>
         <div style={styles.card}>
           <div style={styles.headerRow}>
             <div style={styles.headerCell}>User</div>
@@ -146,15 +156,16 @@ export default function HRAuditTrail() {
             paginatedLogs.map((log) => (
               <div key={log.id} style={styles.row}>
                 <div style={styles.cell}>{log.user_name || "Unknown"}</div>
-                <div style={styles.cell}>
+                <div style={styles.cell} data-audit-role>
                   <span style={styles.roleBadge}>{normalizeRole(log.role) === "maintenance" ? "Maintenance" : (roleOptions.find((role) => role.value === normalizeRole(log.role))?.label || "Unknown")}</span>
                 </div>
-                <div style={styles.cell}>{log.action || "-"}</div>
+                <div style={styles.cell} data-audit-action>{log.action || "-"}</div>
                 <div style={styles.cell}>{log.description || "-"}</div>
                 <div style={styles.cell}>{new Date(log.created_at).toLocaleString()}</div>
               </div>
             ))
           )}
+        </div>
         </div>
 
         {!loading && filteredLogs.length > 0 && (
