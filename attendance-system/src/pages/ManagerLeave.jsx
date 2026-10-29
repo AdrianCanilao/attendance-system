@@ -170,6 +170,9 @@ export default function ManagerLeave() {
 
                       <td style={styles.cell}>
                         {req.start_date} - {req.end_date}
+                        <div style={{ fontSize: 12, color: "#64748b" }}>
+                          {req.duration_type === "half_day" ? "Half Day (" + req.half_day_period + ", 0.5 credit)" : "Full Day"}
+                        </div>
                       </td>
 
                       <td style={styles.cell}>
