@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import HRLayout from "../layouts/HRLayout";
 import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { supabase } from "../supabaseClient";
 
 const PAGE_SIZE = 10;
@@ -151,6 +152,7 @@ export default function HRAuditTrail() {
                   dateFormat="dd/MM/yyyy"
                   className="calendar-input"
                   popperPlacement="bottom-end"
+                  popperClassName="cibo-audit-calendar"
                   ariaLabelledBy="audit-date-filter-label"
                 />
               </div>
