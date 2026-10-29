@@ -1,4 +1,5 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { FaBars, FaTimes, FaUser, FaChartBar, FaClipboardList, FaSignOutAlt } from "react-icons/fa";
 import { supabase } from "../supabaseClient";
 import { logCurrentUserAudit } from "../utils/auditlogger";
 import { FaBell } from "react-icons/fa";
@@ -8,6 +9,9 @@ import { useEffect, useRef, useState } from "react";
 export default function EmployeeLayout({ children }) {
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
 
   const [showNotifications, setShowNotifications] =
     useState(false);
@@ -266,7 +270,34 @@ export default function EmployeeLayout({ children }) {
   };
 
   return (
-    <div className="cibo-layout" style={styles.container}>
+    <div className="cibo-layout cibo-employee-layout" style={styles.container}>
+
+
+      <style>{`
+        .cibo-employee-mobile-logo, .cibo-employee-menu-toggle, .cibo-employee-mobile-nav { display: none; }
+        @media (max-width: 768px) {
+          .cibo-employee-layout > .cibo-sidebar { display: none !important; }
+          .cibo-employee-layout .cibo-main { min-width: 0 !important; width: 100% !important; }
+          .cibo-employee-layout .cibo-topbar { padding: 0 12px !important; gap: 10px !important; overflow: visible !important; }
+          .cibo-employee-mobile-logo { display: block; width: 42px; height: 42px; flex-shrink: 0; object-fit: contain; }
+          .cibo-employee-layout .cibo-topbar-title { max-width: none !important; flex: 1 1 auto !important; min-width: 0 !important; font-size: 14px !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+          .cibo-employee-layout .cibo-employee-top-actions { gap: 12px !important; min-width: 0 !important; }
+          .cibo-employee-layout .cibo-top-profile, .cibo-employee-layout .cibo-employee-top-actions > button:not(.cibo-employee-menu-toggle) { display: none !important; }
+          .cibo-employee-menu-toggle { display: flex; align-items: center; justify-content: center; width: 42px; height: 44px; flex-shrink: 0; background: transparent; border: 0; border-radius: 8px; color: #1f2937; font-size: 21px; cursor: pointer; }
+          .cibo-employee-menu-toggle:focus-visible, .cibo-employee-mobile-nav button:focus-visible { outline: 3px solid #f97316; outline-offset: 2px; }
+          .cibo-employee-mobile-nav.is-open { display: flex; }
+          .cibo-employee-mobile-nav { position: absolute; top: 64px; left: 0; right: 0; z-index: 2999; background: #1f2937; padding: 12px; flex-direction: column; gap: 4px; box-shadow: 0 10px 22px rgba(0,0,0,.18); max-height: calc(100dvh - 64px); overflow-y: auto; }
+          .cibo-employee-mobile-nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 14px; border: 0; border-radius: 8px; color: #fff; background: transparent; text-align: left; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+          .cibo-employee-mobile-nav button:hover { background: #f97316; }
+          .cibo-employee-layout .cibo-content { padding: 16px 14px !important; min-width: 0 !important; }
+          .cibo-employee-layout .cibo-notification-dropdown { max-width: calc(100vw - 20px) !important; }
+        }
+        @media (max-width: 374px) {
+          .cibo-employee-layout .cibo-topbar { padding: 0 8px !important; gap: 6px !important; }
+          .cibo-employee-layout .cibo-topbar-title { font-size: 12px !important; }
+          .cibo-employee-layout .cibo-employee-top-actions { gap: 8px !important; }
+        }
+      `}</style>
 
       {/* SIDEBAR */}
       <Sidebar role="employee" />
@@ -276,6 +307,7 @@ export default function EmployeeLayout({ children }) {
 
         {/* TOPBAR */}
         <div className="cibo-topbar" style={styles.topbar}>
+          <img className="cibo-employee-mobile-logo" src="/cibologo.png" alt="CIBO" />
 
           <h3 className="cibo-topbar-title" style={{ margin: 0 }}>
 
@@ -286,7 +318,7 @@ export default function EmployeeLayout({ children }) {
 
           </h3>
 
-          <div style={styles.topRight}>
+          <div className="cibo-employee-top-actions" style={styles.topRight}>
 
             {/* NOTIFICATION */}
             <div
@@ -366,6 +398,8 @@ export default function EmployeeLayout({ children }) {
 
             </div>
 
+            <button type="button" className="cibo-employee-menu-toggle" aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"} aria-expanded={mobileMenuOpen} aria-controls="cibo-employee-mobile-nav" onClick={() => setMobileMenuOpen(value => !value)}>{mobileMenuOpen ? <FaTimes /> : <FaBars />}</button>
+
             {/* PROFILE */}
             <div className="cibo-top-profile" style={styles.profile}>
 
@@ -399,6 +433,14 @@ export default function EmployeeLayout({ children }) {
           </div>
 
         </div>
+
+        <nav id="cibo-employee-mobile-nav" className={`cibo-employee-mobile-nav ${mobileMenuOpen ? "is-open" : ""}`} aria-label="Employee mobile navigation" aria-hidden={!mobileMenuOpen}>
+          <button type="button" onClick={() => navigate("/employee/profile")}><FaUser /> Profile</button>
+          <button type="button" onClick={() => navigate("/employee")}><FaChartBar /> Attendance Log</button>
+          <button type="button" onClick={() => navigate("/employee/leave-request")}><FaClipboardList /> Leave Request</button>
+          <button type="button" onClick={() => navigate("/employee/myleave")}><FaClipboardList /> Leave Records</button>
+          <button type="button" onClick={handleLogout}><FaSignOutAlt /> Logout</button>
+        </nav>
 
         {/* CONTENT */}
         <div className="cibo-content" style={styles.content}>
