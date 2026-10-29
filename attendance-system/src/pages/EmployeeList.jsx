@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import ManagerLayout from "../layouts/ManagerLayout";
+import StaffMobileAttendanceCards from "../components/StaffMobileAttendanceCards";
 import { getStorageAccessUrl } from "../utils/storageAccess";
 import { FaSearch } from "react-icons/fa";
 import * as XLSX from "xlsx-js-style";
@@ -161,7 +162,12 @@ export default function EmployeeList() {
         };
       });
 
-      setAttendanceLogs(mergedLogs);
+      const withPhotos = await Promise.all(mergedLogs.map(async (log) => ({
+        ...log,
+        time_in_face_url: await getStorageAccessUrl("faces", log.time_in_face_url),
+        time_out_face_url: await getStorageAccessUrl("faces", log.time_out_face_url),
+      })));
+      setAttendanceLogs(withPhotos);
     }
 
     setShowAttendanceModal(true);
@@ -485,6 +491,7 @@ export default function EmployeeList() {
 
   return (
     <ManagerLayout>
+      <style>{`@media (max-width: 768px) { .cibo-employee-list-modal .cibo-staff-desktop-table { display: none !important; } .cibo-employee-list-modal { max-height: 90dvh; overflow-y: auto; padding: 16px !important; box-sizing: border-box; } }`}</style>
       <div className="cibo-page-root cibo-employee-list-page" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>
           Employee List
@@ -610,7 +617,16 @@ export default function EmployeeList() {
               </button>
             </div>
 
-            <div style={styles.attendanceContainer}>
+            <StaffMobileAttendanceCards logs={attendanceLogs.map((log) => ({
+              ...log,
+              name: selectedEmployee?.full_name,
+              position: selectedEmployee?.position,
+              time_in: log.time_in ? new Date(log.time_in).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Manila" }) : "—",
+              time_out: log.time_out ? new Date(log.time_out).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Manila" }) : "—",
+              late: formatAttendanceMinutes(log.late_minutes),
+              overtime: formatAttendanceMinutes(log.overtime_minutes),
+            }))} hoursWorked={(log) => calculateHoursWorked(log.time_in_raw || attendanceLogs.find((item) => item.id === log.id)?.time_in, log.time_out_raw || attendanceLogs.find((item) => item.id === log.id)?.time_out)} />
+            <div className="cibo-staff-desktop-table" style={styles.attendanceContainer}>
               <table style={styles.table}>
                 <thead>
                   <tr>
