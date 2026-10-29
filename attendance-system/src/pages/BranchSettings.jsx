@@ -8,6 +8,12 @@ const BACKEND_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").re
 export default function BranchSettings() {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [kioskFilter, setKioskFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("name");
+  const [page, setPage] = useState(1);
+  const pageSize = 9;
   const [showForm, setShowForm] = useState(false);
   const [editingBranch, setEditingBranch] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -253,6 +259,27 @@ export default function BranchSettings() {
     await loadKiosks();
   }
 
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredBranches = branches.filter((branch) => {
+    const kiosk = kiosks.find((item) => item.branch_id === branch.id);
+    const matchesSearch = [branch.branch_name, branch.branch_code, branch.address, kiosk?.kiosk_code]
+      .some((value) => String(value || "").toLowerCase().includes(normalizedSearch));
+    const matchesStatus = statusFilter === "all" ||
+      (statusFilter === "active" ? branch.is_active : !branch.is_active);
+    const matchesKiosk = kioskFilter === "all" ||
+      (kioskFilter === "paired" ? Boolean(kiosk?.is_paired) : !kiosk?.is_paired);
+    return matchesSearch && matchesStatus && matchesKiosk;
+  }).sort((a, b) => {
+    if (sortOrder === "code") return (a.branch_code || "").localeCompare(b.branch_code || "");
+    if (sortOrder === "status") return Number(b.is_active) - Number(a.is_active) ||
+      (a.branch_name || "").localeCompare(b.branch_name || "");
+    return (a.branch_name || "").localeCompare(b.branch_name || "");
+  });
+  const totalPages = Math.max(1, Math.ceil(filteredBranches.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visibleBranches = filteredBranches.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const updateFilter = (setter) => (value) => { setter(value); setPage(1); };
+
   return (
     <HRLayout>
       <div className="cibo-page-root cibo-hr-page cibo-hr-branch-page" style={styles.wrapper}>
@@ -269,13 +296,37 @@ export default function BranchSettings() {
           </button>
         </div>
 
+        <div className="cibo-branch-toolbar">
+          <label className="cibo-branch-search">
+            <span>Search branches</span>
+            <input type="search" value={search} onChange={(e) => updateFilter(setSearch)(e.target.value)}
+              placeholder="Name, code, address or kiosk ID" aria-label="Search branches" />
+          </label>
+          <label><span>Status</span><select value={statusFilter} onChange={(e) => updateFilter(setStatusFilter)(e.target.value)}>
+            <option value="all">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option>
+          </select></label>
+          <label><span>Kiosk</span><select value={kioskFilter} onChange={(e) => updateFilter(setKioskFilter)(e.target.value)}>
+            <option value="all">All kiosks</option><option value="paired">Paired</option><option value="unpaired">Not paired</option>
+          </select></label>
+          <label><span>Sort by</span><select value={sortOrder} onChange={(e) => updateFilter(setSortOrder)(e.target.value)}>
+            <option value="name">Branch name</option><option value="code">Branch code</option><option value="status">Active first</option>
+          </select></label>
+          <button type="button" className="cibo-branch-clear" onClick={() => {
+            setSearch(""); setStatusFilter("all"); setKioskFilter("all"); setSortOrder("name"); setPage(1);
+          }}>Clear filters</button>
+        </div>
+        <div className="cibo-branch-results" aria-live="polite">
+          {loading ? "Loading..." : `Showing ${filteredBranches.length ? (currentPage - 1) * pageSize + 1 : 0}–${Math.min(currentPage * pageSize, filteredBranches.length)} of ${filteredBranches.length} matching branches (${branches.length} total)`}
+        </div>
         <div className="cibo-branch-list" style={styles.list}>
           {loading ? (
             <div style={styles.empty}>Loading branches...</div>
           ) : branches.length === 0 ? (
             <div style={styles.empty}>No branches found.</div>
+          ) : filteredBranches.length === 0 ? (
+            <div style={styles.empty}>No branches match your filters. Try a different search or clear filters.</div>
           ) : (
-            branches.map((branch) => (
+            visibleBranches.map((branch) => (
               <div key={branch.id} className="cibo-branch-card" style={styles.card}>
                 <div style={styles.cardTop}>
                   <div>
@@ -336,6 +387,38 @@ export default function BranchSettings() {
           )}
         </div>
 
+        {!loading && totalPages > 1 && (
+          <nav className="cibo-branch-pagination" aria-label="Branch pages">
+            <button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous</button>
+            <span>Page {currentPage} of {totalPages}</span>
+            <button type="button" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)}>Next</button>
+          </nav>
+        )}
+        <style>{`
+          .cibo-branch-toolbar { display:grid; grid-template-columns:minmax(220px,2fr) repeat(3,minmax(130px,1fr)) auto; gap:12px; align-items:end; margin-bottom:14px; }
+          .cibo-branch-toolbar label { display:flex; flex-direction:column; gap:6px; min-width:0; font-size:13px; font-weight:600; color:#334155; }
+          .cibo-branch-toolbar input, .cibo-branch-toolbar select { box-sizing:border-box; width:100%; min-width:0; height:42px; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#111827; padding:0 12px; font:inherit; }
+          .cibo-branch-clear, .cibo-branch-pagination button { height:42px; padding:0 14px; background:#fff; border:1px solid #cbd5e1; border-radius:9px; color:#334155; cursor:pointer; font-weight:600; }
+          .cibo-branch-results { font-size:13px; color:#64748b; margin-bottom:14px; }
+          .cibo-branch-pagination { display:flex; align-items:center; justify-content:center; gap:16px; margin:24px 0; color:#334155; }
+          .cibo-branch-pagination button:disabled { opacity:.45; cursor:not-allowed; }
+          @media(max-width:1000px) { .cibo-branch-toolbar { grid-template-columns:repeat(2,minmax(0,1fr)); } .cibo-branch-search { grid-column:1/-1; } }
+          @media(max-width:600px) {
+            .cibo-hr-branch-page { padding:16px !important; }
+            .cibo-branch-page-header { flex-direction:column; align-items:stretch !important; }
+            .cibo-branch-page-header > button { width:100%; }
+            .cibo-branch-toolbar { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+            .cibo-branch-toolbar .cibo-branch-clear { grid-column:1/-1; }
+            .cibo-branch-list { grid-template-columns:minmax(0,1fr) !important; gap:12px !important; }
+            .cibo-branch-card { padding:16px !important; min-width:0; }
+            .cibo-branch-card > div { min-width:0; }
+            .cibo-branch-card button { white-space:normal; }
+            .cibo-branch-actions { flex-wrap:wrap; }
+            .cibo-branch-modal-overlay { padding:12px !important; }
+            .cibo-branch-modal { max-height:90dvh; overflow-y:auto; }
+          }
+          @media(max-width:360px) { .cibo-branch-toolbar { grid-template-columns:minmax(0,1fr); } .cibo-branch-search,.cibo-branch-toolbar .cibo-branch-clear { grid-column:auto; } }
+        `}</style>
         {setupInfo && (
           <div className="cibo-branch-modal-overlay" style={styles.overlay}>
             <div className="cibo-branch-modal" style={styles.setupModal}>
