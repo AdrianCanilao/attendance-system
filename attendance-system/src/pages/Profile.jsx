@@ -20,6 +20,13 @@ export default function Profile() {
   });
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [attendanceMonth, setAttendanceMonth] = useState(() => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit" }).slice(0, 7));
+  const [monthPickerOpen, setMonthPickerOpen] = useState(false);
+  const changeAttendanceMonth = (step) => {
+    const [year, month] = attendanceMonth.split("-").map(Number);
+    const next = new Date(year, month - 1 + step, 1);
+    setAttendanceMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`);
+  };
+  const attendanceMonthLabel = new Date(Number(attendanceMonth.slice(0, 4)), Number(attendanceMonth.slice(5, 7)) - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const monthlyAttendanceLogs = attendanceLogs.filter((log) => String(log.log_date || "").slice(0, 7) === attendanceMonth);
   const [calendarLeaves, setCalendarLeaves] = useState([]);
   const [branchLeaveEmployees, setBranchLeaveEmployees] = useState([]);
@@ -419,10 +426,29 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
             Attendance Summary
           </h2>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap", fontSize: 14 }}>
-            View month
-            <input type="month" value={attendanceMonth} onChange={(event) => setAttendanceMonth(event.target.value)} aria-label="Attendance summary month" style={{ padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, maxWidth: "100%" }} />
-          </label>
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12, fontSize: 14 }}>
+            <span>View month</span>
+            <button type="button" onClick={() => changeAttendanceMonth(-1)} aria-label="Previous month" style={{ padding: "7px 12px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 18 }}>‹</button>
+            <button type="button" onClick={() => setMonthPickerOpen(true)} aria-label={`Choose month, currently ${attendanceMonthLabel}`} style={{ padding: "9px 14px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", cursor: "pointer", minWidth: 150, fontWeight: 600 }}>{attendanceMonthLabel} ▾</button>
+            <button type="button" onClick={() => changeAttendanceMonth(1)} aria-label="Next month" style={{ padding: "7px 12px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 18 }}>›</button>
+          </div>
+          {monthPickerOpen && (
+            <div onClick={() => setMonthPickerOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(15,23,42,.5)", display: "flex", justifyContent: "center", alignItems: "center", padding: 16, boxSizing: "border-box" }}>
+              <section role="dialog" aria-modal="true" aria-label="Choose attendance month" onClick={(event) => event.stopPropagation()} style={{ background: "#fff", borderRadius: 12, padding: 18, width: "100%", maxWidth: 360, boxSizing: "border-box", boxShadow: "0 12px 32px rgba(0,0,0,.18)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 8 }}>
+                  <button type="button" onClick={() => setAttendanceMonth(`${Number(attendanceMonth.slice(0, 4)) - 1}${attendanceMonth.slice(4)}`)} aria-label="Previous year" style={{ padding: "6px 12px", cursor: "pointer" }}>‹</button>
+                  <strong>{attendanceMonth.slice(0, 4)}</strong>
+                  <button type="button" onClick={() => setAttendanceMonth(`${Number(attendanceMonth.slice(0, 4)) + 1}${attendanceMonth.slice(4)}`)} aria-label="Next year" style={{ padding: "6px 12px", cursor: "pointer" }}>›</button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                  {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((name, index) => (
+                    <button key={name} type="button" onClick={() => { setAttendanceMonth(`${attendanceMonth.slice(0, 4)}-${String(index + 1).padStart(2, "0")}`); setMonthPickerOpen(false); }} aria-pressed={Number(attendanceMonth.slice(5, 7)) === index + 1} style={{ padding: "12px 4px", borderRadius: 7, border: "1px solid #cbd5e1", background: Number(attendanceMonth.slice(5, 7)) === index + 1 ? "#ffedd5" : "#fff", cursor: "pointer", fontWeight: Number(attendanceMonth.slice(5, 7)) === index + 1 ? 700 : 400 }}>{name}</button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setMonthPickerOpen(false)} style={{ marginTop: 16, padding: "8px 12px", border: "1px solid #cbd5e1", background: "#fff", borderRadius: 7, cursor: "pointer", width: "100%" }}>Close</button>
+              </section>
+            </div>
+          )}
           <div style={{ maxHeight: 620, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}>
           <MobileAttendanceCards logs={monthlyAttendanceLogs} onCorrect={(log) => {
             if (log.correction?.status === "Pending") return;
