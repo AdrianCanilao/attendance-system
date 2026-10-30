@@ -3378,13 +3378,19 @@ async def upload_face(
                 {"content-type": "image/jpeg", "upsert": "false"}
             )
 
-            # Keep a shared registry entry for each new face enrollment.
-            supabase.from_("face_enrollment_registry").insert({
-                "employee_id": user_id,
-                "embedding": new_embedding,
-                "model_name": "ArcFace",
-                "status": "active",
-            }).execute()
+            # The three captured angles belong to one employee enrollment.
+            # Keep one active registry identity rather than inserting a conflicting
+            # row for every photo; the in-memory cache retains all three angles.
+            existing_enrollment = supabase.from_("face_enrollment_registry").select(
+                "id"
+            ).eq("employee_id", user_id).eq("status", "active").limit(1).execute()
+            if not (existing_enrollment.data or []):
+                supabase.from_("face_enrollment_registry").insert({
+                    "employee_id": user_id,
+                    "embedding": new_embedding,
+                    "model_name": "ArcFace",
+                    "status": "active",
+                }).execute()
             target_profile = supabase.from_("employee_profiles").select(
                 "id, full_name, branch_id, shift_id, role_id"
             ).eq("id", user_id).single().execute().data
