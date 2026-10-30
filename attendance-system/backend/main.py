@@ -20,6 +20,7 @@ from deepface import DeepFace
     #cosine_distance as insightface_cosine_distance
 #)
 import time
+import asyncio
 from mediapipe.python.solutions import face_mesh as mp_face_mesh
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
@@ -3317,6 +3318,10 @@ async def check_face_duplicate(file: UploadFile = File(...), authorization: str 
         raise HTTPException(status_code=422, detail="Face screening failed. Recapture and retry.")
 
 
+# Serializes enrollments within this worker. A shared database lock is still required
+# to coordinate multiple Render workers or instances.
+face_enrollment_lock = asyncio.Lock()
+
 # 🔥 UPLOAD FACE
 @app.post("/upload-face")
 async def upload_face(
@@ -3342,35 +3347,36 @@ async def upload_face(
         raise
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid session or employee.")
-    try:
-        contents = await file.read()
+    async with face_enrollment_lock:
+        try:
+            contents = await file.read()
 
-        safe_name = normalize_name(full_name)
-        duplicate, new_embedding = _is_existing_face(contents, excluded_id=user_id)
-        if duplicate:
-            return {"status": "Error", "message": "Similar face already enrolled. Contact HR for review."}
-        file_name = f"employees/{user_id}/face_{int(time.time() * 1000)}.jpg"
+            safe_name = normalize_name(full_name)
+            duplicate, new_embedding = _is_existing_face(contents, excluded_id=user_id)
+            if duplicate:
+                return {"status": "Error", "message": "Similar face already enrolled. Contact HR for review."}
+            file_name = f"employees/{user_id}/face_{int(time.time() * 1000)}.jpg"
 
-        supabase.storage.from_("faces").upload(
-            file_name,
-            contents,
-            {"content-type": "image/jpeg", "upsert": "true"}
-        )
+            supabase.storage.from_("faces").upload(
+                file_name,
+                contents,
+                {"content-type": "image/jpeg", "upsert": "true"}
+            )
 
-        target_profile = supabase.from_("employee_profiles").select(
-            "id, full_name, branch_id, shift_id, role_id"
-        ).eq("id", user_id).single().execute().data
-        if target_profile:
-            kiosk_face_cache.append({"employee": target_profile, "embedding": new_embedding})
+            target_profile = supabase.from_("employee_profiles").select(
+                "id, full_name, branch_id, shift_id, role_id"
+            ).eq("id", user_id).single().execute().data
+            if target_profile:
+                kiosk_face_cache.append({"employee": target_profile, "embedding": new_embedding})
 
-        return {
-            "status": "Uploaded",
-            "file": file_name,
-            "url": file_name
-        }
+            return {
+                "status": "Uploaded",
+                "file": file_name,
+                "url": file_name
+            }
 
-    except Exception as e:
-        return {"status": "Error", "message": str(e)}
+        except Exception as e:
+            return {"status": "Error", "message": str(e)}
 # ============================================================
 # 🔥 LIVE REGISTRATION FACE VALIDATION
 # ============================================================
