@@ -410,6 +410,7 @@ export default function RegisterEmployee() {
 
         const res = await fetch(API_URL + "/upload-face", {
           method: "POST",
+          headers: { Authorization: "Bearer " + accessToken },
           body: formData,
         });
 
