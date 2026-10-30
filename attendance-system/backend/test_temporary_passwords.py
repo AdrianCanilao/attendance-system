@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from temporary_passwords import (
+from .temporary_passwords import (
     generate_temporary_password,
     temporary_password_expires_at,
     temporary_password_expired,
