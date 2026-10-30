@@ -212,6 +212,13 @@ async def device_check(
 ):
     token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
     user = authenticate_any_user(token)
+    from .password_setup_api import _status
+    try:
+        password_status, _ = _status(user.id)
+    except Exception:
+        raise HTTPException(status_code=503, detail="Unable to verify password setup.")
+    if password_status != "active":
+        raise HTTPException(status_code=403, detail="Complete password setup before registering a device.")
     device_id = (payload.device_id or "").strip()
     if len(device_id) < 20 or len(device_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid device identifier.")
