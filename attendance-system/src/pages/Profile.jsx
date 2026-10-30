@@ -367,7 +367,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
 
           <div className="cibo-profile-calendar">
             <AttendanceCalendar attendance={attendanceLogs} leaves={calendarLeaves}
-              showDetails={!(location.pathname.startsWith("/manager") || location.pathname.startsWith("/maintenance"))}
+              showDetails={false}
               onSelectDate={(date) => { if (location.pathname.startsWith("/manager") || location.pathname.startsWith("/maintenance")) setBranchLeaveDate(date); }} />
           </div>
           {branchLeaveDate && (location.pathname.startsWith("/manager") || location.pathname.startsWith("/maintenance")) && (
