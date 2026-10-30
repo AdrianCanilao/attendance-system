@@ -294,7 +294,7 @@ export default function EmployeeLayout({ children }) {
           .cibo-employee-layout .cibo-role-mobile-nav.is-open { display: flex; }
           .cibo-employee-layout .cibo-role-mobile-nav button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 12px 14px; border: 0; border-radius: 8px; color: white; background: transparent; text-align: left; font-size: 14px; font-weight: 500; cursor: pointer; }
           .cibo-employee-layout .cibo-role-mobile-nav button[aria-current="page"], .cibo-employee-layout .cibo-role-mobile-nav button:hover { background: #f97316; }
-          .cibo-employee-layout .cibo-role-mobile-nav .cibo-role-nav-group-toggle { border: 2px solid #111827; padding: 10px 12px; }
+          .cibo-employee-layout .cibo-role-mobile-nav .cibo-role-nav-group-toggle { border: 0; padding: 12px 14px; }
           .cibo-employee-layout .cibo-role-mobile-nav .cibo-role-nav-group-toggle > span { flex: 1; }
           .cibo-employee-layout .cibo-role-mobile-nav .cibo-role-nav-submenu { display: flex; flex-direction: column; gap: 2px; padding: 4px 0 8px 26px; }
           .cibo-employee-layout .cibo-role-mobile-nav .cibo-role-nav-submenu button { min-height: 38px; padding: 9px 10px; font-size: 13px; color: #cbd5e1; }
