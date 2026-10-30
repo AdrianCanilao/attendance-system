@@ -16,7 +16,7 @@ export default function EmployeeList() {
   const [passwordCopied, setPasswordCopied] = useState(false);
   const [resettingUserId, setResettingUserId] = useState(null);
   const resetEmployeePassword = async (employee) => {
-    if (!window.confirm("Issue a new temporary password for " + employee.full_name + "? Their previous password will stop working.")) return;
+    if (resettingUserId) return;
     setResettingUserId(employee.id);
     try {
       const { data } = await supabase.auth.getSession();
