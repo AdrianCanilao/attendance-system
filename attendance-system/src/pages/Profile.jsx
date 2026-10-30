@@ -19,7 +19,7 @@ export default function Profile() {
     timeOut: 0,
   });
   const [attendanceLogs, setAttendanceLogs] = useState([]);
-  const [attendanceMonth, setAttendanceMonth] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit" }).slice(0, 7));
+  const [attendanceMonth, setAttendanceMonth] = useState(() => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit" }).slice(0, 7));
   const monthlyAttendanceLogs = attendanceLogs.filter((log) => String(log.log_date || "").slice(0, 7) === attendanceMonth);
   const [calendarLeaves, setCalendarLeaves] = useState([]);
   const [branchLeaveEmployees, setBranchLeaveEmployees] = useState([]);
