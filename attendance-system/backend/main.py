@@ -3351,16 +3351,17 @@ async def upload_face(
         try:
             contents = await file.read()
 
-            safe_name = normalize_name(full_name)
+            if not contents or len(contents) > 5 * 1024 * 1024:
+                raise HTTPException(status_code=413, detail="Face image must be between 1 byte and 5 MB.")
             duplicate, new_embedding = _is_existing_face(contents, excluded_id=user_id)
             if duplicate:
                 return {"status": "Error", "message": "Similar face already enrolled. Contact HR for review."}
-            file_name = f"employees/{user_id}/face_{int(time.time() * 1000)}.jpg"
+            file_name = f"employees/{user_id}/face_{secrets.token_hex(16)}.jpg"
 
             supabase.storage.from_("faces").upload(
                 file_name,
                 contents,
-                {"content-type": "image/jpeg", "upsert": "true"}
+                {"content-type": "image/jpeg", "upsert": "false"}
             )
 
             target_profile = supabase.from_("employee_profiles").select(
@@ -3375,8 +3376,10 @@ async def upload_face(
                 "url": file_name
             }
 
-        except Exception as e:
-            return {"status": "Error", "message": str(e)}
+        except HTTPException as exc:
+            return {"status": "Error", "message": exc.detail}
+        except Exception:
+            return {"status": "Error", "message": "Unable to upload face image. Please try again."}
 # ============================================================
 # 🔥 LIVE REGISTRATION FACE VALIDATION
 # ============================================================
