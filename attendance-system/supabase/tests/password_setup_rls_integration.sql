@@ -48,7 +48,7 @@ begin
 end $$;
 -- Pending accounts must also be unable to write via direct PostgREST.
 -- Catch only the expected row-level security rejection.
-do $
+do $$
 declare t text;
 begin
   foreach t in array array['attendance_logs','employee_profiles','attendance_corrections','audit_logs'] loop
@@ -59,7 +59,7 @@ begin
       null;
     end;
   end loop;
-end $;
+end $$;
 -- Existing sessions with an unchanged JWT subject must still be denied.
 set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000002';
 do $$
