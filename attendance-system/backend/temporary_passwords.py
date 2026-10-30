@@ -9,7 +9,7 @@ import secrets
 import string
 
 TEMPORARY_PASSWORD_TTL = timedelta(hours=12)
-PERMANENT_PASSWORD_MIN_LENGTH = 12
+PERMANENT_PASSWORD_MIN_LENGTH = 8
 
 # Easy to read and type; two familiar words, one @, and eight random digits.
 # Passwords are generated with a cryptographic RNG, never stored in plaintext.
