@@ -23,8 +23,8 @@ export default function SetupPassword() {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (password.length < 12 || password.length > 64 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
-      setMessage("Use 12–64 characters, including uppercase, lowercase, a number and a symbol.");
+    if (password.length < 8 || password.length > 64 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      setMessage("Use 8–64 characters, including uppercase, lowercase, a number and a symbol.");
       return;
     }
     if (password !== confirm) { setMessage("Passwords do not match."); return; }
@@ -50,7 +50,7 @@ export default function SetupPassword() {
   };
 
   const requirements = [
-    { label: "12–64 characters", met: password.length >= 12 && password.length <= 64 },
+    { label: "8–64 characters", met: password.length >= 8 && password.length <= 64 },
     { label: "Uppercase letter (A–Z)", met: /[A-Z]/.test(password) },
     { label: "Lowercase letter (a–z)", met: /[a-z]/.test(password) },
     { label: "Number (0–9)", met: /[0-9]/.test(password) },
@@ -69,7 +69,7 @@ export default function SetupPassword() {
         <form onSubmit={submit}>
           <label htmlFor="new-password" style={label}>New password <span style={{ color: "#f97316" }}>*</span></label>
           <div style={inputWrapper}>
-            <input id="new-password" type={showPassword ? "text" : "password"} autoComplete="new-password" minLength={12} maxLength={64} value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Enter new password" style={input} />
+            <input id="new-password" type={showPassword ? "text" : "password"} autoComplete="new-password" minLength={8} maxLength={64} value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Enter new password" style={input} />
             <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Hide new password" : "Show new password"} style={eyeButton}><EyeIcon visible={showPassword}/></button>
           </div>
           <div style={{ background: "#f8fafc", borderRadius: 10, padding: "10px 12px", margin: "0 0 18px", fontSize: 12 }}>
@@ -78,7 +78,7 @@ export default function SetupPassword() {
           </div>
           <label htmlFor="confirm-password" style={label}>Confirm password <span style={{ color: "#f97316" }}>*</span></label>
           <div style={inputWrapper}>
-            <input id="confirm-password" type={showConfirm ? "text" : "password"} autoComplete="new-password" minLength={12} maxLength={64} value={confirm} onChange={(e) => setConfirm(e.target.value)} required placeholder="Confirm new password" style={input} />
+            <input id="confirm-password" type={showConfirm ? "text" : "password"} autoComplete="new-password" minLength={8} maxLength={64} value={confirm} onChange={(e) => setConfirm(e.target.value)} required placeholder="Confirm new password" style={input} />
             <button type="button" onClick={() => setShowConfirm((v) => !v)} aria-label={showConfirm ? "Hide confirmation" : "Show confirmation"} style={eyeButton}><EyeIcon visible={showConfirm}/></button>
           </div>
           {confirm && password !== confirm && <p style={{ color: "#b42318", fontSize: 12 }}>Passwords do not match.</p>}
