@@ -94,6 +94,35 @@ export default function Login() {
         return;
       }
 
+      // The backend owns temporary-password expiration and setup state.
+      // Do not register the device or open a dashboard until setup is complete.
+      let passwordSetup;
+      try {
+        const setupResponse = await fetch(API_URL + "/auth/password-setup/status", {
+          headers: { Authorization: "Bearer " + data.session.access_token },
+        });
+        if (!setupResponse.ok) throw new Error("Password setup check unavailable");
+        passwordSetup = await setupResponse.json();
+      } catch {
+        await supabase.auth.signOut();
+        alert("Unable to verify your account setup. Please try again.");
+        return;
+      }
+      if (passwordSetup.status === "expired") {
+        await supabase.auth.signOut();
+        alert("Your temporary password has expired. Contact your Branch Supervisor or HR.");
+        return;
+      }
+      if (passwordSetup.status === "pending_setup") {
+        navigate("/setup-password");
+        return;
+      }
+      if (passwordSetup.status !== "active") {
+        await supabase.auth.signOut();
+        alert("Account setup status could not be verified.");
+        return;
+      }
+
       const deviceResponse = await fetch(API_URL + "/auth/device-check", {
         method: "POST",
         headers: {
