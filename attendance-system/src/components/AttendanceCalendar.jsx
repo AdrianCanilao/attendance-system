@@ -5,7 +5,7 @@ const localDate = (value) => value ? new Intl.DateTimeFormat("en-CA", { timeZone
 const dateKey = (year, month, day) => `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 const timeLabel = (value) => value ? new Date(value).toLocaleTimeString("en-US", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }) : "—";
 
-export default function AttendanceCalendar({ attendance = [], leaves = [], employees = [], overview = false, onSelectDate }) {
+export default function AttendanceCalendar({ attendance = [], leaves = [], employees = [], overview = false, onSelectDate, showDetails = true }) {
   const [month, setMonth] = useState(() => { const now = new Date(); return new Date(now.getFullYear(), now.getMonth(), 1); });
   const [selected, setSelected] = useState(null);
   const [errorNotice] = useState("");
@@ -75,7 +75,7 @@ export default function AttendanceCalendar({ attendance = [], leaves = [], emplo
         <span style={{ flexShrink: 0 }}><span style={{ display: "inline-block", width: 9, height: 9, background: "#f8fafc", border: "1px solid #cbd5e1", marginRight: 4 }} />No record</span>
       </div>
       {errorNotice && <p role="alert">{errorNotice}</p>}
-      {current && <div style={{ borderTop: "1px solid #e5e7eb", marginTop: 12, paddingTop: 10, fontSize: 12 }}>
+      {showDetails && current && <div style={{ borderTop: "1px solid #e5e7eb", marginTop: 12, paddingTop: 10, fontSize: 12 }}>
         <strong>{new Date(`${current}T12:00:00+08:00`).toLocaleDateString("en-US", { dateStyle: "full", timeZone: "Asia/Manila" })}</strong>
         {overview && <p style={{ margin: "8px 0" }}>Present: {counts.Present || 0} · Absent: {counts.Absent || 0} · On Leave: {counts["On Leave"] || 0} · Incomplete Attendance: {counts["Incomplete Attendance"] || 0} · No record: {counts["No record"] || 0}</p>}
         {overview ? <div style={{ maxHeight: 190, overflowY: "auto" }}>{employees.map((emp) => {
