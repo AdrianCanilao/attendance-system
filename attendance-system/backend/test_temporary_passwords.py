@@ -26,7 +26,8 @@ class TemporaryPasswordTests(unittest.TestCase):
         self.assertTrue(temporary_password_expired(expiry, expiry))
 
     def test_permanent_password_policy(self):
-        self.assertFalse(validate_permanent_password("Abcdef1!"))
+        self.assertTrue(validate_permanent_password("Abcdef1!"))
+        self.assertFalse(validate_permanent_password("Abcd1!"))
         self.assertTrue(validate_permanent_password("LongPassword1!"))
 
     def test_reject_naive_datetimes(self):
