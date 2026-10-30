@@ -3378,6 +3378,13 @@ async def upload_face(
                 {"content-type": "image/jpeg", "upsert": "false"}
             )
 
+            # Keep a shared registry entry for each new face enrollment.
+            supabase.from_("face_enrollment_registry").insert({
+                "employee_id": user_id,
+                "embedding": new_embedding,
+                "model_name": "ArcFace",
+                "status": "active",
+            }).execute()
             target_profile = supabase.from_("employee_profiles").select(
                 "id, full_name, branch_id, shift_id, role_id"
             ).eq("id", user_id).single().execute().data
