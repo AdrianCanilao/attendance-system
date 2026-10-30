@@ -10,6 +10,8 @@ export default function SetupPassword() {
   const [confirm, setConfirm] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -21,8 +23,8 @@ export default function SetupPassword() {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (password.length < 12 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
-      setMessage("Use at least 12 characters, including uppercase, lowercase, a number and a symbol.");
+    if (password.length < 12 || password.length > 64 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      setMessage("Use 12–64 characters, including uppercase, lowercase, a number and a symbol.");
       return;
     }
     if (password !== confirm) { setMessage("Passwords do not match."); return; }
@@ -47,23 +49,54 @@ export default function SetupPassword() {
     }
   };
 
+  const requirements = [
+    { label: "12–64 characters", met: password.length >= 12 && password.length <= 64 },
+    { label: "Uppercase letter (A–Z)", met: /[A-Z]/.test(password) },
+    { label: "Lowercase letter (a–z)", met: /[a-z]/.test(password) },
+    { label: "Number (0–9)", met: /[0-9]/.test(password) },
+    { label: "Special character (e.g. @, !, #)", met: /[^A-Za-z0-9]/.test(password) },
+  ];
+
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#f3f5f8", padding: 20 }}>
-      <section style={{ background: "#fff", width: "min(440px, 100%)", borderRadius: 18, padding: 32, boxShadow: "0 10px 35px #1018281a" }}>
-        <img src="/logo.png" alt="CIBO" style={{ width: 70, display: "block", margin: "0 auto 20px" }} />
-        <h1 style={{ color: "#172033", fontSize: 24 }}>Set your permanent password</h1>
-        <p style={{ color: "#667085" }}>Your temporary password is for account setup only. Choose a strong permanent password to continue.</p>
+    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "linear-gradient(135deg, #172033, #27364e)", padding: "24px 14px", boxSizing: "border-box" }}>
+      <section style={{ background: "#fff", width: "min(440px, 100%)", borderRadius: 22, padding: "clamp(20px, 5vw, 34px)", boxShadow: "0 18px 48px #0005", boxSizing: "border-box" }}>
+        <header style={{ textAlign: "center", marginBottom: 22 }}>
+          <div style={{ width: 64, height: 64, background: "#f97316", borderRadius: 14, display: "grid", placeItems: "center", margin: "0 auto 12px", color: "#fff", fontWeight: 800, letterSpacing: 1 }}>CIBO</div>
+          <div style={{ color: "#ea580c", fontSize: 11, letterSpacing: 2, fontWeight: 700 }}>CIBO ATTENDANCE</div>
+          <h1 style={{ color: "#172033", fontSize: 24, margin: "18px 0 8px" }}>Set your permanent password</h1>
+          <p style={{ color: "#667085", fontSize: 14, lineHeight: 1.5, margin: 0 }}>For your security, replace your temporary password before accessing your dashboard.</p>
+        </header>
         <form onSubmit={submit}>
-          <label htmlFor="new-password">New password</label>
-          <input id="new-password" type="password" autoComplete="new-password" minLength={12} value={password} onChange={(e) => setPassword(e.target.value)} required style={field} />
-          <label htmlFor="confirm-password">Confirm password</label>
-          <input id="confirm-password" type="password" autoComplete="new-password" minLength={12} value={confirm} onChange={(e) => setConfirm(e.target.value)} required style={field} />
-          {message && <p role="alert" style={{ color: "#b42318" }}>{message}</p>}
-          <button disabled={saving} type="submit" style={{ ...field, background: "#ea580c", color: "#fff", border: 0, fontWeight: 700, cursor: "pointer" }}>{saving ? "Saving…" : "Set permanent password"}</button>
+          <label htmlFor="new-password" style={label}>New password <span style={{ color: "#f97316" }}>*</span></label>
+          <div style={inputWrapper}>
+            <input id="new-password" type={showPassword ? "text" : "password"} autoComplete="new-password" minLength={12} maxLength={64} value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Enter new password" style={input} />
+            <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Hide new password" : "Show new password"} style={eyeButton}><EyeIcon visible={showPassword}/></button>
+          </div>
+          <div style={{ background: "#f8fafc", borderRadius: 10, padding: "10px 12px", margin: "0 0 18px", fontSize: 12 }}>
+            <div style={{ fontWeight: 700, color: "#344054", marginBottom: 6 }}>Password requirements</div>
+            {requirements.map((req) => <div key={req.label} style={{ color: req.met ? "#15803d" : "#667085", margin: "4px 0" }}>{req.met ? "✓" : "○"} {req.label}</div>)}
+          </div>
+          <label htmlFor="confirm-password" style={label}>Confirm password <span style={{ color: "#f97316" }}>*</span></label>
+          <div style={inputWrapper}>
+            <input id="confirm-password" type={showConfirm ? "text" : "password"} autoComplete="new-password" minLength={12} maxLength={64} value={confirm} onChange={(e) => setConfirm(e.target.value)} required placeholder="Confirm new password" style={input} />
+            <button type="button" onClick={() => setShowConfirm((v) => !v)} aria-label={showConfirm ? "Hide confirmation" : "Show confirmation"} style={eyeButton}><EyeIcon visible={showConfirm}/></button>
+          </div>
+          {confirm && password !== confirm && <p style={{ color: "#b42318", fontSize: 12 }}>Passwords do not match.</p>}
+          {message && <p role="alert" style={{ color: "#b42318", fontSize: 13 }}>{message}</p>}
+          <button disabled={saving} type="submit" style={{ width: "100%", padding: 14, borderRadius: 10, background: "#f97316", color: "#fff", border: 0, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving…" : "Set permanent password"}</button>
         </form>
-        <button onClick={async () => { await supabase.auth.signOut(); navigate("/", { replace: true }); }} style={{ background: "none", border: 0, color: "#ea580c", cursor: "pointer" }}>Back to login</button>
+        <button type="button" onClick={async () => { await supabase.auth.signOut(); navigate("/", { replace: true }); }} style={{ display: "block", margin: "18px auto 0", background: "none", border: 0, color: "#ea580c", cursor: "pointer" }}>Back to login</button>
       </section>
     </main>
   );
 }
-const field = { display: "block", boxSizing: "border-box", width: "100%", padding: 13, margin: "8px 0 18px", borderRadius: 9, border: "1px solid #d0d5dd" };
+const label = { display: "block", fontSize: 13, fontWeight: 600, color: "#344054", marginBottom: 8 };
+const inputWrapper = { position: "relative", marginBottom: 16 };
+const input = { display: "block", boxSizing: "border-box", width: "100%", padding: "13px 48px 13px 13px", borderRadius: 10, border: "1px solid #d0d5dd", fontSize: 14, background: "#fff", color: "#172033" };
+const eyeButton = { position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "transparent", border: 0, padding: 8, color: "#667085", cursor: "pointer", display: "flex", alignItems: "center" };
+function EyeIcon({ visible }) {
+  return <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7z"/><circle cx="12" cy="12" r="3"/>
+    {visible && <path d="M3 3l18 18" strokeWidth="2"/>}
+  </svg>;
+}
