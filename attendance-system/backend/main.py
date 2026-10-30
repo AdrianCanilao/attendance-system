@@ -3290,7 +3290,8 @@ def _is_existing_face(image_bytes, excluded_id=None):
     if not results:
         raise HTTPException(status_code=422, detail="Face could not be analyzed.")
     embedding = results[0]["embedding"]
-    return any(str(entry["employee"]["id"]) != str(excluded_id) and cosine_distance(embedding, entry["embedding"]) < 0.25 for entry in kiosk_face_cache)
+    duplicate = any(str(entry["employee"]["id"]) != str(excluded_id) and cosine_distance(embedding, entry["embedding"]) < 0.25 for entry in kiosk_face_cache)
+    return duplicate, embedding
 
 @app.post("/admin/check-face-duplicate")
 async def check_face_duplicate(file: UploadFile = File(...), authorization: str | None = Header(default=None)):
@@ -3309,7 +3310,7 @@ async def check_face_duplicate(file: UploadFile = File(...), authorization: str 
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid session.")
     try:
-        return {"possible_duplicate": _is_existing_face(await file.read())}
+        return {"possible_duplicate": _is_existing_face(await file.read())[0]}
     except HTTPException:
         raise
     except Exception:
@@ -3345,7 +3346,8 @@ async def upload_face(
         contents = await file.read()
 
         safe_name = normalize_name(full_name)
-        if _is_existing_face(contents, excluded_id=user_id):
+        duplicate, new_embedding = _is_existing_face(contents, excluded_id=user_id)
+        if duplicate:
             return {"status": "Error", "message": "Similar face already enrolled. Contact HR for review."}
         file_name = f"employees/{user_id}/face_{int(time.time() * 1000)}.jpg"
 
@@ -3354,6 +3356,12 @@ async def upload_face(
             contents,
             {"content-type": "image/jpeg", "upsert": "true"}
         )
+
+        target_profile = supabase.from_("employee_profiles").select(
+            "id, full_name, branch_id, shift_id, role_id"
+        ).eq("id", user_id).single().execute().data
+        if target_profile:
+            kiosk_face_cache.append({"employee": target_profile, "embedding": new_embedding})
 
         return {
             "status": "Uploaded",
