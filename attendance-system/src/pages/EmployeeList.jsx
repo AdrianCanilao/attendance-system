@@ -500,7 +500,7 @@ export default function EmployeeList() {
 
   return (
     <ManagerLayout>
-      <style>{`.cibo-list-pagination{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:14px;padding:12px 0;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px}.cibo-list-pagination-count{align-self:flex-start}.cibo-list-pagination-controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;width:100%}.cibo-list-pagination-controls button{border:1px solid #d1d5db;border-radius:7px;background:#fff;color:#374151;padding:8px 9px;min-height:34px;font:inherit;cursor:pointer}.cibo-list-pagination-controls button:disabled{opacity:.45;cursor:not-allowed;background:#f9fafb}.cibo-list-pagination-controls button:focus-visible{outline:2px solid #f97316}.cibo-list-pagination-page{color:#374151;white-space:nowrap;padding:0 3px} @media (max-width: 768px) { .cibo-employee-list-modal .cibo-staff-desktop-table { display: none !important; } .cibo-employee-list-modal { max-height: 90dvh; overflow-y: auto; padding: 16px !important; box-sizing: border-box; } }`}</style>
+      <style>{`.cibo-list-pagination{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:14px;padding:12px 0;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px}.cibo-list-pagination-count{align-self:flex-start}.cibo-list-pagination-controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;width:100%}.cibo-list-pagination-controls button{border:1px solid #d1d5db;border-radius:7px;background:#fff;color:#374151;padding:8px 9px;min-height:34px;font:inherit;cursor:pointer}.cibo-list-pagination-controls button:disabled{opacity:.45;cursor:not-allowed;background:#f9fafb}.cibo-list-pagination-controls button:focus-visible{outline:2px solid #f97316}.cibo-list-pagination-page{color:#374151;white-space:nowrap;padding:0 3px} .cibo-employee-list-page{width:100%;max-width:100%;box-sizing:border-box;min-width:0}.cibo-employee-list-page .cibo-employee-list-topbar{width:100%;max-width:none;gap:16px;box-sizing:border-box}.cibo-employee-list-page .cibo-employee-list-search{flex:1 1 320px;max-width:520px;min-width:0;box-sizing:border-box}.cibo-employee-list-page .cibo-employee-list-filters{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}.cibo-employee-list-page .cibo-employee-list-cards{width:100%;max-width:none;box-sizing:border-box}.cibo-employee-list-page .cibo-employee-list-card{width:100%;min-height:96px;box-sizing:border-box;gap:16px}.cibo-employee-list-page .cibo-employee-list-card-info{min-width:0;flex:1}.cibo-employee-list-page .cibo-employee-list-card-info>div{overflow-wrap:anywhere}.cibo-employee-list-page .cibo-employee-list-card>button{flex-shrink:0}.cibo-employee-list-page>.cibo-list-pagination{width:100%;box-sizing:border-box} @media (max-width: 768px) { .cibo-employee-list-page .cibo-employee-list-topbar{align-items:stretch;gap:10px}.cibo-employee-list-page .cibo-employee-list-search{max-width:none;flex:1 1 100%}.cibo-employee-list-page .cibo-employee-list-filters{justify-content:flex-start;width:100%}.cibo-employee-list-page .cibo-employee-list-card{min-height:0}.cibo-employee-list-modal .cibo-staff-desktop-table { display: none !important; } .cibo-employee-list-modal { max-height: 90dvh; overflow-y: auto; padding: 16px !important; box-sizing: border-box; } }`}</style>
       <div className="cibo-page-root cibo-employee-list-page" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>
           Employee List
@@ -523,7 +523,7 @@ export default function EmployeeList() {
             />
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div className="cibo-employee-list-filters" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <select
               aria-label="Payroll cutoff period"
               value={selectedCutoff}
@@ -576,7 +576,7 @@ export default function EmployeeList() {
                   )}
                 </div>
 
-                <div>
+                <div className="cibo-employee-list-card-info">
                   <div style={styles.name}>
                     {employee.full_name}
                   </div>
@@ -772,13 +772,16 @@ export default function EmployeeList() {
 
 const styles = {
   wrapper: {
-    padding: "40px 35px",
+    padding: "32px 30px",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
   },
 
   pageTitle: {
     fontSize: "28px",
     fontWeight: "700",
-    marginBottom: "35px",
+    marginBottom: "24px",
   },
 
   topBar: {
@@ -786,7 +789,7 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: "28px",
-    maxWidth: "900px",
+    width: "100%",
   },
 
   searchWrapper: {
@@ -834,7 +837,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "12px",
-    maxWidth: "900px",
+    width: "100%",
   },
 
   card: {
@@ -845,6 +848,8 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    minHeight: "96px",
+    boxSizing: "border-box",
   },
 
   left: {
