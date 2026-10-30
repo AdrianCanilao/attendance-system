@@ -67,7 +67,7 @@ export default function MobileAttendanceCards({ logs, onCorrect }) {
           .cibo-mobile-metrics { margin: 10px 0 0; display: flex; gap: 8px; flex-wrap: wrap; color: #6b7280; font-size: 11px; }
         }
       `}</style>
-      {(logs || []).slice(0, 5).map((log) => {
+      {(logs || []).map((log) => {
         const date = log.log_date
           ? new Date(`${log.log_date}T12:00:00+08:00`)
           : log.time_in ? new Date(log.time_in) : null;
