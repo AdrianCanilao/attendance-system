@@ -55,7 +55,7 @@ begin
     begin
       execute format('insert into public.%I(id, owner) values (99, null)', t);
       raise exception 'Pending setup write allowed on %', t;
-    exception when check_violation then
+    exception when insufficient_privilege then
       null;
     end;
   end loop;
