@@ -3279,6 +3279,18 @@ def home():
     return {"message": "Face Recognition API is running"}
 
 
+def _registry_face_duplicate(embedding, excluded_id=None):
+    # Shared Supabase source complements the existing legacy-image cache.
+    response = supabase.from_("face_enrollment_registry").select(
+        "employee_id,embedding"
+    ).eq("status", "active").execute()
+    for row in response.data or []:
+        if str(row["employee_id"]) == str(excluded_id):
+            continue
+        if cosine_distance(embedding, row["embedding"]) < 0.25:
+            return True
+    return False
+
 def _is_existing_face(image_bytes, excluded_id=None):
     image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
     if image is None:
@@ -3292,6 +3304,8 @@ def _is_existing_face(image_bytes, excluded_id=None):
         raise HTTPException(status_code=422, detail="Face could not be analyzed.")
     embedding = results[0]["embedding"]
     duplicate = any(str(entry["employee"]["id"]) != str(excluded_id) and cosine_distance(embedding, entry["embedding"]) < 0.25 for entry in kiosk_face_cache)
+    if not duplicate:
+        duplicate = _registry_face_duplicate(embedding, excluded_id)
     return duplicate, embedding
 
 @app.post("/admin/check-face-duplicate")
