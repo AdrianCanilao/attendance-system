@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 const Login = lazy(() => import("./pages/Login"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const SetupPassword = lazy(() => import("./pages/SetupPassword"));
 const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
 const EmployeeDashboard = lazy(() => import("./pages/EmployeeDashboard"));
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/setup-password" element={<SetupPassword />} />
 
 
         {/* ================= KIOSK ================= */}
