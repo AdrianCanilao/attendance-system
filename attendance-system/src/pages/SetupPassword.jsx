@@ -58,12 +58,12 @@ export default function SetupPassword() {
   ];
 
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "linear-gradient(135deg, #172033, #27364e)", padding: "24px 14px", boxSizing: "border-box" }}>
-      <section style={{ background: "#fff", width: "min(440px, 100%)", borderRadius: 22, padding: "clamp(20px, 5vw, 34px)", boxShadow: "0 18px 48px #0005", boxSizing: "border-box" }}>
+    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#f5f6f8", padding: "24px 14px", boxSizing: "border-box" }}>
+      <section style={{ background: "#fff", width: "min(385px, 100%)", borderRadius: 22, padding: "clamp(20px, 5vw, 34px)", boxShadow: "0 14px 42px #17203318", boxSizing: "border-box" }}>
         <header style={{ textAlign: "center", marginBottom: 22 }}>
           <div style={{ width: 64, height: 64, background: "#f97316", borderRadius: 14, display: "grid", placeItems: "center", margin: "0 auto 12px", color: "#fff", fontWeight: 800, letterSpacing: 1 }}>CIBO</div>
           <div style={{ color: "#ea580c", fontSize: 11, letterSpacing: 2, fontWeight: 700 }}>CIBO ATTENDANCE</div>
-          <h1 style={{ color: "#172033", fontSize: 24, margin: "18px 0 8px" }}>Set your permanent password</h1>
+          <h1 style={{ color: "#172033", fontSize: 26, margin: "18px 0 8px", fontWeight: 800 }}>Set your permanent password</h1>
           <p style={{ color: "#667085", fontSize: 14, lineHeight: 1.5, margin: 0 }}>For your security, replace your temporary password before accessing your dashboard.</p>
         </header>
         <form onSubmit={submit}>
@@ -83,7 +83,7 @@ export default function SetupPassword() {
           </div>
           {confirm && password !== confirm && <p style={{ color: "#b42318", fontSize: 12 }}>Passwords do not match.</p>}
           {message && <p role="alert" style={{ color: "#b42318", fontSize: 13 }}>{message}</p>}
-          <button disabled={saving} type="submit" style={{ width: "100%", padding: 14, borderRadius: 10, background: "#f97316", color: "#fff", border: 0, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving…" : "Set permanent password"}</button>
+          <button disabled={saving} type="submit" style={{ width: "100%", padding: 14, borderRadius: 10, background: "linear-gradient(90deg, #ff7915, #f35a09)", color: "#fff", border: 0, fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving…" : "Set permanent password"}</button>
         </form>
         <button type="button" onClick={async () => { await supabase.auth.signOut(); navigate("/", { replace: true }); }} style={{ display: "block", margin: "18px auto 0", background: "none", border: 0, color: "#ea580c", cursor: "pointer" }}>Back to login</button>
       </section>
@@ -92,7 +92,7 @@ export default function SetupPassword() {
 }
 const label = { display: "block", fontSize: 13, fontWeight: 600, color: "#344054", marginBottom: 8 };
 const inputWrapper = { position: "relative", marginBottom: 16 };
-const input = { display: "block", boxSizing: "border-box", width: "100%", padding: "13px 48px 13px 13px", borderRadius: 10, border: "1px solid #d0d5dd", fontSize: 14, background: "#fff", color: "#172033" };
+const input = { display: "block", boxSizing: "border-box", width: "100%", padding: "13px 48px 13px 13px", borderRadius: 10, border: "1px solid #d0d5dd", fontSize: 14, background: "#b8c1d0", color: "#172033" };
 const eyeButton = { position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "transparent", border: 0, padding: 8, color: "#667085", cursor: "pointer", display: "flex", alignItems: "center" };
 function EyeIcon({ visible }) {
   return <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
