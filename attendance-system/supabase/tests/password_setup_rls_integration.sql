@@ -78,7 +78,7 @@ set change_required = true
 where user_id = '00000000-0000-0000-0000-000000000002';
 set role authenticated;
 set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000002';
-do $
+do $$
 declare t text; n int;
 begin
   foreach t in array array['attendance_logs','employee_profiles','attendance_corrections','audit_logs'] loop
@@ -91,21 +91,21 @@ begin
       null;
     end;
   end loop;
-end $;
+end $$;
 -- Completing setup restores database access for the same JWT subject.
 reset role;
 update public.employee_password_setup
 set change_required = false
 where user_id = '00000000-0000-0000-0000-000000000002';
 set role authenticated;
-do $
+do $$
 declare t text; n int;
 begin
   foreach t in array array['attendance_logs','employee_profiles','attendance_corrections','audit_logs'] loop
     execute format('select count(*) from public.%I', t) into n;
     if n <> 1 then raise exception 'Completed setup access not restored on %', t; end if;
   end loop;
-end $;
+end $$;
 -- Legacy users without a setup row remain permitted.
 set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000003';
 do $$
