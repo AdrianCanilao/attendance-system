@@ -9,6 +9,29 @@ import { saveAs } from "file-saver";
 
 export default function EmployeeList() {
   const [employees, setEmployees] = useState([]);
+  const [issuedPassword, setIssuedPassword] = useState(null);
+  const [resettingUserId, setResettingUserId] = useState(null);
+  const resetEmployeePassword = async (employee) => {
+    if (!window.confirm("Issue a new temporary password for " + employee.full_name + "? Their previous password will stop working.")) return;
+    setResettingUserId(employee.id);
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (!data?.session) throw new Error("Session expired. Please sign in again.");
+      const api = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://cibo-attendance-api.onrender.com" : "http://127.0.0.1:8000")).replace(/\\/$/, "");
+      const response = await fetch(api + "/auth/password-setup/issue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + data.session.access_token },
+        body: JSON.stringify({ target_user_id: employee.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || "Unable to issue password.");
+      setIssuedPassword({ name: employee.full_name, password: result.temporary_password, expires: result.expires_at });
+    } catch (error) {
+      alert(error.message || "Password reset failed.");
+    } finally {
+      setResettingUserId(null);
+    }
+  };
   const [search, setSearch] = useState("");
   const [employeePage, setEmployeePage] = useState(1);
   const [attendancePage, setAttendancePage] = useState(1);
@@ -605,6 +628,14 @@ export default function EmployeeList() {
 
               <div className="cibo-employee-list-card-actions">
                 <button
+                  type="button"
+                  disabled={resettingUserId === employee.id}
+                  onClick={() => resetEmployeePassword(employee)}
+                  style={{ ...styles.button, background: "#fff7ed", color: "#c2410c" }}
+                >
+                  {resettingUserId === employee.id ? "Issuing…" : "Reset Password"}
+                </button>
+                <button
                   onClick={() => openAttendanceModal(employee)}
                   style={styles.button}
                 >
@@ -617,6 +648,20 @@ export default function EmployeeList() {
         <nav className="cibo-list-pagination" aria-label="Employee list pagination"><span className="cibo-list-pagination-count">{filteredEmployees.length === 0 ? "No records found" : `Showing ${(employeePage - 1) * PAGE_SIZE + 1}–${Math.min(employeePage * PAGE_SIZE, filteredEmployees.length)} of ${filteredEmployees.length} records`}</span><div className="cibo-list-pagination-controls"><button type="button" disabled={employeePage <= 1} onClick={() => setEmployeePage(1)} aria-label="First page">«</button><button type="button" disabled={employeePage <= 1} onClick={() => setEmployeePage((p) => Math.max(1,p-1))}>Previous</button><span className="cibo-list-pagination-page">Page {employeePage} of {employeePageCount}</span><button type="button" disabled={employeePage >= employeePageCount} onClick={() => setEmployeePage((p) => Math.min(employeePageCount,p+1))}>Next</button><button type="button" disabled={employeePage >= employeePageCount} onClick={() => setEmployeePage(employeePageCount)} aria-label="Last page">»</button></div></nav>
       </div>
 
+      {issuedPassword && (
+        <div style={styles.modalOverlay} role="dialog" aria-modal="true" aria-label="Temporary password issued">
+          <div style={{ ...styles.modal, maxWidth: 440, width: "min(92vw, 440px)", boxSizing: "border-box" }}>
+            <h2 style={styles.modalTitle}>Temporary password issued</h2>
+            <p>For {issuedPassword.name}. Copy this password now; it will not be displayed again.</p>
+            <p style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 22, overflowWrap: "anywhere" }}>{issuedPassword.password}</p>
+            <p>Expires: {new Date(issuedPassword.expires).toLocaleString()}</p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" style={styles.button} onClick={() => navigator.clipboard.writeText(issuedPassword.password)}>Copy password</button>
+              <button type="button" style={styles.button} onClick={() => setIssuedPassword(null)}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* MODAL */}
       {showAttendanceModal && (
         <div className="cibo-employee-list-overlay" style={styles.modalOverlay}>
