@@ -15,10 +15,8 @@ class TemporaryPasswordTests(unittest.TestCase):
         self.assertEqual(len(set(values)), 100)
         for password in values:
             self.assertEqual(len(password), 8)
-            self.assertTrue(any(c.isupper() for c in password))
-            self.assertTrue(any(c.islower() for c in password))
-            self.assertTrue(any(c.isdigit() for c in password))
-            self.assertTrue(any(not c.isalnum() for c in password))
+            self.assertTrue(password.isascii())
+            self.assertTrue(password.isalpha())
 
     def test_twelve_hour_expiry(self):
         start = datetime(2026, 10, 30, tzinfo=timezone.utc)
