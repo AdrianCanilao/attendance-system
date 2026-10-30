@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import EmployeeLayout from "../layouts/EmployeeLayout";
+import ManagerLayout from "../layouts/ManagerLayout";
 import { logAudit } from "../utils/auditlogger";
 
-export default function LeaveRequest() {
+export default function LeaveRequest({ maintenance = false }) {
   const [showModal, setShowModal] = useState(false);
   const [attachment, setAttachment] = useState(null);
 
@@ -202,8 +203,9 @@ export default function LeaveRequest() {
     }
   };
 
+  const Layout = maintenance ? ManagerLayout : EmployeeLayout;
   return (
-    <EmployeeLayout>
+    <Layout>
       <div className="cibo-page-root cibo-leave-request-page" style={styles.page}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>Leave Request</h1>
 
@@ -370,7 +372,7 @@ export default function LeaveRequest() {
           </div>
         )}
       </div>
-    </EmployeeLayout>
+    </Layout>
   );
 }
 
