@@ -2,6 +2,7 @@
 -- Prevent authenticated users with pending/expired temporary setup from using
 -- direct PostgREST access, including with pre-existing browser sessions.
 -- No existing records are modified.
+-- Requires a separately approved isolated test branch before application.
 begin;
 
 create or replace function private.password_setup_complete()
@@ -15,7 +16,7 @@ as $$
     and not exists (
       select 1
       from public.employee_password_setup s
-      where s.user_id = auth.uid()
+      where s.user_id = (select auth.uid())
         and s.change_required is true
     );
 $$;
