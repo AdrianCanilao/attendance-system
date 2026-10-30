@@ -26,6 +26,9 @@ from zoneinfo import ZoneInfo
 
 app = FastAPI()
 
+from .password_setup_api import router as password_setup_router
+app.include_router(password_setup_router)
+
 # ✅ CORS
 # Kiosk device credentials are sent in a custom header, so the
 # frontend origins are explicitly allowlisted instead of using '*'.
