@@ -27,6 +27,8 @@ export default function StagedAttendance() {
   const [error, setError] = useState("");
   const [reviewingId, setReviewingId] = useState("");
   const [actionMessage, setActionMessage] = useState("");
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
@@ -71,6 +73,26 @@ export default function StagedAttendance() {
       setReviewingId("");
     }
   }, [loadRecords, reviewingId]);
+
+  const loadImportPreview = useCallback(async () => {
+    setPreviewLoading(true);
+    setError("");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Your session has expired. Please log in again.");
+      const response = await fetch(API_URL + "/admin/staged-legacy-attendance/import-preview", {
+        headers: { Authorization: "Bearer " + token },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.detail || "Unable to load migration preview.");
+      setPreview(data);
+    } catch (err) {
+      setError(err.message || "Unable to load migration preview.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, []);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
 
@@ -126,6 +148,20 @@ export default function StagedAttendance() {
         <p style={styles.subheading}>
           Review historical CIBO DTR rows held separately from live attendance. These records are not imported into attendance logs.
         </p>
+
+        <div style={styles.panel}>
+          <strong>Historical attendance migration preview</strong>
+          <p style={{ color: "#64748b", fontSize: "13px" }}>Check which staged DTR rows are eligible for future import. This is read-only: no attendance is imported and no employee account is created.</p>
+          <button type="button" style={styles.button} onClick={loadImportPreview} disabled={previewLoading}>{previewLoading ? "Checking..." : "Check import readiness"}</button>
+          {preview && (
+            <div role="status" style={{ marginTop: "12px", fontSize: "13px", lineHeight: 1.8 }}>
+              <strong>{preview.total} staged rows checked</strong>
+              <div>Ready: {preview.counts?.ready ?? 0} · Awaiting employee profile: {preview.counts?.awaiting_profile ?? 0} · Identity not linked: {preview.counts?.identity_not_linked ?? 0}</div>
+              <div>Not HR-reviewed: {preview.counts?.not_reviewed ?? 0} · Existing attendance conflict: {preview.counts?.already_exists ?? 0} · Branch mismatch: {preview.counts?.branch_mismatch ?? 0} · Ambiguous profile: {preview.counts?.ambiguous_profile ?? 0}</div>
+              <div style={{ color: "#64748b" }}>Preview only. No data was imported.</div>
+            </div>
+          )}
+        </div>
 
         <div style={styles.stats}>
           {[
