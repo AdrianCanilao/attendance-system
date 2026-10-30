@@ -1959,7 +1959,9 @@ async def admin_register_manager(
             detail="A Branch Supervisor with this email is already registered.",
         )
 
-    validate_strong_password(payload.password)
+    from .temporary_passwords import generate_temporary_password, temporary_password_expires_at
+    generated_password = generate_temporary_password()
+    password_expiry = temporary_password_expires_at()
 
     shift_result = (
         supabase
@@ -1984,7 +1986,7 @@ async def admin_register_manager(
     try:
         auth_result = supabase.auth.admin.create_user({
             "email": normalized_email,
-            "password": payload.password,
+            "password": generated_password,
             "email_confirm": True,
         })
     except Exception as e:
@@ -2042,8 +2044,26 @@ async def admin_register_manager(
             detail="Branch Supervisor profile could not be created: " + str(e),
         )
 
+    try:
+        now = datetime.now(ZoneInfo("UTC")).isoformat()
+        supabase.from_("employee_password_setup").insert({
+            "user_id": user_id,
+            "change_required": True,
+            "issued_at": now,
+            "temporary_password_expires_at": password_expiry.isoformat(),
+            "updated_at": now,
+        }).execute()
+    except Exception:
+        try:
+            supabase.auth.admin.delete_user(user_id)
+        except Exception:
+            pass
+        raise HTTPException(status_code=503, detail="Unable to initialize supervisor password setup.")
+
     return {
         "status": "OK",
+        "temporary_password": generated_password,
+        "temporary_password_expires_at": password_expiry.isoformat(),
         "user_id": user_id,
         "name": payload.name,
         "email": payload.email,
