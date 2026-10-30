@@ -138,7 +138,7 @@ class UpdateEmployeeProfileRequest(BaseModel):
 class RegisterEmployeeRequest(BaseModel):
     name: str
     email: str
-    password: str
+    password: str = ""
     contact: str
     position: str
     branch_id: str
@@ -2437,7 +2437,9 @@ async def admin_register_employee(
     if len(payload.position.strip()) > 100:
         raise HTTPException(status_code=400, detail="Position must be 100 characters or fewer.")
 
-    validate_strong_password(payload.password)
+    from .temporary_passwords import generate_temporary_password, temporary_password_expires_at
+    generated_password = generate_temporary_password()
+    password_expiry = temporary_password_expires_at()
 
     shift_result = (
         supabase
@@ -2462,7 +2464,7 @@ async def admin_register_employee(
     try:
         auth_result = supabase.auth.admin.create_user({
             "email": normalized_email,
-            "password": payload.password,
+            "password": generated_password,
             "email_confirm": True,
         })
     except Exception as e:
@@ -2521,8 +2523,28 @@ async def admin_register_employee(
             detail="Employee profile could not be created: " + str(e),
         )
 
+    try:
+        now = datetime.now(ZoneInfo("UTC")).isoformat()
+        supabase.from_("employee_password_setup").insert({
+            "user_id": user_id,
+            "change_required": True,
+            "issued_at": now,
+            "temporary_password_expires_at": password_expiry.isoformat(),
+            "updated_at": now,
+        }).execute()
+    except Exception:
+        # Registration is not complete unless the temporary password is tracked.
+        # Remove only the account created by this request.
+        try:
+            supabase.auth.admin.delete_user(user_id)
+        except Exception:
+            pass
+        raise HTTPException(status_code=503, detail="Unable to initialize employee password setup.")
+
     return {
         "status": "OK",
+        "temporary_password": generated_password,
+        "temporary_password_expires_at": password_expiry.isoformat(),
         "user_id": user_id,
         "employee": {
             "id": user_id,
