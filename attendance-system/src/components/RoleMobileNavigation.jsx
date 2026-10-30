@@ -27,6 +27,8 @@ const menus = {
       ["Employee List", "/manager/employees"],
     ] },
     { label: "Leave Management", icon: FaClipboardList, children: [
+      ["Leave Request", "/manager/leave-request"],
+      ["My Leave Records", "/manager/myleave"],
       ["Leave Approval", "/manager/leave"],
       ["Edit Leave Counts", "/manager/edit-leave-counts"],
     ] },
