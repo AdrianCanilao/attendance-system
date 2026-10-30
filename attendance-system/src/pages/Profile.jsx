@@ -415,22 +415,14 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
     flexDirection: "column",
   }}
 >
-          <h2
-            style={{
-              fontSize: "20px",
-              fontWeight: "700",
-              marginBottom: "16px",
-              color: "#111827",
-            }}
-          >
-            Attendance Summary
-          </h2>
-
-          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12, fontSize: 14 }}>
+          <div className="cibo-attendance-summary-header" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: "#111827", margin: 0, flex: "1 1 auto", textAlign: "center" }}>Attendance Summary</h2>
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", gap: 8, fontSize: 14 }}>
             <span>View month</span>
             <button type="button" onClick={() => changeAttendanceMonth(-1)} aria-label="Previous month" style={{ padding: "7px 12px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 18 }}>‹</button>
             <button type="button" onClick={() => setMonthPickerOpen(true)} aria-label={`Choose month, currently ${attendanceMonthLabel}`} style={{ padding: "9px 14px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", cursor: "pointer", minWidth: 150, fontWeight: 600 }}>{attendanceMonthLabel} ▾</button>
             <button type="button" onClick={() => changeAttendanceMonth(1)} aria-label="Next month" style={{ padding: "7px 12px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 18 }}>›</button>
+            </div>
           </div>
           {monthPickerOpen && (
             <div onClick={() => setMonthPickerOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(15,23,42,.5)", display: "flex", justifyContent: "center", alignItems: "center", padding: 16, boxSizing: "border-box" }}>
