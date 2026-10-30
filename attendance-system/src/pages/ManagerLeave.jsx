@@ -7,6 +7,7 @@ import { getStorageAccessUrl } from "../utils/storageAccess";
 export default function ManagerLeave() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [currentReviewerId, setCurrentReviewerId] = useState(null);
 
   useEffect(() => {
     fetchRequests();
@@ -19,6 +20,7 @@ export default function ManagerLeave() {
     // assigned to the same branch as the logged-in specialist.
     const { data: userData } = await supabase.auth.getUser();
     const user = userData?.user;
+    setCurrentReviewerId(user?.id || null);
 
     if (!user) {
       setRequests([]);
@@ -99,6 +101,11 @@ export default function ManagerLeave() {
   const updateStatus = async (id, status) => {
     const { data: userData } = await supabase.auth.getUser();
     const reviewerId = userData?.user?.id || null;
+    const request = requests.find((item) => item.id === id);
+    if (!reviewerId || request?.employee_id === reviewerId) {
+      alert("You cannot approve or reject your own leave request.");
+      return;
+    }
 
     const { error } = await supabase
       .from("leave_requests")
@@ -113,8 +120,6 @@ export default function ManagerLeave() {
       alert("Error updating status");
       return;
     }
-
-    const request = requests.find((item) => item.id === id);
 
     await logCurrentUserAudit({
       action: status === "Approved" ? "LEAVE_APPROVED" : "LEAVE_REJECTED",
@@ -229,7 +234,9 @@ export default function ManagerLeave() {
 
                       {/* ACTION */}
                       <td style={styles.cell}>
-                        {req.status === "Pending" ? (
+                        {req.status === "Pending" && req.employee_id === currentReviewerId ? (
+                          <span style={styles.done}>Your request — another specialist must review</span>
+                        ) : req.status === "Pending" ? (
                           <div style={styles.actionGroup}>
                             <button
                               style={styles.approveBtn}
