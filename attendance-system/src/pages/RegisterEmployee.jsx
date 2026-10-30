@@ -319,7 +319,13 @@ export default function RegisterEmployee() {
     }
 
     if (capturedImages.length < 3) {
-      alert("Complete all face steps");
+      await Swal.fire({
+        icon: "info",
+        title: "Face photos required",
+        text: "No employee account has been created yet. Open the camera and capture all three face angles: straight, left, and right.",
+        confirmButtonText: "Got it",
+        confirmButtonColor: "#f97316",
+      });
       return;
     }
 
@@ -756,7 +762,7 @@ export default function RegisterEmployee() {
               </div>
 
               <p style={{ gridColumn: "1 / -1", color: "#667085", fontSize: 13 }}>
-                A secure 8-character temporary password will be generated automatically and shown once after registration.
+                An easy-to-type temporary password will be generated automatically and shown once after registration.
               </p>
 
               <div>
