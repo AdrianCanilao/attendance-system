@@ -38,7 +38,7 @@ def temporary_password_expired(expires_at: datetime, now: datetime | None = None
 
 def validate_permanent_password(password: str) -> bool:
     return (
-        len(password) >= PERMANENT_PASSWORD_MIN_LENGTH
+        PERMANENT_PASSWORD_MIN_LENGTH <= len(password) <= 64
         and any(c.isupper() for c in password)
         and any(c.islower() for c in password)
         and any(c.isdigit() for c in password)
