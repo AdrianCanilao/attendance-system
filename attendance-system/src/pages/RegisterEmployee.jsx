@@ -356,6 +356,25 @@ export default function RegisterEmployee() {
         throw new Error("Your session has expired. Please log in again.");
       }
 
+      // Screen all captured angles before creating the Auth account.
+      for (const capture of capturedImages) {
+        const blob = await fetch(capture).then((response) => response.blob());
+        const checkForm = new FormData();
+        checkForm.append("file", blob);
+        const checkResponse = await fetch(API_URL + "/admin/check-face-duplicate", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + accessToken },
+          body: checkForm,
+        });
+        const checkResult = await checkResponse.json().catch(() => ({}));
+        if (!checkResponse.ok) {
+          throw new Error(checkResult.detail || "Face screening unavailable. Registration was not started.");
+        }
+        if (checkResult.possible_duplicate) {
+          throw new Error("A similar face is already registered. Please contact HR for identity review.");
+        }
+      }
+
       const registrationResponse = await fetch(
         API_URL + "/admin/register-employee",
         {
