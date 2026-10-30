@@ -8,18 +8,29 @@ from datetime import datetime, timedelta, timezone
 import secrets
 import string
 
-TEMPORARY_PASSWORD_LENGTH = 8
 TEMPORARY_PASSWORD_TTL = timedelta(hours=12)
 PERMANENT_PASSWORD_MIN_LENGTH = 12
 
-# Temporary credentials use letters only to make first-time entry easier.
-# Exclude visually ambiguous letters (I, l, O, o) for readability.
-_TEMP_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz"
+# Easy to read and type; two familiar words, one @, and eight random digits.
+# Passwords are generated with a cryptographic RNG, never stored in plaintext.
+_TEMP_WORDS = (
+    "Mango", "River", "Pizza", "Cloud", "Tiger", "Apple", "Ocean", "Happy",
+    "Sunny", "Green", "Bread", "Lemon", "Cedar", "Peach", "Honey", "Maple",
+    "Panda", "Coral", "Basil", "Tulip", "Robin", "Daisy", "Cocoa", "Melon",
+    "Berry", "Olive", "Amber", "Pearl", "Curry", "Sugar", "Grape", "Flame",
+    "Frost", "Stone", "Dream", "Music", "Smile", "Magic", "Water", "Light",
+    "Fresh", "Bloom", "Brave", "Lucky", "Beach", "Earth", "Dance", "Spice",
+    "Cherry", "Forest", "Garden", "Orange", "Silver", "Butter", "Carrot", "Banana",
+    "Rocket", "Planet", "Rabbit", "Coffee", "Cookie", "Purple", "Yellow", "Winter",
+)
 
 
 def generate_temporary_password() -> str:
-    """Generate an unpredictable, letters-only, eight-character credential."""
-    return "".join(secrets.choice(_TEMP_LETTERS) for _ in range(TEMPORARY_PASSWORD_LENGTH))
+    """Generate a readable credential meeting uppercase/lowercase/digit/symbol rules."""
+    first = secrets.choice(_TEMP_WORDS)
+    second = secrets.choice(_TEMP_WORDS)
+    digits = "".join(secrets.choice(string.digits) for _ in range(8))
+    return f"{first}{second}@{digits}"
 
 
 def temporary_password_expires_at(now: datetime | None = None) -> datetime:
