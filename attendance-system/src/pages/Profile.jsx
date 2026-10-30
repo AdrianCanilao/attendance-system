@@ -19,6 +19,8 @@ export default function Profile() {
     timeOut: 0,
   });
   const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [attendanceMonth, setAttendanceMonth] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit" }).slice(0, 7));
+  const monthlyAttendanceLogs = attendanceLogs.filter((log) => String(log.log_date || "").slice(0, 7) === attendanceMonth);
   const [calendarLeaves, setCalendarLeaves] = useState([]);
   const [branchLeaveEmployees, setBranchLeaveEmployees] = useState([]);
   const [branchLeaveRequests, setBranchLeaveRequests] = useState([]);
@@ -417,7 +419,12 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
             Attendance Summary
           </h2>
 
-          <MobileAttendanceCards logs={attendanceLogs} onCorrect={(log) => {
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap", fontSize: 14 }}>
+            View month
+            <input type="month" value={attendanceMonth} onChange={(event) => setAttendanceMonth(event.target.value)} aria-label="Attendance summary month" style={{ padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 6, maxWidth: "100%" }} />
+          </label>
+          <div style={{ maxHeight: 620, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}>
+          <MobileAttendanceCards logs={monthlyAttendanceLogs} onCorrect={(log) => {
             if (log.correction?.status === "Pending") return;
             setSelectedLog(log);
             setCorrectionReason("");
@@ -465,7 +472,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
     </thead>
 
     <tbody>
-      {(attendanceLogs || []).slice(0, 5).map((log, index) => (
+      {monthlyAttendanceLogs.map((log, index) => (
         <tr
           key={index}
           style={{
@@ -760,6 +767,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
     </tbody>
   </table>
 </div>
+          </div>
         </div>
       </div>
       {showCorrectionModal && (
