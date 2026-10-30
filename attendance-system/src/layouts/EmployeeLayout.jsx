@@ -273,7 +273,7 @@ export default function EmployeeLayout({ children }) {
 
 
       <style>{`
-        .cibo-employee-mobile-logo, .cibo-employee-menu-toggle, .cibo-employee-mobile-nav { display: none; }
+        .cibo-employee-mobile-logo, .cibo-employee-menu-toggle, .cibo-employee-mobile-nav, .cibo-employee-layout .cibo-role-menu-toggle, .cibo-employee-layout .cibo-role-mobile-nav { display: none; }
         @media (max-width: 768px) {
           .cibo-employee-layout > .cibo-sidebar { display: none !important; }
           .cibo-employee-layout .cibo-main { min-width: 0 !important; width: 100% !important; }
@@ -281,7 +281,7 @@ export default function EmployeeLayout({ children }) {
           .cibo-employee-mobile-logo { display: block; width: 42px; height: 42px; flex-shrink: 0; object-fit: contain; }
           .cibo-employee-layout .cibo-topbar-title { max-width: none !important; flex: 1 1 auto !important; min-width: 0 !important; font-size: 14px !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
           .cibo-employee-layout .cibo-employee-top-actions { gap: 12px !important; min-width: 0 !important; }
-          .cibo-employee-layout .cibo-top-profile, .cibo-employee-layout .cibo-employee-top-actions > button:not(.cibo-employee-menu-toggle) { display: none !important; }
+          .cibo-employee-layout .cibo-top-profile, .cibo-employee-layout .cibo-employee-top-actions > button:not(.cibo-role-menu-toggle) { display: none !important; }
           .cibo-employee-menu-toggle { display: flex; align-items: center; justify-content: center; width: 42px; height: 44px; flex-shrink: 0; background: transparent; border: 0; border-radius: 8px; color: #1f2937; font-size: 21px; cursor: pointer; }
           .cibo-employee-menu-toggle:focus-visible, .cibo-employee-mobile-nav button:focus-visible { outline: 3px solid #f97316; outline-offset: 2px; }
           .cibo-employee-mobile-nav.is-open { display: flex; }
