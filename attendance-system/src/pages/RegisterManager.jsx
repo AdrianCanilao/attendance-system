@@ -414,14 +414,35 @@ action: "REGISTER_MAINTENANCE",
 });
 
       await Swal.fire({
-        title: stagedEmployee ? "Staged supervisor registered and linked!" : "Branch Supervisor registered!",
-        text: "Temporary password (shown once): " + (registrationData.temporary_password || "Unavailable") + ". Expires in 12 hours. Permanent password setup is required on first login. Historical attendance has not been imported.",
+        title: "Branch Supervisor registered!",
         icon: "success",
-        confirmButtonText: "Copy password and continue",
+        width: "min(420px, 94vw)",
+        padding: "1.25rem",
+        html: `
+          <div style="text-align:center;color:#475467;font-size:14px;line-height:1.5">
+            <p style="margin:4px 0 12px">Temporary password — copy it now. It will only be shown once.</p>
+            <div style="background:#fff7ed;border:2px solid #fdba74;border-radius:12px;padding:14px 10px;margin:10px 0">
+              <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#9a3412;margin-bottom:6px">TEMPORARY PASSWORD</div>
+              <div style="font-family:monospace;font-size:clamp(22px,6vw,30px);font-weight:800;letter-spacing:2px;color:#172033;overflow-wrap:anywhere">${registrationData.temporary_password || "Unavailable"}</div>
+            </div>
+            <p style="margin:8px 0"><strong>Valid for 12 hours.</strong> The employee must set a permanent password on first login.</p>
+            <p style="font-size:12px;margin:8px 0 0">Historical attendance is not imported.</p>
+          </div>`,
+        confirmButtonText: "Copy password",
+        showDenyButton: true,
+        denyButtonText: "Done",
         confirmButtonColor: "#f97316",
+        denyButtonColor: "#475467",
+        showCloseButton: false,
+        allowOutsideClick: false,
         preConfirm: async () => {
-          try { await navigator.clipboard.writeText(registrationData.temporary_password); }
-          catch { /* Credential stays visible for manual copying. */ }
+          try {
+            await navigator.clipboard.writeText(registrationData.temporary_password);
+            return true;
+          } catch {
+            Swal.showValidationMessage("Copy was blocked by your browser. Please write down the password before tapping Done.");
+            return false;
+          }
         },
       });
       if (stagedEmployee) {
