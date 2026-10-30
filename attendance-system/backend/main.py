@@ -3378,19 +3378,18 @@ async def upload_face(
                 {"content-type": "image/jpeg", "upsert": "false"}
             )
 
-            # The three captured angles belong to one employee enrollment.
-            # Keep one active registry identity rather than inserting a conflicting
-            # row for every photo; the in-memory cache retains all three angles.
-            existing_enrollment = supabase.from_("face_enrollment_registry").select(
-                "id"
-            ).eq("employee_id", user_id).eq("status", "active").limit(1).execute()
-            if not (existing_enrollment.data or []):
-                supabase.from_("face_enrollment_registry").insert({
-                    "employee_id": user_id,
-                    "embedding": new_embedding,
-                    "model_name": "ArcFace",
-                    "status": "active",
-                }).execute()
+            # Atomic cross-worker enrollment reservation. The first angle reserves
+            # the identity; subsequent angles belong to the same employee.
+            reservation = supabase.rpc("reserve_face_enrollment", {
+                "p_employee_id": user_id,
+                "p_embedding": new_embedding,
+            }).execute().data
+            if reservation not in ("reserved", "existing"):
+                try:
+                    supabase.storage.from_("faces").remove([file_name])
+                except Exception:
+                    pass
+                raise HTTPException(status_code=409, detail="Face enrollment could not be reserved. Contact HR for review.")
             target_profile = supabase.from_("employee_profiles").select(
                 "id, full_name, branch_id, shift_id, role_id"
             ).eq("id", user_id).single().execute().data
