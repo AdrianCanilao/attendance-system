@@ -3283,8 +3283,26 @@ def home():
 async def upload_face(
     file: UploadFile = File(...),
     user_id: str = Form(...),
-    full_name: str = Form(...)
+    full_name: str = Form(...),
+    authorization: str | None = Header(default=None),
 ):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    try:
+        caller = supabase.auth.get_user(authorization[7:].strip()).user
+        if not caller:
+            raise ValueError("Missing user")
+        from .password_setup_api import _require_active
+        _require_active(caller.id)
+        profile = supabase.from_("employee_profiles").select("role_id, branch_id").eq("id", caller.id).single().execute().data
+        role = supabase.from_("roles").select("name").eq("id", profile["role_id"]).single().execute().data
+        target = supabase.from_("employee_profiles").select("branch_id").eq("id", user_id).single().execute().data
+        if (role.get("name") or "").strip().lower() != "maintenance" or str(profile.get("branch_id")) != str(target.get("branch_id")):
+            raise HTTPException(status_code=403, detail="Branch Supervisor access required.")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid session or employee.")
     try:
         contents = await file.read()
 
