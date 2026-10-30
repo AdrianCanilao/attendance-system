@@ -549,6 +549,17 @@ export default function EmployeeList() {
           </div>
         </div>
 
+        <style>{`
+          .cibo-employee-list-card-info { min-width: 0; overflow-wrap: anywhere; }
+          .cibo-employee-list-card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+          @media (max-width: 640px) {
+            .cibo-employee-list-card { flex-wrap: wrap; gap: 12px; padding: 14px !important; min-width: 0; }
+            .cibo-employee-list-card > div:first-child { min-width: 0; width: 100%; }
+            .cibo-employee-list-card-info { flex: 1; }
+            .cibo-employee-list-card-actions { width: 100%; flex-wrap: wrap; }
+            .cibo-employee-list-card-actions button { flex: 1 1 100%; min-width: 0; }
+          }
+        `}</style>
         {/* EMPLOYEE LIST */}
         <div className="cibo-employee-list-cards" style={{ ...styles.list, maxHeight: "min(62vh, 650px)", overflowY: "auto", overscrollBehavior: "contain", paddingRight: 4 }}>
           {visibleEmployees.map((employee) => (
@@ -592,14 +603,14 @@ export default function EmployeeList() {
                 </div>
               </div>
 
-              <button
-                onClick={() =>
-                  openAttendanceModal(employee)
-                }
-                style={styles.button}
-              >
-                View Attendance
-              </button>
+              <div className="cibo-employee-list-card-actions">
+                <button
+                  onClick={() => openAttendanceModal(employee)}
+                  style={styles.button}
+                >
+                  View Attendance
+                </button>
+              </div>
             </div>
           ))}
         </div>
