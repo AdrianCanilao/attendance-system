@@ -69,6 +69,16 @@ def _status(user_id):
     return get_password_setup_status(bool(row["change_required"]), expiry), expires
 
 
+def _require_active(user_id):
+    """Deny privileged account actions while setup is pending or expired."""
+    try:
+        status, _ = _status(user_id)
+    except Exception:
+        raise HTTPException(503, "Unable to verify password setup status.")
+    if status != ACTIVE:
+        raise HTTPException(403, "Complete password setup before accessing this feature.")
+
+
 @router.get("/status")
 def password_setup_status(authorization: str | None = Header(default=None)):
     user = _user(authorization)
@@ -84,6 +94,7 @@ def password_setup_status(authorization: str | None = Header(default=None)):
 @router.get("/employees")
 def employee_setup_statuses(authorization: str | None = Header(default=None)):
     caller = _user(authorization)
+    _require_active(caller.id)
     caller_profile = _profile(caller.id)
     caller_role = _role(caller_profile)
     if caller_role not in ("maintenance", "hr"):
@@ -108,6 +119,7 @@ def issue_temporary_password(
     authorization: str | None = Header(default=None),
 ):
     caller = _user(authorization)
+    _require_active(caller.id)
     db = _client()
     caller_profile = _profile(caller.id)
     target_profile = _profile(payload.target_user_id)
