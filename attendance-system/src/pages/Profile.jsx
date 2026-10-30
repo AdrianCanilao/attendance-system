@@ -420,14 +420,14 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
             <h2 style={{ gridColumn: 2, fontSize: 20, fontWeight: 700, color: "#111827", margin: 0, textAlign: "center", whiteSpace: "nowrap" }}>Attendance Summary</h2>
             <div style={{ gridColumn: 3, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: 12, minWidth: 0 }}>
             <span>View month</span>
-            <button type="button" onClick={() => changeAttendanceMonth(-1)} aria-label="Previous month" style={{ padding: "5px 8px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 18 }}>‹</button>
-            <button type="button" onClick={() => setMonthPickerOpen(true)} aria-label={`Choose month, currently ${attendanceMonthLabel}`} style={{ padding: "7px 9px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", cursor: "pointer", minWidth: 112, fontWeight: 600, fontSize: 12 }}>{attendanceMonthLabel} ▾</button>
-            <button type="button" onClick={() => changeAttendanceMonth(1)} aria-label="Next month" style={{ padding: "7px 12px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", cursor: "pointer", fontSize: 18 }}>›</button>
+            <button type="button" onClick={() => changeAttendanceMonth(-1)} aria-label="Previous month" style={{ padding: "5px 8px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#111827", cursor: "pointer", fontSize: 18 }}>‹</button>
+            <button type="button" onClick={() => setMonthPickerOpen(true)} aria-label={`Choose month, currently ${attendanceMonthLabel}`} style={{ padding: "7px 9px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#111827", cursor: "pointer", minWidth: 112, fontWeight: 600, fontSize: 12 }}>{attendanceMonthLabel} ▾</button>
+            <button type="button" onClick={() => changeAttendanceMonth(1)} aria-label="Next month" style={{ padding: "7px 12px", border: "1px solid #cbd5e1", borderRadius: 7, background: "#fff", color: "#111827", cursor: "pointer", fontSize: 18 }}>›</button>
             </div>
           </div>
           {monthPickerOpen && (
             <div onClick={() => setMonthPickerOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(15,23,42,.5)", display: "flex", justifyContent: "center", alignItems: "center", padding: 16, boxSizing: "border-box" }}>
-              <section role="dialog" aria-modal="true" aria-label="Choose attendance month" onClick={(event) => event.stopPropagation()} style={{ background: "#fff", borderRadius: 12, padding: 18, width: "100%", maxWidth: 360, boxSizing: "border-box", boxShadow: "0 12px 32px rgba(0,0,0,.18)" }}>
+              <section role="dialog" aria-modal="true" aria-label="Choose attendance month" onClick={(event) => event.stopPropagation()} style={{ background: "#fff", color: "#111827", borderRadius: 12, padding: 18, width: "100%", maxWidth: 360, boxSizing: "border-box", boxShadow: "0 12px 32px rgba(0,0,0,.18)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 8 }}>
                   <button type="button" onClick={() => setAttendanceMonth(`${Number(attendanceMonth.slice(0, 4)) - 1}${attendanceMonth.slice(4)}`)} aria-label="Previous year" style={{ padding: "6px 12px", cursor: "pointer" }}>‹</button>
                   <strong>{attendanceMonth.slice(0, 4)}</strong>
@@ -435,7 +435,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
                   {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((name, index) => (
-                    <button key={name} type="button" onClick={() => { setAttendanceMonth(`${attendanceMonth.slice(0, 4)}-${String(index + 1).padStart(2, "0")}`); setMonthPickerOpen(false); }} aria-pressed={Number(attendanceMonth.slice(5, 7)) === index + 1} style={{ padding: "12px 4px", borderRadius: 7, border: "1px solid #cbd5e1", background: Number(attendanceMonth.slice(5, 7)) === index + 1 ? "#ffedd5" : "#fff", cursor: "pointer", fontWeight: Number(attendanceMonth.slice(5, 7)) === index + 1 ? 700 : 400 }}>{name}</button>
+                    <button key={name} type="button" onClick={() => { setAttendanceMonth(`${attendanceMonth.slice(0, 4)}-${String(index + 1).padStart(2, "0")}`); setMonthPickerOpen(false); }} aria-pressed={Number(attendanceMonth.slice(5, 7)) === index + 1} style={{ padding: "12px 4px", borderRadius: 7, border: "1px solid #cbd5e1", background: Number(attendanceMonth.slice(5, 7)) === index + 1 ? "#ffedd5" : "#fff", color: "#111827", cursor: "pointer", fontWeight: Number(attendanceMonth.slice(5, 7)) === index + 1 ? 700 : 400 }}>{name}</button>
                   ))}
                 </div>
                 <button type="button" onClick={() => setMonthPickerOpen(false)} style={{ marginTop: 16, padding: "8px 12px", border: "1px solid #cbd5e1", background: "#fff", borderRadius: 7, cursor: "pointer", width: "100%" }}>Close</button>
