@@ -3278,6 +3278,44 @@ def home():
     return {"message": "Face Recognition API is running"}
 
 
+def _is_existing_face(image_bytes, excluded_id=None):
+    image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    if image is None:
+        raise HTTPException(status_code=422, detail="Invalid face photo.")
+    detected = DeepFace.extract_faces(img_path=image, detector_backend="opencv", enforce_detection=True)
+    if len(detected) != 1:
+        raise HTTPException(status_code=422, detail="Exactly one face must be visible.")
+    crop = cv2.cvtColor(np.asarray(detected[0]["face"] * 255, dtype=np.uint8), cv2.COLOR_RGB2BGR)
+    results = DeepFace.represent(img_path=crop, model_name="ArcFace", detector_backend="skip", enforce_detection=False)
+    if not results:
+        raise HTTPException(status_code=422, detail="Face could not be analyzed.")
+    embedding = results[0]["embedding"]
+    return any(str(entry["employee"]["id"]) != str(excluded_id) and cosine_distance(embedding, entry["embedding"]) < 0.25 for entry in kiosk_face_cache)
+
+@app.post("/admin/check-face-duplicate")
+async def check_face_duplicate(file: UploadFile = File(...), authorization: str | None = Header(default=None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    try:
+        caller = supabase.auth.get_user(authorization[7:].strip()).user
+        from .password_setup_api import _require_active
+        _require_active(caller.id)
+        profile = supabase.from_("employee_profiles").select("role_id").eq("id", caller.id).single().execute().data
+        role = supabase.from_("roles").select("name").eq("id", profile["role_id"]).single().execute().data
+        if (role.get("name") or "").strip().lower() != "maintenance":
+            raise HTTPException(status_code=403, detail="Branch Supervisor access required.")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid session.")
+    try:
+        return {"possible_duplicate": _is_existing_face(await file.read())}
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=422, detail="Face screening failed. Recapture and retry.")
+
+
 # 🔥 UPLOAD FACE
 @app.post("/upload-face")
 async def upload_face(
@@ -3307,6 +3345,8 @@ async def upload_face(
         contents = await file.read()
 
         safe_name = normalize_name(full_name)
+        if _is_existing_face(contents, excluded_id=user_id):
+            return {"status": "Error", "message": "Similar face already enrolled. Contact HR for review."}
         file_name = f"employees/{user_id}/face_{int(time.time() * 1000)}.jpg"
 
         supabase.storage.from_("faces").upload(
