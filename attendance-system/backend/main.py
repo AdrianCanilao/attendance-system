@@ -1907,6 +1907,9 @@ async def admin_register_manager(
     if not caller:
         raise HTTPException(status_code=401, detail="Invalid authentication session.")
 
+    from .password_setup_api import _require_active
+    _require_active(caller.id)
+
     caller_result = (
         supabase
         .from_("employee_profiles")
@@ -2386,6 +2389,9 @@ async def admin_register_employee(
 
     if not caller:
         raise HTTPException(status_code=401, detail="Invalid authentication session.")
+
+    from .password_setup_api import _require_active
+    _require_active(caller.id)
 
     caller_result = (
         supabase
