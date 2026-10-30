@@ -127,6 +127,13 @@ export default function App() {
           }
         />
 
+        <Route path="/manager/leave-request" element={
+          <ProtectedRoute role="maintenance"><LeaveRequest maintenance /></ProtectedRoute>
+        } />
+        <Route path="/manager/myleave" element={
+          <ProtectedRoute role="maintenance"><MyLeave maintenance /></ProtectedRoute>
+        } />
+
         <Route
           path="/manager/leave"
           element={
