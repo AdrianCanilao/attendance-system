@@ -226,6 +226,8 @@ export default function Sidebar({ role }) {
           opacity: leaveDropdown ? 1 : 0,
         }}
       >
+        <button onClick={() => navigate("/manager/leave-request")} style={{ ...styles.sublink, ...(isActive("/manager/leave-request") && styles.activeSubLink) }}>Leave Request</button>
+        <button onClick={() => navigate("/manager/myleave")} style={{ ...styles.sublink, ...(isActive("/manager/myleave") && styles.activeSubLink) }}>My Leave Records</button>
         <button
           onClick={() => navigate("/manager/leave")}
           style={{
@@ -408,6 +410,8 @@ export default function Sidebar({ role }) {
 
           {role === "maintenance" && leaveDropdown && (
             <div className="cibo-mobile-dropdown-portal">
+              <button onClick={() => { setLeaveDropdown(false); navigate("/manager/leave-request"); }}>Leave Request</button>
+              <button onClick={() => { setLeaveDropdown(false); navigate("/manager/myleave"); }}>My Leave Records</button>
               <button onClick={() => { setLeaveDropdown(false); navigate("/manager/leave"); }}>
                 Leave Approval
               </button>
