@@ -2977,297 +2977,290 @@ def load_kiosk_face_cache():
 
         safe_name = normalize_name(employee_name)
 
-        folder_path = (
-            f"employees/{safe_name}"
+        # Legacy images remain readable, while new enrollments use unique IDs.
+        # A legacy name folder must never be shared across homonymous accounts.
+        legacy_count = sum(
+            normalize_name(other.get("full_name") or "") == safe_name
+            for other in employees
         )
+        folder_paths = [f"employees/{employee['id']}"]
+        if legacy_count == 1:
+            folder_paths.append(f"employees/{safe_name}")
 
-        try:
-
-            files_list = (
-                supabase
-                .storage
-                .from_("faces")
-                .list(folder_path)
-                or []
-            )
-
-        except Exception as e:
-
-            print(
-                f"❌ CACHE STORAGE ERROR: "
-                f"{employee_name}: {e}",
-                flush=True
-            )
-
-            continue
-
-        for stored_file in files_list:
-
-            file_name = stored_file.get("name")
-
-            if not file_name:
+        for folder_path in folder_paths:
+            try:
+                files_list = supabase.storage.from_("faces").list(folder_path) or []
+            except Exception as e:
+                print(f"FACE CACHE STORAGE ERROR: {employee.get('id')}: {e}", flush=True)
                 continue
 
-            file_path = (
-                f"{folder_path}/{file_name}"
-            )
+            for stored_file in files_list:
 
-            url = (
-                f"{SUPABASE_URL}"
-                f"/storage/v1/object/"
-                f"faces/{file_path}"
-            )
+                file_name = stored_file.get("name")
 
-            try:
+                if not file_name:
+                    continue
 
-                # ==================================================
-                # DOWNLOAD IMAGE USING AUTHENTICATED STORAGE ACCESS
-                # ==================================================
-
-                response = requests.get(
-                    url,
-                    headers={
-                        "apikey": SUPABASE_SERVICE_KEY,
-                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-                    },
-                    timeout=5
+                file_path = (
+                    f"{folder_path}/{file_name}"
                 )
 
-                if response.status_code != 200:
+                url = (
+                    f"{SUPABASE_URL}"
+                    f"/storage/v1/object/"
+                    f"faces/{file_path}"
+                )
+
+                try:
+
+                    # ==================================================
+                    # DOWNLOAD IMAGE USING AUTHENTICATED STORAGE ACCESS
+                    # ==================================================
+
+                    response = requests.get(
+                        url,
+                        headers={
+                            "apikey": SUPABASE_SERVICE_KEY,
+                            "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                        },
+                        timeout=5
+                    )
+
+                    if response.status_code != 200:
+
+                        print(
+                            f"⚠️ DOWNLOAD FAILED: "
+                            f"{employee_name} | "
+                            f"FILE: {file_name} | "
+                            f"STATUS: {response.status_code}",
+                            flush=True
+                        )
+
+                        continue
+
+                    stored_img = cv2.imdecode(
+                        np.asarray(
+                            bytearray(response.content),
+                            dtype=np.uint8
+                        ),
+                        cv2.IMREAD_COLOR
+                    )
+
+                    if stored_img is None:
+
+                        print(
+                            f"❌ INVALID IMAGE: "
+                            f"{employee_name} | "
+                            f"FILE: {file_name}",
+                            flush=True
+                        )
+
+                        continue
+
+                    # ==================================================
+                    # REAL FACE DETECTION
+                    # ==================================================
+
+                    detected_faces = DeepFace.extract_faces(
+                        img_path=stored_img,
+                        detector_backend="opencv",
+                        enforce_detection=True,
+                        align=True
+                    )
+
+                    # --------------------------------------------------
+                    # MUST HAVE EXACTLY ONE FACE
+                    # --------------------------------------------------
+
+                    if len(detected_faces) != 1:
+
+                        print(
+                            f"❌ INVALID FACE COUNT: "
+                            f"{employee_name} | "
+                            f"FILE: {file_name} | "
+                            f"FACES: {len(detected_faces)}",
+                            flush=True
+                        )
+
+                        continue
+
+                    detected_face = detected_faces[0]
+
+                    confidence = float(
+                        detected_face.get(
+                            "confidence",
+                            0
+                        )
+                    )
+
+                    facial_area = (
+                        detected_face.get(
+                            "facial_area",
+                            {}
+                        )
+                    )
+
+                    x = int(
+                        facial_area.get("x", 0)
+                    )
+
+                    y = int(
+                        facial_area.get("y", 0)
+                    )
+
+                    w = int(
+                        facial_area.get("w", 0)
+                    )
+
+                    h = int(
+                        facial_area.get("h", 0)
+                    )
+
+                    image_height, image_width = (
+                        stored_img.shape[:2]
+                    )
+
+                    # ==================================================
+                    # VALIDATION
+                    # ==================================================
+
+                    # Reject zero/invalid confidence
+                    if confidence <= 0:
+
+                        print(
+                            f"❌ INVALID CONFIDENCE: "
+                            f"{employee_name} | "
+                            f"FILE: {file_name} | "
+                            f"CONFIDENCE: {confidence}",
+                            flush=True
+                        )
+
+                        continue
+
+                    # Reject invalid bounding box
+                    if w <= 0 or h <= 0:
+
+                        print(
+                            f"❌ INVALID FACE AREA: "
+                            f"{employee_name} | "
+                            f"FILE: {file_name}",
+                            flush=True
+                        )
+
+                        continue
+
+                    # Reject full-image fallback detection
+                    if (
+                        w >= image_width * 0.95
+                        and h >= image_height * 0.95
+                    ):
+
+                        print(
+                            f"❌ FULL FRAME DETECTION SKIPPED: "
+                            f"{employee_name} | "
+                            f"FILE: {file_name} | "
+                            f"AREA: {facial_area}",
+                            flush=True
+                        )
+
+                        continue
+
+                    # Reject extremely small faces
+                    if (
+                        w < 40
+                        or h < 40
+                    ):
+
+                        print(
+                            f"❌ FACE TOO SMALL: "
+                            f"{employee_name} | "
+                            f"FILE: {file_name} | "
+                            f"AREA: {facial_area}",
+                            flush=True
+                        )
+
+                        continue
+
+                    # ==================================================
+                    # VALID FACE
+                    # ==================================================
 
                     print(
-                        f"⚠️ DOWNLOAD FAILED: "
+                        f"🔍 FACE DETECTED: "
                         f"{employee_name} | "
                         f"FILE: {file_name} | "
-                        f"STATUS: {response.status_code}",
+                        f"CONFIDENCE: {confidence} | "
+                        f"AREA: {facial_area}",
                         flush=True
                     )
 
-                    continue
+                    # ==================================================
+                    # EXTRACT ACTUAL FACE
+                    # ==================================================
 
-                stored_img = cv2.imdecode(
-                    np.asarray(
-                        bytearray(response.content),
+                    face_crop = detected_face["face"]
+
+                    face_crop = np.asarray(
+                        face_crop * 255,
                         dtype=np.uint8
-                    ),
-                    cv2.IMREAD_COLOR
-                )
+                    )
 
-                if stored_img is None:
+                    face_crop = cv2.cvtColor(
+                        face_crop,
+                        cv2.COLOR_RGB2BGR
+                    )
+
+                    # ==================================================
+                    # CREATE ARCFACE EMBEDDING
+                    # ==================================================
+
+                    embedding_result = DeepFace.represent(
+                        img_path=face_crop,
+                        model_name="ArcFace",
+                        detector_backend="skip",
+                        enforce_detection=False
+                    )
+
+                    if not embedding_result:
+
+                        print(
+                            f"❌ EMBEDDING FAILED: "
+                            f"{employee_name} | "
+                            f"FILE: {file_name}",
+                            flush=True
+                        )
+
+                        continue
+
+                    embedding = (
+                        embedding_result[0]["embedding"]
+                    )
+
+                    # ==================================================
+                    # SAVE TO KIOSK CACHE
+                    # ==================================================
+
+                    kiosk_face_cache.append({
+                        "employee": employee,
+                        "embedding": embedding
+                    })
 
                     print(
-                        f"❌ INVALID IMAGE: "
+                        f"✅ Cached: "
                         f"{employee_name} | "
                         f"FILE: {file_name}",
                         flush=True
                     )
 
-                    continue
-
-                # ==================================================
-                # REAL FACE DETECTION
-                # ==================================================
-
-                detected_faces = DeepFace.extract_faces(
-                    img_path=stored_img,
-                    detector_backend="opencv",
-                    enforce_detection=True,
-                    align=True
-                )
-
-                # --------------------------------------------------
-                # MUST HAVE EXACTLY ONE FACE
-                # --------------------------------------------------
-
-                if len(detected_faces) != 1:
+                except Exception as e:
 
                     print(
-                        f"❌ INVALID FACE COUNT: "
+                        f"❌ CACHE ERROR: "
                         f"{employee_name} | "
                         f"FILE: {file_name} | "
-                        f"FACES: {len(detected_faces)}",
+                        f"ERROR: {e}",
                         flush=True
                     )
-
-                    continue
-
-                detected_face = detected_faces[0]
-
-                confidence = float(
-                    detected_face.get(
-                        "confidence",
-                        0
-                    )
-                )
-
-                facial_area = (
-                    detected_face.get(
-                        "facial_area",
-                        {}
-                    )
-                )
-
-                x = int(
-                    facial_area.get("x", 0)
-                )
-
-                y = int(
-                    facial_area.get("y", 0)
-                )
-
-                w = int(
-                    facial_area.get("w", 0)
-                )
-
-                h = int(
-                    facial_area.get("h", 0)
-                )
-
-                image_height, image_width = (
-                    stored_img.shape[:2]
-                )
-
-                # ==================================================
-                # VALIDATION
-                # ==================================================
-
-                # Reject zero/invalid confidence
-                if confidence <= 0:
-
-                    print(
-                        f"❌ INVALID CONFIDENCE: "
-                        f"{employee_name} | "
-                        f"FILE: {file_name} | "
-                        f"CONFIDENCE: {confidence}",
-                        flush=True
-                    )
-
-                    continue
-
-                # Reject invalid bounding box
-                if w <= 0 or h <= 0:
-
-                    print(
-                        f"❌ INVALID FACE AREA: "
-                        f"{employee_name} | "
-                        f"FILE: {file_name}",
-                        flush=True
-                    )
-
-                    continue
-
-                # Reject full-image fallback detection
-                if (
-                    w >= image_width * 0.95
-                    and h >= image_height * 0.95
-                ):
-
-                    print(
-                        f"❌ FULL FRAME DETECTION SKIPPED: "
-                        f"{employee_name} | "
-                        f"FILE: {file_name} | "
-                        f"AREA: {facial_area}",
-                        flush=True
-                    )
-
-                    continue
-
-                # Reject extremely small faces
-                if (
-                    w < 40
-                    or h < 40
-                ):
-
-                    print(
-                        f"❌ FACE TOO SMALL: "
-                        f"{employee_name} | "
-                        f"FILE: {file_name} | "
-                        f"AREA: {facial_area}",
-                        flush=True
-                    )
-
-                    continue
-
-                # ==================================================
-                # VALID FACE
-                # ==================================================
-
-                print(
-                    f"🔍 FACE DETECTED: "
-                    f"{employee_name} | "
-                    f"FILE: {file_name} | "
-                    f"CONFIDENCE: {confidence} | "
-                    f"AREA: {facial_area}",
-                    flush=True
-                )
-
-                # ==================================================
-                # EXTRACT ACTUAL FACE
-                # ==================================================
-
-                face_crop = detected_face["face"]
-
-                face_crop = np.asarray(
-                    face_crop * 255,
-                    dtype=np.uint8
-                )
-
-                face_crop = cv2.cvtColor(
-                    face_crop,
-                    cv2.COLOR_RGB2BGR
-                )
-
-                # ==================================================
-                # CREATE ARCFACE EMBEDDING
-                # ==================================================
-
-                embedding_result = DeepFace.represent(
-                    img_path=face_crop,
-                    model_name="ArcFace",
-                    detector_backend="skip",
-                    enforce_detection=False
-                )
-
-                if not embedding_result:
-
-                    print(
-                        f"❌ EMBEDDING FAILED: "
-                        f"{employee_name} | "
-                        f"FILE: {file_name}",
-                        flush=True
-                    )
-
-                    continue
-
-                embedding = (
-                    embedding_result[0]["embedding"]
-                )
-
-                # ==================================================
-                # SAVE TO KIOSK CACHE
-                # ==================================================
-
-                kiosk_face_cache.append({
-                    "employee": employee,
-                    "embedding": embedding
-                })
-
-                print(
-                    f"✅ Cached: "
-                    f"{employee_name} | "
-                    f"FILE: {file_name}",
-                    flush=True
-                )
-
-            except Exception as e:
-
-                print(
-                    f"❌ CACHE ERROR: "
-                    f"{employee_name} | "
-                    f"FILE: {file_name} | "
-                    f"ERROR: {e}",
-                    flush=True
-                )
 
     print(
         f"🎯 KIOSK CACHE READY: "
@@ -3296,7 +3289,7 @@ async def upload_face(
         contents = await file.read()
 
         safe_name = normalize_name(full_name)
-        file_name = f"employees/{safe_name}/face_{int(time.time() * 1000)}.jpg"
+        file_name = f"employees/{user_id}/face_{int(time.time() * 1000)}.jpg"
 
         supabase.storage.from_("faces").upload(
             file_name,
