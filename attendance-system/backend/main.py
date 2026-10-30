@@ -3380,10 +3380,18 @@ async def upload_face(
 
             # Atomic cross-worker enrollment reservation. The first angle reserves
             # the identity; subsequent angles belong to the same employee.
-            reservation = supabase.rpc("reserve_face_enrollment", {
-                "p_employee_id": user_id,
-                "p_embedding": new_embedding,
-            }).execute().data
+            try:
+                reservation = supabase.rpc("reserve_face_enrollment", {
+                    "p_employee_id": user_id,
+                    "p_embedding": new_embedding,
+                }).execute().data
+            except Exception:
+                # A failed database write must not leave a new active face photo.
+                try:
+                    supabase.storage.from_("faces").remove([file_name])
+                except Exception:
+                    pass
+                raise HTTPException(status_code=503, detail="Face enrollment unavailable. Please retry.")
             if reservation not in ("reserved", "existing"):
                 try:
                     supabase.storage.from_("faces").remove([file_name])
