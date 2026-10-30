@@ -2768,6 +2768,13 @@ async def admin_update_password(
     if not caller:
         raise HTTPException(status_code=401, detail="Invalid authentication session.")
 
+    # Legacy manual-password reset bypasses mandatory temporary-password setup.
+    # Use /auth/password-setup/issue instead so credentials expire and setup is enforced.
+    raise HTTPException(
+        status_code=410,
+        detail="Manual password resets are disabled. Use the temporary password reset feature.",
+    )
+
     validate_strong_password(payload.password)
 
     caller_result = (
