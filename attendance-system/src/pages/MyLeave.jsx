@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import EmployeeLayout from "../layouts/EmployeeLayout";
+import ManagerLayout from "../layouts/ManagerLayout";
 import { logAudit } from "../utils/auditlogger";
 import { getStorageAccessUrl } from "../utils/storageAccess";
 
-export default function MyLeave() {
+export default function MyLeave({ maintenance = false }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,8 +55,9 @@ export default function MyLeave() {
     setLoading(false);
   };
 
+  const Layout = maintenance ? ManagerLayout : EmployeeLayout;
   return (
-    <EmployeeLayout>
+    <Layout>
       <div className="cibo-page-root" style={styles.container}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>Leave Records</h1>
 
@@ -160,7 +162,7 @@ export default function MyLeave() {
           )}
         </div>
       </div>
-    </EmployeeLayout>
+    </Layout>
   );
 }
 
