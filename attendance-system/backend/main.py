@@ -1008,6 +1008,93 @@ async def get_staged_legacy_attendance(
     return {"total": len(rows), "limit": safe_limit, "counts": counts, "records": rows}
 
 
+
+@app.get("/admin/staged-legacy-attendance/import-preview")
+async def preview_staged_legacy_attendance_import(
+    authorization: str | None = Header(default=None),
+):
+    """Read-only import eligibility preview; never creates profiles or attendance."""
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    authenticate_hr_bearer(token)
+
+    staged = (
+        supabase.from_("legacy_attendance_staging")
+        .select("id,employee_no,log_date,branch_id,branch_code,review_checked,review_status")
+        .limit(5000).execute().data or []
+    )
+    identities = (
+        supabase.from_("legacy_employee_staging")
+        .select("employee_no,linked_employee_id,profile_status")
+        .limit(5000).execute().data or []
+    )
+    staged_identity_by_no = {str(e.get("employee_no") or "").strip(): e for e in identities}
+    employee_numbers = sorted({str(row.get("employee_no") or "").strip() for row in staged})
+    profiles = []
+    for offset in range(0, len(employee_numbers), 100):
+        if employee_numbers[offset:offset + 100]:
+            profiles.extend(
+                supabase.from_("employee_profiles")
+                .select("id,employee_no,branch_id")
+                .in_("employee_no", employee_numbers[offset:offset + 100])
+                .execute().data or []
+            )
+    profiles_by_no = {}
+    for profile in profiles:
+        profiles_by_no.setdefault(str(profile.get("employee_no") or "").strip(), []).append(profile)
+
+    matched_ids = [p["id"] for p in profiles]
+    existing_dates = set()
+    for offset in range(0, len(matched_ids), 100):
+        batch = matched_ids[offset:offset + 100]
+        if batch:
+            logs = (
+                supabase.from_("attendance_logs")
+                .select("employee_id,log_date")
+                .in_("employee_id", batch)
+                .limit(10000).execute().data or []
+            )
+            existing_dates.update((str(log.get("employee_id")), str(log.get("log_date"))) for log in logs)
+
+    reasons = {
+        "awaiting_profile": 0,
+        "ambiguous_profile": 0,
+        "identity_not_linked": 0,
+        "branch_mismatch": 0,
+        "not_reviewed": 0,
+        "already_exists": 0,
+        "ready": 0,
+    }
+    details = []
+    for row in staged:
+        employee_no = str(row.get("employee_no") or "").strip()
+        matches = profiles_by_no.get(employee_no, [])
+        identity = staged_identity_by_no.get(employee_no)
+        if not matches:
+            reason = "awaiting_profile"
+        elif len(matches) != 1:
+            reason = "ambiguous_profile"
+        elif not identity or identity.get("profile_status") != "linked" or str(identity.get("linked_employee_id") or "") != str(matches[0]["id"]):
+            reason = "identity_not_linked"
+        elif str(row.get("branch_id") or "") != str(matches[0].get("branch_id") or ""):
+            reason = "branch_mismatch"
+        elif not row.get("review_checked"):
+            reason = "not_reviewed"
+        elif (str(matches[0]["id"]), str(row.get("log_date"))) in existing_dates:
+            reason = "already_exists"
+        else:
+            reason = "ready"
+        reasons[reason] += 1
+        details.append({"id": row["id"], "employee_no": employee_no, "date": row.get("log_date"), "result": reason})
+
+    return {
+        "mode": "read_only",
+        "total": len(staged),
+        "counts": reasons,
+        "records": details,
+        "message": "Preview only. No employee accounts or attendance records were created or changed.",
+    }
+
+
 @app.post("/admin/migrate-csv")
 async def admin_migrate_csv(
     file: UploadFile = File(...),
