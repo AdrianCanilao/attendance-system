@@ -34,6 +34,24 @@ export default function ProtectedRoute({ children, role }) {
       }
 
       try {
+        const setupResponse = await fetch(API_URL + "/auth/password-setup/status", {
+          headers: { Authorization: "Bearer " + accessToken },
+        });
+        if (!setupResponse.ok) throw new Error("Account setup check unavailable");
+        const setup = await setupResponse.json();
+        if (setup.status !== "active") {
+          if (!cancelled) {
+            setDeviceAllowed(false);
+            setCheckingDevice(false);
+          }
+          if (setup.status === "pending_setup") {
+            window.location.replace("/setup-password");
+          } else {
+            await supabase.auth.signOut();
+            window.location.replace("/");
+          }
+          return;
+        }
         const response = await fetch(API_URL + "/auth/device-check", {
           method: "POST",
           headers: {
