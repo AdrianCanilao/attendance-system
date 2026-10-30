@@ -387,6 +387,54 @@ async def update_staged_legacy_role(
         raise HTTPException(status_code=500, detail="Unable to save the staged employee role.")
 
 
+
+@app.get("/admin/staged-legacy-employees/{staging_id}/matching-profile")
+async def preview_staged_employee_matching_profile(
+    staging_id: str,
+    authorization: str | None = Header(default=None),
+):
+    """Read-only lookup of a registered profile by the staged employee number."""
+    token = authorization[7:].strip() if authorization and authorization.startswith("Bearer ") else None
+    authenticate_hr_bearer(token)
+    staged_rows = (
+        supabase.from_("legacy_employee_staging")
+        .select("id,employee_no,branch_id,intended_role,profile_status,linked_employee_id")
+        .eq("id", staging_id).limit(1).execute().data or []
+    )
+    if not staged_rows:
+        raise HTTPException(status_code=404, detail="Staged employee not found.")
+    staged = staged_rows[0]
+    profiles = (
+        supabase.from_("employee_profiles")
+        .select("id,employee_no,branch_id,role_id")
+        .eq("employee_no", staged["employee_no"]).limit(10).execute().data or []
+    )
+    if len(profiles) != 1:
+        return {"status": "no_match" if not profiles else "ambiguous", "matching_profiles": len(profiles), "can_link": False}
+    profile = profiles[0]
+    role_rows = (
+        supabase.from_("roles").select("name").eq("id", profile.get("role_id")).limit(1).execute().data or []
+    )
+    role = str(role_rows[0].get("name") or "").strip().lower() if role_rows else ""
+    expected = staged.get("intended_role")
+    role_matches = (
+        expected == "employee" and role in {"employee", "staff"}
+    ) or (
+        expected == "maintenance" and role in {"maintenance", "maintenance specialist", "branch supervisor", "manager"}
+    )
+    branch_matches = str(profile.get("branch_id") or "") == str(staged.get("branch_id") or "")
+    can_link = bool(branch_matches and role_matches and staged.get("profile_status") != "linked")
+    return {
+        "status": "eligible" if can_link else "requires_attention",
+        "matching_profiles": 1,
+        "can_link": can_link,
+        "profile_id": profile["id"] if can_link else None,
+        "branch_matches": branch_matches,
+        "role_matches": bool(role_matches),
+        "message": "This is a read-only match check; linking requires separate confirmation.",
+    }
+
+
 class LinkStagedLegacyEmployeeRequest(BaseModel):
     user_id: str
 
