@@ -276,7 +276,6 @@ export default function RegisterEmployee() {
     const {
       name,
       email,
-      password,
       contact,
       position,
     } = form;
@@ -284,7 +283,6 @@ export default function RegisterEmployee() {
     if (
       !name ||
       !email ||
-      !password ||
       !contact ||
       !position ||
       (stagedEmployee && !String(form.employee_no || "").trim()) ||
@@ -317,18 +315,6 @@ export default function RegisterEmployee() {
 
     if (position.trim().length > 100) {
       alert("Position must be 100 characters or fewer.");
-      return;
-    }
-
-    if (!isStrongPassword(password)) {
-      alert(
-        "Password must have:\n\n" +
-        "• 8 or more characters\n" +
-        "• 1 uppercase letter\n" +
-        "• 1 lowercase letter\n" +
-        "• 1 number\n" +
-        "• 1 special character"
-      );
       return;
     }
 
@@ -376,7 +362,6 @@ export default function RegisterEmployee() {
             employee_no: form.employee_no.trim(),
             name,
             email,
-            password,
             contact,
             position,
             branch_id: form.branch_id,
@@ -486,7 +471,20 @@ export default function RegisterEmployee() {
       } catch (reloadError) {
       }
 
-      await Swal.fire({ title: stagedEmployee ? "Staged employee registered and linked!" : "Employee registered!", text: stagedEmployee ? "The account was created and the DTR employee record is now linked. Historical attendance has not been imported." : "The employee account was created successfully.", icon: "success", confirmButtonColor: "#f97316" });
+      const temporaryPassword = registrationData?.temporary_password;
+      await Swal.fire({
+        title: stagedEmployee ? "Staged employee registered and linked!" : "Employee registered!",
+        text: "Temporary password (copy now; shown only once): " + (temporaryPassword || "Unavailable") + ". Expires in 12 hours. The employee must create a permanent password at first login. Historical attendance has not been imported.",
+        icon: "success",
+        confirmButtonText: "Copy password and continue",
+        confirmButtonColor: "#f97316",
+        preConfirm: async () => {
+          if (temporaryPassword) {
+            try { await navigator.clipboard.writeText(temporaryPassword); }
+            catch { /* Password remains visible for manual copying. */ }
+          }
+        },
+      });
       if (stagedEmployee) {
         navigate(stagedEmployee.sent_to_ms_at ? "/manager/staged-employees" : "/hr/staged-employees", { replace: true });
         return;
