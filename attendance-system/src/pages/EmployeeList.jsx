@@ -11,6 +11,9 @@ export default function EmployeeList() {
   const [employees, setEmployees] = useState([]);
   const [passwordStatuses, setPasswordStatuses] = useState({});
   const [issuedPassword, setIssuedPassword] = useState(null);
+  const [resetConfirmation, setResetConfirmation] = useState(null);
+  const [resetError, setResetError] = useState("");
+  const [passwordCopied, setPasswordCopied] = useState(false);
   const [resettingUserId, setResettingUserId] = useState(null);
   const resetEmployeePassword = async (employee) => {
     if (!window.confirm("Issue a new temporary password for " + employee.full_name + "? Their previous password will stop working.")) return;
@@ -26,10 +29,13 @@ export default function EmployeeList() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.detail || "Unable to issue password.");
+      setResetConfirmation(null);
+      setResetError("");
+      setPasswordCopied(false);
       setIssuedPassword({ name: employee.full_name, password: result.temporary_password, expires: result.expires_at });
       setPasswordStatuses((prev) => ({ ...prev, [employee.id]: "pending_setup" }));
     } catch (error) {
-      alert(error.message || "Password reset failed.");
+      setResetError(error.message || "Password reset failed. Please try again.");
     } finally {
       setResettingUserId(null);
     }
@@ -536,6 +542,25 @@ export default function EmployeeList() {
   return (
     <ManagerLayout>
       <style>{`.cibo-list-pagination{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:14px;padding:12px 0;border-top:1px solid #e5e7eb;color:#6b7280;font-size:12px}.cibo-list-pagination-count{align-self:flex-start}.cibo-list-pagination-controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;width:100%}.cibo-list-pagination-controls button{border:1px solid #d1d5db;border-radius:7px;background:#fff;color:#374151;padding:8px 9px;min-height:34px;font:inherit;cursor:pointer}.cibo-list-pagination-controls button:disabled{opacity:.45;cursor:not-allowed;background:#f9fafb}.cibo-list-pagination-controls button:focus-visible{outline:2px solid #f97316}.cibo-list-pagination-page{color:#374151;white-space:nowrap;padding:0 3px} .cibo-employee-list-page{width:100%;max-width:100%;box-sizing:border-box;min-width:0}.cibo-employee-list-page .cibo-employee-list-topbar{width:100%;max-width:none;gap:16px;box-sizing:border-box}.cibo-employee-list-page .cibo-employee-list-search{flex:1 1 320px;max-width:520px;min-width:0;box-sizing:border-box}.cibo-employee-list-page .cibo-employee-list-filters{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}.cibo-employee-list-page .cibo-employee-list-cards{width:100%;max-width:none;box-sizing:border-box}.cibo-employee-list-page .cibo-employee-list-card{width:100%;min-height:96px;box-sizing:border-box;gap:16px}.cibo-employee-list-page .cibo-employee-list-card-info{min-width:0;flex:1}.cibo-employee-list-page .cibo-employee-list-card-info>div{overflow-wrap:anywhere}.cibo-employee-list-page .cibo-employee-list-card>button{flex-shrink:0}.cibo-employee-list-page>.cibo-list-pagination{width:100%;box-sizing:border-box} @media (max-width: 768px) { .cibo-employee-list-page .cibo-employee-list-topbar{align-items:stretch;gap:10px}.cibo-employee-list-page .cibo-employee-list-search{max-width:none;flex:1 1 100%}.cibo-employee-list-page .cibo-employee-list-filters{justify-content:flex-start;width:100%}.cibo-employee-list-page .cibo-employee-list-card{min-height:0}.cibo-employee-list-modal .cibo-staff-desktop-table { display: none !important; } .cibo-employee-list-modal { max-height: 90dvh; overflow-y: auto; padding: 16px !important; box-sizing: border-box; } }`}</style>
+      <style>{`
+        .cibo-password-modal-overlay{padding:16px;box-sizing:border-box;z-index:1200!important}
+        .cibo-password-modal{position:relative;width:min(100%,440px);max-height:90dvh;overflow-y:auto;box-sizing:border-box;background:#fff;border-radius:18px;padding:32px 24px 24px;box-shadow:0 22px 65px rgba(15,23,42,.22);text-align:center;color:#1e293b}
+        .cibo-password-modal-x{position:absolute;top:12px;right:16px;border:0;background:transparent;color:#64748b;font-size:26px;cursor:pointer}
+        .cibo-password-modal-icon{width:64px;height:64px;display:flex;align-items:center;justify-content:center;border-radius:50%;margin:0 auto 16px;background:#fff0e3;color:#f97316;font-size:36px;font-weight:700}
+        .cibo-password-modal h2{font-size:21px;line-height:1.3;margin:0 0 14px;font-weight:750;color:#111827}
+        .cibo-password-modal p{font-size:14px;line-height:1.6;color:#475569;margin:10px 0}
+        .cibo-password-modal-credential{margin:18px 0 12px;padding:14px 12px;border:1px solid #fed7aa;border-radius:10px;background:#fff7ed;display:flex;flex-direction:column;gap:9px}
+        .cibo-password-modal-credential span{font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:#c2410c}
+        .cibo-password-modal-credential strong{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:18px;letter-spacing:.025em;overflow-wrap:anywhere;user-select:all}
+        .cibo-password-modal .cibo-password-modal-expiry{font-size:12px;text-align:left}
+        .cibo-password-modal-actions{display:flex;gap:9px;margin-top:24px}
+        .cibo-password-modal-actions button{flex:1;min-height:43px;border-radius:8px;font-weight:650;font-size:13px;cursor:pointer;padding:10px}
+        .cibo-password-modal-actions button:disabled{opacity:.65;cursor:wait}
+        .cibo-password-modal-secondary{border:1px solid #e2e8f0;background:#f1f5f9;color:#334155}
+        .cibo-password-modal-primary{border:1px solid #f97316;background:#f97316;color:#fff}
+        .cibo-password-modal .cibo-password-modal-error{background:#fef2f2;color:#b91c1c;border-radius:8px;padding:9px;font-size:12px}
+        @media(max-width:390px){.cibo-password-modal{padding:28px 16px 18px}.cibo-password-modal-actions{flex-direction:column-reverse}}
+      `}</style>
       <div className="cibo-page-root cibo-employee-list-page" style={styles.wrapper}>
         <h1 className="cibo-page-title" style={styles.pageTitle}>
           Employee List
@@ -645,7 +670,7 @@ export default function EmployeeList() {
                 <button
                   type="button"
                   disabled={resettingUserId === employee.id}
-                  onClick={() => resetEmployeePassword(employee)}
+                  onClick={() => { setResetError(""); setResetConfirmation(employee); }}
                   style={{ ...styles.button, background: "#fff7ed", color: "#c2410c" }}
                 >
                   {resettingUserId === employee.id ? "Issuing…" : "Reset Password"}
@@ -663,18 +688,39 @@ export default function EmployeeList() {
         <nav className="cibo-list-pagination" aria-label="Employee list pagination"><span className="cibo-list-pagination-count">{filteredEmployees.length === 0 ? "No records found" : `Showing ${(employeePage - 1) * PAGE_SIZE + 1}–${Math.min(employeePage * PAGE_SIZE, filteredEmployees.length)} of ${filteredEmployees.length} records`}</span><div className="cibo-list-pagination-controls"><button type="button" disabled={employeePage <= 1} onClick={() => setEmployeePage(1)} aria-label="First page">«</button><button type="button" disabled={employeePage <= 1} onClick={() => setEmployeePage((p) => Math.max(1,p-1))}>Previous</button><span className="cibo-list-pagination-page">Page {employeePage} of {employeePageCount}</span><button type="button" disabled={employeePage >= employeePageCount} onClick={() => setEmployeePage((p) => Math.min(employeePageCount,p+1))}>Next</button><button type="button" disabled={employeePage >= employeePageCount} onClick={() => setEmployeePage(employeePageCount)} aria-label="Last page">»</button></div></nav>
       </div>
 
-      {issuedPassword && (
-        <div style={styles.modalOverlay} role="dialog" aria-modal="true" aria-label="Temporary password issued">
-          <div style={{ ...styles.modal, maxWidth: 440, width: "min(92vw, 440px)", boxSizing: "border-box" }}>
-            <h2 style={styles.modalTitle}>Temporary password issued</h2>
-            <p>For {issuedPassword.name}. Copy this password now; it will not be displayed again.</p>
-            <p style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 22, overflowWrap: "anywhere" }}>{issuedPassword.password}</p>
-            <p>Expires: {new Date(issuedPassword.expires).toLocaleString()}</p>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button type="button" style={styles.button} onClick={() => navigator.clipboard.writeText(issuedPassword.password)}>Copy password</button>
-              <button type="button" style={styles.button} onClick={() => setIssuedPassword(null)}>Done</button>
-            </div>
-          </div>
+      {(resetConfirmation || issuedPassword) && (
+        <div className="cibo-password-modal-overlay" style={styles.modalOverlay} role="presentation">
+          <section className="cibo-password-modal" role="dialog" aria-modal="true" aria-labelledby="cibo-password-modal-title">
+            <button type="button" className="cibo-password-modal-x" aria-label="Close" disabled={Boolean(resettingUserId)} onClick={() => { setResetConfirmation(null); setIssuedPassword(null); setResetError(""); }}>×</button>
+            <div className="cibo-password-modal-icon" aria-hidden="true">{issuedPassword ? "✓" : "⚿"}</div>
+            {resetConfirmation ? (
+              <>
+                <h2 id="cibo-password-modal-title">Reset employee password?</h2>
+                <p>Issue a new temporary password for <strong>{resetConfirmation.full_name}</strong>?</p>
+                <p>Their current password will stop working, and they must set a new permanent password at their next login.</p>
+                {resetError && <p className="cibo-password-modal-error" role="alert">{resetError}</p>}
+                <div className="cibo-password-modal-actions">
+                  <button type="button" className="cibo-password-modal-secondary" disabled={Boolean(resettingUserId)} onClick={() => { setResetConfirmation(null); setResetError(""); }}>Cancel</button>
+                  <button type="button" className="cibo-password-modal-primary" disabled={Boolean(resettingUserId)} onClick={() => resetEmployeePassword(resetConfirmation)}>{resettingUserId ? "Issuing…" : "Issue temporary password"}</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 id="cibo-password-modal-title">Temporary password issued!</h2>
+                <p>A new temporary password has been generated for <strong>{issuedPassword.name}</strong>. Copy it now—it will only be shown once.</p>
+                <div className="cibo-password-modal-credential">
+                  <span>Temporary password</span>
+                  <strong>{issuedPassword.password}</strong>
+                </div>
+                <p className="cibo-password-modal-expiry">Valid until {new Date(issuedPassword.expires).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })} (12 hours from issuance).</p>
+                <div className="cibo-password-modal-actions">
+                  <button type="button" className="cibo-password-modal-secondary" onClick={() => setIssuedPassword(null)}>Done</button>
+                  <button type="button" className="cibo-password-modal-primary" onClick={async () => { try { await navigator.clipboard.writeText(issuedPassword.password); setPasswordCopied(true); } catch { setResetError("Unable to copy automatically. Please select and copy the password."); } }}>{passwordCopied ? "Copied!" : "Copy password"}</button>
+                </div>
+                {resetError && <p className="cibo-password-modal-error" role="alert">{resetError}</p>}
+              </>
+            )}
+          </section>
         </div>
       )}
       {/* MODAL */}
