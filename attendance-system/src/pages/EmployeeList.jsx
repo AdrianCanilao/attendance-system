@@ -9,6 +9,7 @@ import { saveAs } from "file-saver";
 
 export default function EmployeeList() {
   const [employees, setEmployees] = useState([]);
+  const [passwordStatuses, setPasswordStatuses] = useState({});
   const [issuedPassword, setIssuedPassword] = useState(null);
   const [resettingUserId, setResettingUserId] = useState(null);
   const resetEmployeePassword = async (employee) => {
@@ -26,6 +27,7 @@ export default function EmployeeList() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.detail || "Unable to issue password.");
       setIssuedPassword({ name: employee.full_name, password: result.temporary_password, expires: result.expires_at });
+      setPasswordStatuses((prev) => ({ ...prev, [employee.id]: "pending_setup" }));
     } catch (error) {
       alert(error.message || "Password reset failed.");
     } finally {
@@ -114,6 +116,16 @@ export default function EmployeeList() {
 
     if (!error) {
       setEmployees(data || []);
+    }
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const api = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://cibo-attendance-api.onrender.com" : "http://127.0.0.1:8000")).replace(new RegExp("/+$"), "");
+      const response = await fetch(api + "/auth/password-setup/employees", {
+        headers: { Authorization: "Bearer " + sessionData.session.access_token },
+      });
+      if (response.ok) setPasswordStatuses((await response.json()).statuses || {});
+    } catch {
+      // Account status is supplementary; keep the employee list usable.
     }
   };
 
@@ -622,6 +634,9 @@ export default function EmployeeList() {
 
                   <div style={styles.email}>
                     {employee.email}
+                  </div>
+                  <div style={{ fontSize: 12, marginTop: 4, color: passwordStatuses[employee.id] === "expired" ? "#b42318" : "#667085" }}>
+                    Account: {passwordStatuses[employee.id] === "pending_setup" ? "Pending setup" : passwordStatuses[employee.id] === "expired" ? "Expired" : passwordStatuses[employee.id] === "active" ? "Active" : "Status unavailable"}
                   </div>
                 </div>
               </div>
