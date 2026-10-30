@@ -366,10 +366,14 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
           </div>
 
           <div className="cibo-profile-calendar">
-            <AttendanceCalendar attendance={attendanceLogs} leaves={calendarLeaves} onSelectDate={setBranchLeaveDate} />
-            {(location.pathname.startsWith("/manager") || location.pathname.startsWith("/maintenance")) && (
-              <section aria-label="Branch employees on leave" style={{ marginTop: 12, padding: 12, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, overflowWrap: "anywhere" }}>
-                <h3 style={{ fontSize: 15, margin: "0 0 8px" }}>Employees on Leave — Your Branch</h3>
+            <AttendanceCalendar attendance={attendanceLogs} leaves={calendarLeaves}
+              showDetails={!(location.pathname.startsWith("/manager") || location.pathname.startsWith("/maintenance"))}
+              onSelectDate={(date) => { if (location.pathname.startsWith("/manager") || location.pathname.startsWith("/maintenance")) setBranchLeaveDate(date); }} />
+          </div>
+          {branchLeaveDate && (location.pathname.startsWith("/manager") || location.pathname.startsWith("/maintenance")) && (
+            <div onClick={() => setBranchLeaveDate(null)} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(15,23,42,.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, boxSizing: "border-box" }}>
+              <section role="dialog" aria-modal="true" aria-label="Branch employees on leave" onClick={(event) => event.stopPropagation()} style={{ background: "#fff", borderRadius: 12, padding: 16, width: "100%", maxWidth: 440, maxHeight: "80vh", minWidth: 0, boxSizing: "border-box", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <button type="button" onClick={() => setBranchLeaveDate(null)} aria-label="Close leave details" style={{ alignSelf: "flex-end", border: 0, background: "#f1f5f9", borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>Close</button><h3 style={{ fontSize: 15, margin: "0 0 8px" }}>Employees on Leave — Your Branch</h3>
                 {!branchLeaveDate ? <p style={{ fontSize: 13 }}>Select a calendar date to view approved leaves for your branch.</p> :
                   <>
                     <p style={{ fontSize: 13, margin: "0 0 8px" }}>Selected date: {branchLeaveDate}</p>
@@ -379,7 +383,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                           const names = new Map(branchLeaveEmployees.map((employee) => [employee.id, employee.full_name]));
                           const matching = branchLeaveRequests.filter((leave) => leave.start_date <= branchLeaveDate && leave.end_date >= branchLeaveDate && names.has(leave.employee_id));
                           return matching.length ? (
-                            <ul aria-label="Employees on approved leave" tabIndex={0} style={{ padding: "4px 8px 4px 20px", margin: 0, fontSize: 13, maxHeight: 220, overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }}>
+                            <ul aria-label="Employees on approved leave" tabIndex={0} style={{ padding: "4px 8px 4px 20px", margin: 0, fontSize: 13, maxHeight: "50vh", overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }}>
                               {matching.map((leave) => <li key={leave.id} style={{ marginBottom: 8 }}>
                                 <strong>{names.get(leave.employee_id)}</strong> — {leave.leave_type || "Approved Leave"}
                                 <div style={{ color: "#64748b" }}>{leave.start_date} to {leave.end_date} · Approved</div>
@@ -390,8 +394,9 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                   </>
                 }
               </section>
-            )}
-          </div>
+
+            </div>
+          )}
         </div>
 
         <div className="cibo-profile-attendance" style={{
