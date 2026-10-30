@@ -88,7 +88,7 @@ export default function HRLayout({ children }) {
           .cibo-role-mobile-nav { background: #1f2937; }
           .cibo-role-mobile-nav .cibo-role-nav-primary, .cibo-role-mobile-nav .cibo-role-nav-group-toggle { display: flex; align-items: center; gap: 12px; }
           .cibo-role-mobile-nav .cibo-role-nav-primary > svg, .cibo-role-mobile-nav .cibo-role-nav-group-toggle > svg { flex-shrink: 0; }
-          .cibo-role-mobile-nav .cibo-role-nav-group-toggle { border: 2px solid #111827; padding: 10px 12px; }
+          .cibo-role-mobile-nav .cibo-role-nav-group-toggle { border: 0; padding: 12px 14px; }
           .cibo-role-mobile-nav .cibo-role-nav-group-toggle > span { flex: 1; }
           .cibo-role-mobile-nav .cibo-role-nav-submenu { padding: 4px 0 8px 26px; display: flex; flex-direction: column; gap: 2px; }
           .cibo-role-mobile-nav .cibo-role-nav-submenu button { color: #cbd5e1; min-height: 38px; padding: 9px 10px; font-size: 13px; }
