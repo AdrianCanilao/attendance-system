@@ -258,7 +258,6 @@ const captureFace = () => {
     const {
       name,
       email,
-      password,
       contact,
       position, 
     } = form;
@@ -266,7 +265,6 @@ const captureFace = () => {
     if (
   !name ||
   !email ||
-  !password ||
   !contact ||
   !position ||
   (stagedEmployee && !String(form.employee_no || "").trim()) ||
@@ -279,18 +277,6 @@ const captureFace = () => {
 
     if (!isValidEmail(email)) {
       alert("Please enter a valid email address.");
-      return;
-    }
-
-    if (!isStrongPassword(password)) {
-      alert(
-        "Password must have:\n\n" +
-        "• 8 or more characters\n" +
-        "• 1 uppercase letter\n" +
-        "• 1 lowercase letter\n" +
-        "• 1 number\n" +
-        "• 1 special character"
-      );
       return;
     }
 
@@ -323,7 +309,6 @@ const captureFace = () => {
             employee_no: form.employee_no.trim(),
             name,
             email,
-            password,
             contact,
             position,
             branch_id: form.branch_id,
@@ -428,7 +413,17 @@ action: "REGISTER_MAINTENANCE",
   description: `Registered manager: ${name}`,
 });
 
-      await Swal.fire({ title: stagedEmployee ? "Staged employee registered and linked!" : "Maintenance Specialist registered!", text: stagedEmployee ? "The account was created and the DTR employee record is now linked. Historical attendance has not been imported." : "The Maintenance Specialist account was created successfully.", icon: "success", confirmButtonColor: "#f97316" });
+      await Swal.fire({
+        title: stagedEmployee ? "Staged supervisor registered and linked!" : "Branch Supervisor registered!",
+        text: "Temporary password (shown once): " + (registrationData.temporary_password || "Unavailable") + ". Expires in 12 hours. Permanent password setup is required on first login. Historical attendance has not been imported.",
+        icon: "success",
+        confirmButtonText: "Copy password and continue",
+        confirmButtonColor: "#f97316",
+        preConfirm: async () => {
+          try { await navigator.clipboard.writeText(registrationData.temporary_password); }
+          catch { /* Credential stays visible for manual copying. */ }
+        },
+      });
       if (stagedEmployee) {
         navigate("/hr/staged-employees", { replace: true });
         return;
@@ -678,43 +673,9 @@ shift_id: "",
               />
             </div>
 
-            <div>
-              <div style={styles.fieldHeader}>
-                <label style={styles.label}>Password <span style={styles.required}>*</span></label>
-                <span style={styles.counter}>Max 64 • {getRemainingCharacters("password", 64)} remaining</span>
-              </div>
-              <div style={{ position: "relative" }}>
-<input
-                type={showPassword ? "text" : "password"}
-                name="password"
-                placeholder="Enter password"
-                value={form.password}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                autoComplete="new-password"
-                minLength={8}
-                maxLength={64}
-                required
-                aria-required="true"
-                aria-invalid={isFieldInvalid("password")}
-                style={{ ...styles.input, ...(isFieldInvalid("password") ? styles.inputError : {}) , paddingRight: 44 }}
-              />
-<button
-  type="button"
-  onClick={() => setShowPassword((visible) => !visible)}
-  aria-label={showPassword ? "Hide password" : "Show password"}
-  title={showPassword ? "Hide password" : "Show password"}
-  style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", justifyContent: "center" }}
->
-  {showPassword ? (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.9 10.9 0 0 1 12 5c5 0 9 5 9 7a10.8 10.8 0 0 1-3 4.2"/><path d="M6.6 6.6C4.3 8 3 10.4 3 12c0 2 4 7 9 7a9.8 9.8 0 0 0 3-.5"/></svg>
-  ) : (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-  )}
-</button>
-</div>
-            </div>
-
+            <p style={{ color: "#667085", fontSize: 13 }}>
+              A secure temporary password will be generated and shown once after registration.
+            </p>
             <div>
               <div style={styles.fieldHeader}>
                 <label style={styles.label}>Contact Number <span style={styles.required}>*</span></label>
