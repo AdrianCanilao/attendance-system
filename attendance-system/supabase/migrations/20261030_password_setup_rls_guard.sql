@@ -2,10 +2,12 @@
 -- Prevent authenticated users with pending/expired temporary setup from using
 -- direct PostgREST access, including with pre-existing browser sessions.
 -- No existing records are modified.
+-- Public schema is exposed to authenticated PostgREST; EXECUTE is restricted below.
+-- A function in private schema would require additional USAGE grants.
 -- Requires a separately approved isolated test branch before application.
 begin;
 
-create or replace function private.password_setup_complete()
+create or replace function public.password_setup_complete()
 returns boolean
 language sql
 stable
@@ -21,29 +23,29 @@ as $$
     );
 $$;
 
-revoke all on function private.password_setup_complete() from public;
-grant execute on function private.password_setup_complete() to authenticated;
+revoke all on function public.password_setup_complete() from public;
+grant execute on function public.password_setup_complete() to authenticated;
 
 -- Restrictive policies AND together with existing permissive role/branch policies.
 -- Keep service_role access unchanged; existing accounts without setup rows remain active.
 create policy "Require completed setup for attendance access"
 on public.attendance_logs as restrictive for all to authenticated
-using ((select private.password_setup_complete()))
-with check ((select private.password_setup_complete()));
+using ((select public.password_setup_complete()))
+with check ((select public.password_setup_complete()));
 
 create policy "Require completed setup for profile access"
 on public.employee_profiles as restrictive for all to authenticated
-using ((select private.password_setup_complete()))
-with check ((select private.password_setup_complete()));
+using ((select public.password_setup_complete()))
+with check ((select public.password_setup_complete()));
 
 create policy "Require completed setup for corrections access"
 on public.attendance_corrections as restrictive for all to authenticated
-using ((select private.password_setup_complete()))
-with check ((select private.password_setup_complete()));
+using ((select public.password_setup_complete()))
+with check ((select public.password_setup_complete()));
 
 create policy "Require completed setup for audit access"
 on public.audit_logs as restrictive for all to authenticated
-using ((select private.password_setup_complete()))
-with check ((select private.password_setup_complete()));
+using ((select public.password_setup_complete()))
+with check ((select public.password_setup_complete()));
 
 commit;
