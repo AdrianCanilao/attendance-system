@@ -736,42 +736,9 @@ export default function RegisterEmployee() {
                 />
               </div>
 
-              <div>
-                <div style={styles.fieldHeader}>
-                  <label style={styles.label}>Password <span style={styles.required}>*</span></label>
-                  <span style={styles.counter}>Max 64 • {getRemainingCharacters("password", 64)} remaining</span>
-                </div>
-                <div style={{ position: "relative" }}>
-<input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  placeholder="Enter password"
-                  value={form.password}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  autoComplete="new-password"
-                  minLength={8}
-                  maxLength={64}
-                  required
-                  aria-required="true"
-                  aria-invalid={isFieldInvalid("password")}
-                  style={{ ...styles.input, ...(isFieldInvalid("password") ? styles.inputError : {}) , paddingRight: 44 }}
-                />
-<button
-  type="button"
-  onClick={() => setShowPassword((visible) => !visible)}
-  aria-label={showPassword ? "Hide password" : "Show password"}
-  title={showPassword ? "Hide password" : "Show password"}
-  style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex", alignItems: "center", justifyContent: "center" }}
->
-  {showPassword ? (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.9 10.9 0 0 1 12 5c5 0 9 5 9 7a10.8 10.8 0 0 1-3 4.2"/><path d="M6.6 6.6C4.3 8 3 10.4 3 12c0 2 4 7 9 7a9.8 9.8 0 0 0 3-.5"/></svg>
-  ) : (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-  )}
-</button>
-</div>
-              </div>
+              <p style={{ gridColumn: "1 / -1", color: "#667085", fontSize: 13 }}>
+                A secure 8-character temporary password will be generated automatically and shown once after registration.
+              </p>
 
               <div>
                 <div style={styles.fieldHeader}>
