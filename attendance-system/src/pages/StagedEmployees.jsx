@@ -13,6 +13,9 @@ export default function StagedEmployees() {
   const [status, setStatus] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [matchChecks, setMatchChecks] = useState({});
+  const [checkingId, setCheckingId] = useState("");
+  const [linkingId, setLinkingId] = useState("");
 
   const loadEmployees = useCallback(async () => {
     setLoading(true); setError("");
@@ -96,6 +99,57 @@ export default function StagedEmployees() {
     }
   };
 
+  const checkExistingProfile = async (employee) => {
+    setCheckingId(employee.id);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Your session has expired. Please log in again.");
+      const response = await fetch(API_URL + "/admin/staged-legacy-employees/" + encodeURIComponent(employee.id) + "/matching-profile", {
+        headers: { Authorization: "Bearer " + token },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.detail || "Unable to check the registered profile.");
+      setMatchChecks((previous) => ({ ...previous, [employee.id]: data }));
+    } catch (e) {
+      await Swal.fire({ title: "Match check failed", text: e.message, icon: "error" });
+    } finally {
+      setCheckingId("");
+    }
+  };
+
+  const linkExistingProfile = async (employee) => {
+    const match = matchChecks[employee.id];
+    if (!match?.can_link || !match.profile_id) return;
+    const confirmation = await Swal.fire({
+      title: "Link existing employee account?",
+      text: "Link employee " + employee.employee_no + " to the registered account matching the employee number, branch and role? This does not import historical attendance or create an account.",
+      icon: "warning", showCancelButton: true, confirmButtonText: "Confirm link", cancelButtonText: "Cancel",
+      confirmButtonColor: "#f97316",
+    });
+    if (!confirmation.isConfirmed) return;
+    setLinkingId(employee.id);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Your session has expired. Please log in again.");
+      const response = await fetch(API_URL + "/admin/staged-legacy-employees/" + encodeURIComponent(employee.id) + "/link", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: match.profile_id }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.detail || "Unable to link the employee.");
+      setMatchChecks((previous) => ({ ...previous, [employee.id]: undefined }));
+      await loadEmployees();
+      await Swal.fire({ title: "Employee linked", text: "Existing account linked. Historical attendance remains staged.", icon: "success" });
+    } catch (e) {
+      await Swal.fire({ title: "Link failed", text: e.message, icon: "error" });
+    } finally {
+      setLinkingId("");
+    }
+  };
+
   const filtered = employees.filter((employee) => {
     const term = search.trim().toLowerCase();
     const matches = !term || [employee.employee_no, employee.full_name, employee.source_branch_code, employee.branches?.branch_name]
@@ -143,6 +197,26 @@ export default function StagedEmployees() {
               </td>
               <td style={styles.td}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minHeight: 38, padding: "2px 0" }}>
+                  {employee.profile_status !== "linked" && (
+                    <>
+                      <button type="button" onClick={() => checkExistingProfile(employee)} disabled={checkingId === employee.id} style={styles.continueRole}>
+                        {checkingId === employee.id ? "Checking..." : "Check existing account"}
+                      </button>
+                      {matchChecks[employee.id] && (
+                        <span style={{ color: "#475569", fontSize: 12 }}>
+                          {matchChecks[employee.id].can_link ? "Matching account found (branch and role verified)." :
+                            matchChecks[employee.id].status === "no_match" ? "No registered account with this employee number yet." :
+                            matchChecks[employee.id].status === "ambiguous" ? "Multiple profiles found; manual review required." :
+                            "Profile branch or role does not match, or role is not saved."}
+                        </span>
+                      )}
+                      {matchChecks[employee.id]?.can_link && (
+                        <button type="button" onClick={() => linkExistingProfile(employee)} disabled={linkingId === employee.id} style={styles.saveRole}>
+                          {linkingId === employee.id ? "Linking..." : "Link matching account"}
+                        </button>
+                      )}
+                    </>
+                  )}
                   <button disabled={employee.profile_status === "linked"} onClick={() => saveIntendedRole(employee)} style={{ ...styles.saveRole, opacity: employee.profile_status === "linked" ? 0.5 : 1 }}>Save role</button>
                   {employee.intended_role === "maintenance" && employee.profile_status !== "linked" && (
                     <button
