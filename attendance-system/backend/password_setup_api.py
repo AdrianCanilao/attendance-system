@@ -81,6 +81,27 @@ def password_setup_status(authorization: str | None = Header(default=None)):
     return {"status": status, "expires_at": expiry}
 
 
+@router.get("/employees")
+def employee_setup_statuses(authorization: str | None = Header(default=None)):
+    caller = _user(authorization)
+    caller_profile = _profile(caller.id)
+    caller_role = _role(caller_profile)
+    if caller_role not in ("maintenance", "hr"):
+        raise HTTPException(403, "Supervisor access required.")
+    db = _client()
+    if caller_role == "maintenance":
+        employees = (db.from_("employee_profiles").select("id,role_id,branch_id")
+                     .eq("branch_id", caller_profile.get("branch_id")).execute().data or [])
+        employees = [row for row in employees if _role(row) == "employee"]
+    else:
+        employees = (db.from_("employee_profiles").select("id,role_id,branch_id")
+                     .execute().data or [])
+        employees = [row for row in employees if _role(row) == "maintenance"]
+    return {"statuses": {
+        row["id"]: _status(row["id"])[0] for row in employees
+    }}
+
+
 @router.post("/issue")
 def issue_temporary_password(
     payload: ResetTemporaryPasswordRequest,
