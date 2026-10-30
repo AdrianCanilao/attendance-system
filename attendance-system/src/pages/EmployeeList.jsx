@@ -17,7 +17,7 @@ export default function EmployeeList() {
     try {
       const { data } = await supabase.auth.getSession();
       if (!data?.session) throw new Error("Session expired. Please sign in again.");
-      const api = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://cibo-attendance-api.onrender.com" : "http://127.0.0.1:8000")).replace(/\\/$/, "");
+      const api = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://cibo-attendance-api.onrender.com" : "http://127.0.0.1:8000")).replace(new RegExp("/+$"), "");
       const response = await fetch(api + "/auth/password-setup/issue", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + data.session.access_token },
