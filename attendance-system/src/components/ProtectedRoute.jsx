@@ -17,6 +17,7 @@ export default function ProtectedRoute({ children, role }) {
   const userRole = sessionStorage.getItem("role") || localStorage.getItem("role");
   const [checkingDevice, setCheckingDevice] = useState(true);
   const [deviceAllowed, setDeviceAllowed] = useState(false);
+  const [sessionReplaced, setSessionReplaced] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,13 +82,45 @@ export default function ProtectedRoute({ children, role }) {
     };
 
     checkDevice();
-    return () => { cancelled = true; };
+    // Re-check when returning to a backgrounded tab and periodically while active.
+    // A newer login on another device makes this session unusable.
+    const verifyActiveSession = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) return;
+      const { data: active, error } = await supabase.rpc("is_active_session");
+      if (error || active !== true) {
+        if (!cancelled) {
+          setSessionReplaced(true);
+          setDeviceAllowed(false);
+        }
+        await supabase.auth.signOut({ scope: "local" });
+        localStorage.removeItem("role");
+        sessionStorage.removeItem("role");
+      }
+    };
+    const onFocus = () => { if (!cancelled) verifyActiveSession(); };
+    const onVisibility = () => { if (document.visibilityState === "visible") onFocus(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    const interval = window.setInterval(verifyActiveSession, 15000);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.clearInterval(interval);
+    };
   }, []);
 
   if (!userRole) return <Navigate to="/" replace />;
   if (role && userRole !== role) return <Navigate to="/" replace />;
   if (checkingDevice) {
     return <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: "#475467" }}>Checking device authorization...</div>;
+  }
+  if (sessionReplaced) {
+    return <div role="alert" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, textAlign: "center" }}>
+      <div><h2>Session ended</h2><p>Your account was signed in on another device or browser. Only one session can remain active.</p>
+      <a href="/">Sign in again</a></div>
+    </div>;
   }
   if (!deviceAllowed) return <Navigate to="/" replace />;
 
