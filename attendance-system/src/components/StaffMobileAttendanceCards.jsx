@@ -1,14 +1,13 @@
-import { attendanceMapsUrl, attendanceLocationLabel } from "../utils/attendanceLocation";
+import AttendanceLocationDisplay from "./AttendanceLocationDisplay";
 
-function Evidence({ title, photo, location }) {
-  const url = attendanceMapsUrl(location);
+function Evidence({ title, photo, location, source }) {
   return (
     <div className="cibo-staff-evidence">
       <strong>{title} Photo</strong>
       <div className="cibo-staff-photo">
         {photo ? <img src={photo} alt={`${title} attendance evidence`} loading="lazy" /> : <span>Photo unavailable</span>}
       </div>
-      {url ? <a href={url} target="_blank" rel="noopener noreferrer">View on Google Maps ↗</a> : <span className="cibo-staff-unavailable">Location unavailable</span>}
+      <AttendanceLocationDisplay location={location} source={source} compact />
     </div>
   );
 }
@@ -57,8 +56,8 @@ export default function StaffMobileAttendanceCards({ logs = [], hoursWorked, onU
             <span className="cibo-staff-mobile-status">{log.status || "—"}</span>
           </div>
           <div className="cibo-staff-mobile-times">
-            <div><small>TIME IN</small><strong>{log.time_in || "—"}</strong><span>⌖ {attendanceLocationLabel(log.time_in_location)}</span></div>
-            <div><small>TIME OUT</small><strong>{log.time_out || "—"}</strong><span>⌖ {attendanceLocationLabel(log.time_out_location)}</span></div>
+            <div><small>TIME IN</small><strong>{log.time_in || "—"}</strong><AttendanceLocationDisplay location={log.time_in_location} source={log.source} compact /></div>
+            <div><small>TIME OUT</small><strong>{log.time_out || "—"}</strong><AttendanceLocationDisplay location={log.time_out_location} source={log.source} compact /></div>
           </div>
           <div className="cibo-staff-mobile-metrics">
             <span>Late: {log.late || "—"}</span>
@@ -68,8 +67,8 @@ export default function StaffMobileAttendanceCards({ logs = [], hoursWorked, onU
           <details className="cibo-staff-mobile-details">
             <summary>View photos &amp; locations</summary>
             <div className="cibo-staff-mobile-evidence-grid">
-              <Evidence title="Time In" photo={log.time_in_face_url} location={log.time_in_location} />
-              <Evidence title="Time Out" photo={log.time_out_face_url} location={log.time_out_location} />
+              <Evidence title="Time In" photo={log.time_in_face_url} location={log.time_in_location} source={log.source} />
+              <Evidence title="Time Out" photo={log.time_out_face_url} location={log.time_out_location} source={log.source} />
             </div>
             {log.correction && <div className="cibo-staff-correction">Correction: {log.correction.concern || log.correction.status || "Submitted"}{log.correction.attachment_url && <> · <a href={log.correction.attachment_url} target="_blank" rel="noopener noreferrer">View attachment</a></>}</div>}
             {onUpdateAttendance && log.correction && log.correction.status !== "Approved" && <button type="button" className="cibo-staff-update" onClick={() => onUpdateAttendance(log)}>Update Attendance</button>}
