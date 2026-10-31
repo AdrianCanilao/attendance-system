@@ -1,5 +1,5 @@
 import React from "react";
-import { attendanceKioskBranch } from "../utils/attendanceLocation";
+import AttendanceLocationDisplay from "./AttendanceLocationDisplay";
 
 // Read coordinates already stored in attendance_logs; never geocode or modify them.
 function mapsUrl(location) {
@@ -21,15 +21,14 @@ function formatTime(value) {
 }
 
 function AttendanceEvidence({ label, location, photo, source }) {
-  const branch = attendanceKioskBranch(location, source);
-  const url = branch ? null : mapsUrl(location);
+
   return (
     <div className="cibo-mobile-event">
       <strong className="cibo-mobile-photo-label">{label} Photo</strong>
       <div className="cibo-mobile-photo">
         {photo ? <img src={photo} alt={`${label} attendance photo`} loading="lazy" /> : <span>Photo unavailable</span>}
       </div>
-      {branch ? <span className="cibo-mobile-branch">⌂ On-site · {branch}</span> : url ? <a className="cibo-mobile-maps" href={url} target="_blank" rel="noopener noreferrer">View on Google Maps ↗</a> : <span className="cibo-mobile-maps-unavailable">Location unavailable</span>}
+      <AttendanceLocationDisplay location={location} source={source} compact />
     </div>
   );
 }
@@ -87,7 +86,7 @@ export default function MobileAttendanceCards({ logs, onCorrect }) {
                 <div key={label}>
                   <div className="cibo-mobile-event-label">{label}</div>
                   <div className="cibo-mobile-event-time">{formatTime(time)}</div>
-                  <div className="cibo-mobile-event-location"><span aria-hidden="true">⌖</span>{attendanceKioskBranch(location, log.source) ? `On-site · ${attendanceKioskBranch(location, log.source)}` : location ? (/offsite|off-site/i.test(location) ? "Off-site" : "Recorded location") : "Location unavailable"}</div>
+                  <div className="cibo-mobile-event-location"><AttendanceLocationDisplay location={location} source={log.source} compact /></div>
                   
                 </div>
               ))}
