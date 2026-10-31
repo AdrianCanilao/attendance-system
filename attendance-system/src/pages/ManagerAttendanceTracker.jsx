@@ -698,7 +698,7 @@ correction:
                       <div style={styles.timeDetails}>
                         <span>{log.time_in}</span>
                         {log.time_in_date && log.time_in_date !== new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(`${log.log_date}T12:00:00+08:00`)) && <span style={styles.locationText}>{log.time_in_date}</span>}
-                          <AttendanceLocationDisplay location={log.time_in_location} />
+                          <AttendanceLocationDisplay location={log.time_in_location} source={log.source} />
                       </div>
                     </div>
                   </td>
@@ -723,7 +723,7 @@ correction:
                       <div style={styles.timeDetails}>
                         <span>{log.time_out}</span>
                         {log.time_out_date && log.time_out_date !== new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(`${log.log_date}T12:00:00+08:00`)) && <span style={styles.locationText}>{log.time_out_date}</span>}
-                          <AttendanceLocationDisplay location={log.time_out_location} />
+                          <AttendanceLocationDisplay location={log.time_out_location} source={log.source} />
                       </div>
                     </div>
                   </td>
