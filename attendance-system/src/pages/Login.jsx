@@ -147,6 +147,14 @@ export default function Login() {
         return;
       }
 
+      // Only claim the session after password setup and device authorization succeed.
+      const { error: claimError } = await supabase.rpc("claim_active_session");
+      if (claimError) {
+        await supabase.auth.signOut({ scope: "local" });
+        alert("Unable to activate your session. Please try again.");
+        return;
+      }
+
       const user = data.user;
       const { data: profile, error: profileError } = await supabase
         .from("employee_profiles")
