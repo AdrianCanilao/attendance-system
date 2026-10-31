@@ -425,6 +425,8 @@ if (correctionError) {
 
         time_out_face_url:attendanceToday?.time_out_face_url || null,
 
+        source: attendanceToday?.source || null,
+
         time_in_location: attendanceToday?.time_in_location || null,
 
         time_out_location: attendanceToday?.time_out_location || null,
