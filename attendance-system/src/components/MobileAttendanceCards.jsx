@@ -1,4 +1,5 @@
 import React from "react";
+import { attendanceKioskBranch } from "../utils/attendanceLocation";
 
 // Read coordinates already stored in attendance_logs; never geocode or modify them.
 function mapsUrl(location) {
@@ -19,15 +20,16 @@ function formatTime(value) {
     : "—";
 }
 
-function AttendanceEvidence({ label, location, photo }) {
-  const url = mapsUrl(location);
+function AttendanceEvidence({ label, location, photo, source }) {
+  const branch = attendanceKioskBranch(location, source);
+  const url = branch ? null : mapsUrl(location);
   return (
     <div className="cibo-mobile-event">
       <strong className="cibo-mobile-photo-label">{label} Photo</strong>
       <div className="cibo-mobile-photo">
         {photo ? <img src={photo} alt={`${label} attendance photo`} loading="lazy" /> : <span>Photo unavailable</span>}
       </div>
-      {url ? <a className="cibo-mobile-maps" href={url} target="_blank" rel="noopener noreferrer">View on Google Maps ↗</a> : <span className="cibo-mobile-maps-unavailable">Location unavailable</span>}
+      {branch ? <span className="cibo-mobile-branch">⌂ On-site · {branch}</span> : url ? <a className="cibo-mobile-maps" href={url} target="_blank" rel="noopener noreferrer">View on Google Maps ↗</a> : <span className="cibo-mobile-maps-unavailable">Location unavailable</span>}
     </div>
   );
 }
@@ -62,6 +64,7 @@ export default function MobileAttendanceCards({ logs, onCorrect }) {
           .cibo-mobile-maps,.cibo-mobile-maps-unavailable { display: block; margin-top: 9px; font-size: 11px; overflow-wrap: anywhere; text-align: center; }
           .cibo-mobile-maps { color: #c2410c; text-decoration: underline; }
           .cibo-mobile-maps-unavailable { color: #6b7280; }
+          .cibo-mobile-branch { display: inline-block; max-width: 100%; margin-top: 8px; padding: 5px 8px; border-radius: 8px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #047857; font-size: 11px; font-weight: 600; overflow-wrap: anywhere; text-align: center; }
           .cibo-mobile-correction { display: block; width: 100%; margin-top: 12px; padding: 10px; border: 0; border-radius: 8px; color: white; background: #f97316; font-weight: 600; font-size: 12px; cursor: pointer; }
           .cibo-mobile-correction:disabled { background: #9ca3af; cursor: not-allowed; }
           .cibo-mobile-metrics { margin: 10px 0 0; display: flex; gap: 8px; flex-wrap: wrap; color: #6b7280; font-size: 11px; }
@@ -84,7 +87,7 @@ export default function MobileAttendanceCards({ logs, onCorrect }) {
                 <div key={label}>
                   <div className="cibo-mobile-event-label">{label}</div>
                   <div className="cibo-mobile-event-time">{formatTime(time)}</div>
-                  <div className="cibo-mobile-event-location"><span aria-hidden="true">⌖</span>{location ? (/offsite|off-site/i.test(location) ? "Off-site" : "Recorded location") : "Location unavailable"}</div>
+                  <div className="cibo-mobile-event-location"><span aria-hidden="true">⌖</span>{attendanceKioskBranch(location, log.source) ? `On-site · ${attendanceKioskBranch(location, log.source)}` : location ? (/offsite|off-site/i.test(location) ? "Off-site" : "Recorded location") : "Location unavailable"}</div>
                   
                 </div>
               ))}
@@ -96,8 +99,8 @@ export default function MobileAttendanceCards({ logs, onCorrect }) {
             <details className="cibo-mobile-details">
               <summary>View photos &amp; locations</summary>
               <div className="cibo-mobile-event-grid">
-                <AttendanceEvidence label="Time In" location={log.time_in_location} photo={log.time_in_face_url} />
-                <AttendanceEvidence label="Time Out" location={log.time_out_location} photo={log.time_out_face_url} />
+                <AttendanceEvidence label="Time In" location={log.time_in_location} source={log.source} photo={log.time_in_face_url} />
+                <AttendanceEvidence label="Time Out" location={log.time_out_location} source={log.source} photo={log.time_out_face_url} />
               </div>
               <button className="cibo-mobile-correction" disabled={log.correction?.status === "Pending"} onClick={() => onCorrect(log)}>{correctionLabel}</button>
             </details>
