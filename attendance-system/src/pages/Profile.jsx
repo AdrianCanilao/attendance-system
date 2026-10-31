@@ -591,7 +591,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                       : "-"}
                   </span>
                 </div>
-                <AttendanceLocationDisplay location={log.time_in_location} />
+                <AttendanceLocationDisplay location={log.time_in_location} source={log.source} />
               </div>
             </div>
           </td>
@@ -672,7 +672,7 @@ const calculateOvertime = (timeOutISO, shiftOut) => {
                     </span>
                   )}
                 </div>
-                <AttendanceLocationDisplay location={log.time_out_location} />
+                <AttendanceLocationDisplay location={log.time_out_location} source={log.source} />
               </div>
             </div>
           </td>
