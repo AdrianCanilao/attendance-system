@@ -16,3 +16,14 @@ export function attendanceLocationLabel(value) {
   if (/onsite|on-site/i.test(value)) return "On-site";
   return "Recorded location";
 }
+
+ 
+// Kiosk records may store the actual branch name instead of GPS coordinates.
+// Keep the recorded branch as the source of truth; never infer it from the employee's assignment.
+export function attendanceKioskBranch(value, source) {
+  if (source !== "kiosk" || typeof value !== "string") return null;
+  const name = value.trim();
+  if (!name || /offsite|off-site|onsite|on-site/i.test(name) ||
+      /-?\d{1,2}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?/.test(name)) return null;
+  return name;
+}
